@@ -1,0 +1,24 @@
+{
+  "name": "proppal",
+  "version": "1.0.0",
+  "description": "*A Multi-Agent AI-Powered Real Estate Platform*",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bilalrana8718/PropPal.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bilalrana8718/PropPal/issues"
+  },
+  "homepage": "https://github.com/bilalrana8718/PropPal#readme",
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.8"
+  }
+}
