@@ -11,16 +11,11 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    env_file:
+      - ../../apps/backend/.env
     environment:
-      # MongoDB Atlas connection (external)
-      - MONGODB_URL=${MONGODB_URL:-mongodb+srv://user:password@cluster.mongodb.net/proppal?retryWrites=true&w=majority}
-      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-proppal}
       # Service configuration
       - SERVICE_NAME=gateway
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      # CORS origins for frontend
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,https://proppal.vercel.app}
     volumes:
       - ../../apps/backend:/app
       - /app/venv
@@ -43,17 +38,11 @@ services:
     restart: unless-stopped
     ports:
       - "8001:8001"
+    env_file:
+      - ../../apps/backend/.env
     environment:
-      # MongoDB Atlas connection (external)
-      - MONGODB_URL=${MONGODB_URL:-mongodb+srv://user:password@cluster.mongodb.net/proppal?retryWrites=true&w=majority}
-      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-proppal}
       # Service configuration
       - SERVICE_NAME=nlp-service
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      # AI/ML configuration
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - MODEL_NAME=${MODEL_NAME:-gpt-4}
     volumes:
       - ../../apps/backend:/app
       - /app/venv
