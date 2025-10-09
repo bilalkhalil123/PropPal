@@ -2,119 +2,254 @@
 
 *A Multi-Agent AI-Powered Real Estate Platform*
 
+[![Phase 0](https://img.shields.io/badge/Phase%200-Complete-success)](./PHASE0_COMPLETE.md)
+[![License](https://img.shields.io/badge/License-ISC-blue.svg)](./LICENSE)
+
+---
+
+## 🚀 Quick Start
+
+Get started in 5 minutes:
+
+```bash
+# 1. Clone and install
+git clone https://github.com/bilalrana8718/PropPal.git
+cd PropPal
+npm install
+
+# 2. Setup Python
+cd apps/backend
+python -m venv venv
+venv\Scripts\activate  # Windows (or: source venv/bin/activate on macOS/Linux)
+pip install -r requirements.txt
+cd ../..
+
+# 3. Configure MongoDB Atlas
+cp .env.example .env
+# Edit .env with your MongoDB Atlas connection string
+
+# 4. Start backend services
+npm run docker:up
+```
+
+**Access:** http://localhost:8000 (Gateway API) | http://localhost:8000/docs (API Docs)
+
+📖 **[Full Quick Start Guide](./docs/QUICK_START.md)**
+
 ---
 
 ## 📌 Overview
 
-PropPal is an **AI-driven, multi-agent real estate platform** designed to revolutionize property search, listing, and engagement in Pakistan’s real estate sector. Unlike existing portals that rely on rigid filters and manual inputs, PropPal leverages **Natural Language Processing (NLP)**, **Retrieval-Augmented Generation (RAG)**, and **intelligent automation** to connect buyers, sellers, and builders seamlessly.
+PropPal is an **AI-driven, multi-agent real estate platform** for Pakistan's real estate sector, leveraging:
+
+- 🤖 **NLP & RAG** for conversational property search
+- 🏗️ **Multi-Agent System** for intelligent automation
+- 🗺️ **Geo-Intelligence** for location-based insights
+- 🌐 **Multilingual Support** (English & Urdu)
 
 ---
 
-## 🚀 Key Features
+## 🏗️ Architecture
 
-* **Conversational Property Search** – Buyers can search using natural language queries (e.g., *“3-bedroom apartment near a school and hospital in G-10/3”*).
-* **AI-Assisted Property Listings** – Sellers can create listings via natural language or assisted forms.
-* **Builder Integration** – Builders showcase expertise, pitch proposals, and bid on projects.
-* **AI Visit Booking Agent** – Automated scheduling, rescheduling, and reminders for property visits.
-* **Nearby Amenities Detection** – Schools, hospitals, commute insights via geo-intelligence.
-* **Multilingual Support** – English and Urdu for accessibility across diverse user groups.
+```
+┌─────────────────┐
+│   Web (Next.js) │ ──────┐
+│  (Port 3000)    │       │
+└─────────────────┘       │
+                          │
+┌─────────────────┐       │    ┌──────────────────┐
+│ Mobile (RN)     │ ──────┼───▶│  Gateway API     │
+│                 │       │    │  (Port 8000)     │
+└─────────────────┘       │    └──────────────────┘
+                          │              │
+                          │              ├──▶ MongoDB Atlas
+                          │              │
+                          │    ┌──────────────────┐
+                          └───▶│  NLP Service     │
+                               │  (Port 8001)     │
+                               └──────────────────┘
+```
 
 ---
 
 ## 🛠️ Technology Stack
 
-* **Frontend**: React.js (Web), React Native (Mobile)
-* **Backend**: Node.js, Express.js, MongoDB (MERN stack)
-* **AI & NLP**:
+### Frontend
+- **Web**: Next.js 15 + React 19 + TypeScript
+- **Mobile**: React Native (TBD)
+- **Styling**: Tailwind CSS
 
-  * LangChain / LangGraph for multi-agent workflows
-  * LLaMA 3 (local) + OpenAI GPT for semantic search & chat
-  * Whisper for voice-to-text input (English/Urdu)
-* **Geo Intelligence**: Google Maps API (geocoding, commute time, amenities detection)
-* **Vector Search**: MongoDB Vector Search for semantic retrieval (RAG)
-* **Security & Auth**: Role-Based Access Control (RBAC), modern auth libraries
-* **Notifications**: Email, SMS, push notifications
+### Backend
+- **API Gateway**: FastAPI + Python 3.13
+- **Database**: MongoDB Atlas (external)
+- **AI/NLP**: LangChain, LangGraph, OpenAI GPT, LLaMA 3
 
----
-
-## 📂 System Modules
-
-1. **Client Web App** (Buyer, Seller, Builder dashboards)
-2. **Client Mobile App** (voice/text search, quick listing, notifications)
-3. **Backend Services & API Gateway** (auth, business logic, APIs)
-4. **NLP & RAG Module** (semantic search, multilingual support)
-5. **Search & Amenities Engine** (geo-coding, amenities ranking, maps)
-6. **AI Visit Booking Agent** (autonomous scheduling & reminders)
+### Infrastructure
+- **Monorepo**: Turborepo
+- **Containerization**: Docker Compose
+- **Deployment**: Vercel (Web), Docker (Backend)
 
 ---
 
-## 👥 Stakeholders
+## 📂 Project Structure
 
-* **Buyers** – Search & shortlist properties via conversational queries.
-* **Sellers** – List properties easily with AI-assisted forms.
-* **Builders/Developers** – Showcase expertise, pitch projects, bid proposals.
-* **Admins** – Manage system operations, transparency, and platform quality.
-* **Agents** – Use PropPal as an additional channel to reach clients.
-
----
-
-## 📅 Project Timeline (FYP Milestones)
-
-* **Iteration 1 (Sept–Oct 2025)**: Listing Agent, Builder Agent MVP, Chat UI + Router Agent.
-* **Iteration 2 (Nov–Dec 2025)**: Listing Agent v2, Builder Agent v2, Booking Agent MVP.
-* **Iteration 3 (Feb–Mar 2026)**: APIs (schools, hospitals, commute), Geo-ranking, UI integration.
-* **Iteration 4 (Apr–May 2026)**: Optimizations (RAG, multi-agent workflows, multi-response Chat UI).
-
----
-
-## 🧑‍🤝‍🧑 Team Members
-
-* **Muhammad Bilal (22I-0806)** – Chat UI + Router Agent + Booking Agent + UI Integration.
-* **Rana Bilal Akbar (22I-1094)** – Listing Agent + APIs (Schools/Hospitals) + Optimizations.
-* **Mehboob Ali Shah (22I-1208)** – Builder Agent + Geo Ranking + Multi-Agent Optimization.
-* **Supervisor**: Dr. Akhtar Jamil (FAST-NUCES, Islamabad).
-
----
-
-## 📖 Contribution Guidelines
-
-1. **Branching Model**
-
-   * `main` → Stable production code
-   * `dev` → Active development
-   * `feature/*` → One branch per feature/module
-
-2. **Commit Messages** (Conventional Commits)
-
-   ```
-   feat(listing-agent): add semantic search filter
-   fix(builder-agent): resolve bidding bug
-   docs(readme): update team roles
-   ```
-
-3. **Pull Requests**
-
-   * All changes must go through PRs.
-   * At least **1 reviewer approval** required.
-
----
-
-## ⚙️ Development Setup
-
-```bash
-# Clone repo
-git clone https://github.com/<your-org>/PropPal.git
-cd PropPal
-
-# Backend setup
-cd backend
-npm install
-npm run dev
-
-# Frontend setup
-cd ../frontend
-npm install
-npm start
+```
+PropPal/
+├── apps/
+│   ├── backend/        # FastAPI backend services
+│   └── web/            # Next.js web application
+├── packages/
+│   └── schemas/        # Shared TypeScript schemas
+├── infra/
+│   └── docker/         # Docker configuration
+├── docs/               # Documentation
+└── scripts/            # Automation scripts
 ```
 
 ---
+
+## 🎯 Key Features
+
+- ✅ **Conversational Search**: Natural language property queries
+- ✅ **AI-Assisted Listings**: Smart form assistance for sellers
+- ✅ **Builder Integration**: Proposal bidding & project showcase
+- ✅ **Smart Booking**: Automated visit scheduling
+- ✅ **Amenities Detection**: Schools, hospitals, commute insights
+- ✅ **Multilingual**: English & Urdu support
+
+---
+
+## 📖 Documentation
+
+### Getting Started
+- 🚀 **[Quick Start (5 min)](./docs/QUICK_START.md)** - Get running fast
+- 📘 **[Phase 0 Setup](./docs/PHASE0_SETUP.md)** - Complete setup guide
+- 🐳 **[Docker Guide](./infra/docker/README.md)** - Docker documentation
+
+### Development
+- 💻 **[Development Guide](./docs/DEVELOPMENT.md)** - Development workflows
+- 🤝 **[Contributing](./docs/CONTRIBUTING.md)** - Contribution guidelines
+- 📂 **[Repository Structure](./docs/Repo-Structure.md)** - Code organization
+
+### Reference
+- ✅ **[Phase 0 Complete](./PHASE0_COMPLETE.md)** - Implementation summary
+
+---
+
+## 🧑‍🤝‍🧑 Team
+
+**PropPal FYP Team (2025-2026)**
+
+- **Muhammad Bilal** (22I-0806) - Chat UI, Router Agent, Booking Agent
+- **Rana Bilal Akbar** (22I-1094) - Listing Agent, APIs, Optimizations
+- **Mehboob Ali Shah** (22I-1208) - Builder Agent, Geo Ranking
+- **Supervisor**: Dr. Akhtar Jamil (FAST-NUCES, Islamabad)
+
+---
+
+## 🛤️ Development Roadmap
+
+### ✅ Phase 0 (Complete)
+- [x] Monorepo setup with Turborepo
+- [x] Docker environment (backend services)
+- [x] MongoDB Atlas integration
+- [x] Shared schemas package
+- [x] Linting & formatting
+
+### 🔄 Phase 1 (In Progress - Sept-Oct 2025)
+- [ ] Listing Agent MVP
+- [ ] Builder Agent MVP
+- [ ] Chat UI + Router Agent
+- [ ] Basic property search
+
+### 🔮 Phase 2 (Nov-Dec 2025)
+- [ ] Listing Agent v2
+- [ ] Builder Agent v2
+- [ ] Booking Agent MVP
+- [ ] Enhanced search
+
+### 🚀 Phase 3 (Feb-Mar 2026)
+- [ ] Schools/Hospitals APIs
+- [ ] Geo-ranking system
+- [ ] UI/UX integration
+- [ ] Mobile app
+
+### ⚡ Phase 4 (Apr-May 2026)
+- [ ] RAG optimization
+- [ ] Multi-agent workflows
+- [ ] Performance tuning
+- [ ] Production deployment
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](./docs/CONTRIBUTING.md) for details.
+
+### Quick Contribution Steps
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'feat: add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+**Commit Convention**: We use [Conventional Commits](https://www.conventionalcommits.org/)
+
+---
+
+## 📝 Available Scripts
+
+```bash
+# Backend Services
+npm run docker:up      # Start Docker services
+npm run docker:down    # Stop Docker services
+npm run docker:logs    # View service logs
+
+# Development
+npm run dev            # Start all dev servers
+npm run build          # Build backend + schemas
+npm run lint           # Lint all code
+npm run format         # Format all code
+npm run test           # Run all tests
+
+# Code Quality
+npm run lint:js        # Lint JavaScript/TypeScript
+npm run lint:py        # Lint Python
+npm run format:js      # Format JS/TS
+npm run format:py      # Format Python
+```
+
+---
+
+## 📜 License
+
+ISC License - see [LICENSE](./LICENSE) file for details
+
+---
+
+## 🙏 Acknowledgments
+
+- **FAST-NUCES Islamabad** for academic support
+- **Dr. Akhtar Jamil** for supervision and guidance
+- All contributors and testers
+
+---
+
+## 📬 Contact
+
+- **GitHub**: [bilalrana8718/PropPal](https://github.com/bilalrana8718/PropPal)
+- **Issues**: [Report a bug or request a feature](https://github.com/bilalrana8718/PropPal/issues)
+
+---
+
+<div align="center">
+
+**Built with ❤️ by the PropPal Team**
+
+**🏠 Making Real Estate Smarter ✨**
+
+[Documentation](./docs) • [Quick Start](./docs/QUICK_START.md) • [Contributing](./docs/CONTRIBUTING.md)
+
+</div>
+

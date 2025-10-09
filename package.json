@@ -1,16 +1,38 @@
 {
   "name": "proppal",
   "version": "1.0.0",
+  "private": true,
   "description": "*A Multi-Agent AI-Powered Real Estate Platform*",
-  "main": "index.js",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "lint:js": "eslint \"apps/**/*.{js,jsx,ts,tsx}\" \"packages/**/*.{js,jsx,ts,tsx}\"",
+    "lint:py": "cd apps/backend && flake8 . && mypy .",
+    "format": "npm run format:js && npm run format:py",
+    "format:js": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "format:py": "cd apps/backend && black . && isort .",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "docker:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infra/docker/docker-compose.yml down",
+    "docker:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
+    "setup": "npm install && cd apps/backend && pip install -r requirements.txt"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bilalrana8718/PropPal.git"
   },
-  "keywords": [],
+  "keywords": [
+    "real-estate",
+    "ai",
+    "multi-agent",
+    "monorepo"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -18,7 +40,15 @@
   },
   "homepage": "https://github.com/bilalrana8718/PropPal#readme",
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.6.2",
     "turbo": "^2.5.8"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }

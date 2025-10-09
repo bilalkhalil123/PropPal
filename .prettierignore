@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+venv/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+*.pyc
+__pycache__/
+
+# Package manager files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Environment files
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Git
+.git/
+

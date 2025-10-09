@@ -5,9 +5,9 @@ app = FastAPI(title="PropPal API")
 
 @app.get("/")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "ok changed"}
 
 
-@app.post("/chat")
-def chat(query: dict):
-    return {"answer": f"You said: {query.get('query')}"}
+@app.get("/chat")
+def chat():
+    return {"answer": f"You said: kkkl"}

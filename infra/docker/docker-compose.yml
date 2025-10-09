@@ -1,0 +1,69 @@
+# PropPal Backend Services - Local Development
+# Connects to external MongoDB Atlas
+
+services:
+  # FastAPI Gateway Service
+  gateway:
+    build:
+      context: ../../apps/backend
+      dockerfile: Dockerfile
+    container_name: proppal-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # MongoDB Atlas connection (external)
+      - MONGODB_URL=${MONGODB_URL:-mongodb+srv://user:password@cluster.mongodb.net/proppal?retryWrites=true&w=majority}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-proppal}
+      # Service configuration
+      - SERVICE_NAME=gateway
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # CORS origins for frontend
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,https://proppal.vercel.app}
+    volumes:
+      - ../../apps/backend:/app
+      - /app/venv
+    networks:
+      - proppal-network
+    command: uvicorn services.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # NLP/RAG Service (Placeholder)
+  nlp-service:
+    build:
+      context: ../../apps/backend
+      dockerfile: Dockerfile
+    container_name: proppal-nlp-service
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      # MongoDB Atlas connection (external)
+      - MONGODB_URL=${MONGODB_URL:-mongodb+srv://user:password@cluster.mongodb.net/proppal?retryWrites=true&w=majority}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-proppal}
+      # Service configuration
+      - SERVICE_NAME=nlp-service
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # AI/ML configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - MODEL_NAME=${MODEL_NAME:-gpt-4}
+    volumes:
+      - ../../apps/backend:/app
+      - /app/venv
+    networks:
+      - proppal-network
+    command: echo "NLP Service placeholder - implement NLP service entrypoint"
+    profiles:
+      - nlp  # Optional service, enable with: docker compose --profile nlp up
+
+networks:
+  proppal-network:
+    driver: bridge
+
