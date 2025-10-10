@@ -1,15 +1,23 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env.*local"],
-  "pipeline": {
+  "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "build/**"],
+      "outputs": ["dist/**", "build/**", "generated/**"],
       "env": ["NODE_ENV"]
+    },
+    "@proppal/schemas#build": {
+      "outputs": ["dist/**", "generated/models.ts"]
     },
     "web#build": {
       "cache": false,
-      "dependsOn": []
+      "dependsOn": ["@proppal/schemas#build"]
+    },
+    "web#dev": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["@proppal/schemas#build"]
     },
     "dev": {
       "cache": false,

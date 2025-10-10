@@ -8,14 +8,19 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./generated": {
+      "types": "./generated/models.ts",
+      "default": "./generated/models.ts"
     }
   },
   "scripts": {
-    "build": "tsc",
+    "generate": "cd ../../apps/backend && venv\\Scripts\\python generate_schemas.py",
+    "build": "npm run generate && tsc",
     "dev": "tsc --watch",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
-    "clean": "rm -rf dist .turbo"
+    "clean": "rm -rf dist .turbo generated/models.ts"
   },
   "dependencies": {
     "zod": "^3.23.0"

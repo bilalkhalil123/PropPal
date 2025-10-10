@@ -2,6 +2,7 @@
   "name": "proppal",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "npm@10.2.4",
   "description": "*A Multi-Agent AI-Powered Real Estate Platform*",
   "workspaces": [
     "apps/*",

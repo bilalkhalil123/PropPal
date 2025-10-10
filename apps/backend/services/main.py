@@ -1,149 +1,181 @@
-﻿from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pymongo import MongoClient
-from pymongo.server_api import ServerApi
-import os
-from dotenv import load_dotenv
-from datetime import datetime
+﻿"""
+PropPal API Gateway Service
+
+Main FastAPI application using the common utilities for:
+- Configuration management (Pydantic Settings)
+- Database connection (Motor async MongoDB)
+- Error handling (Custom exceptions)
+"""
+
 from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Dict, List
 
-# Load environment variables
-load_dotenv()
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
-# MongoDB Connection
-MONGODB_URL = os.getenv("MONGODB_URL")
-MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "proppal")
+# Import common utilities
+import sys
+from pathlib import Path
 
-# Global MongoDB client (will be initialized on startup)
-mongo_client = None
-db = None
+# Add parent directory to path to import common module
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from common.config import Settings, get_settings
+from common.db import DatabaseClient, get_db_client, get_database
+from common.errors import (
+    register_exception_handlers,
+    ResourceNotFoundException,
+    DatabaseConnectionException
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Lifespan event handler for FastAPI application.
-    Handles startup and shutdown events.
+    Manages startup and shutdown events for database connection.
     """
-    global mongo_client, db
+    # --- STARTUP PHASE (BEFORE YIELD) ---
+    settings = get_settings()
     
-    # Startup: Initialize MongoDB connection
-    if not MONGODB_URL:
-        print("⚠️  WARNING: MONGODB_URL not set in environment variables")
-    else:
-        try:
-            mongo_client = MongoClient(
-                MONGODB_URL,
-                server_api=ServerApi('1'),
-                serverSelectionTimeoutMS=5000
-            )
-            # Test the connection
-            mongo_client.admin.command('ping')
-            db = mongo_client[MONGODB_DB_NAME]
-            print(f"✅ Successfully connected to MongoDB database: {MONGODB_DB_NAME}")
-        except Exception as e:
-            print(f"❌ Failed to connect to MongoDB: {e}")
-            mongo_client = None
-            db = None
-    
-    yield  # Application runs here
-    
-    # Shutdown: Close MongoDB connection
-    if mongo_client:
-        mongo_client.close()
-        print("📪 MongoDB connection closed")
+    try:
+        # 1. Initialize DB Client (Creation/Connection)
+        print(f"[STARTUP] Connecting to MongoDB at {settings.MONGODB_URL[:20]}...")
+        
+        DatabaseClient.client = AsyncIOMotorClient(
+            settings.MONGODB_URL,
+            serverSelectionTimeoutMS=5000  # Retry mechanism for Atlas latency
+        )
+        
+        # Get database reference
+        DatabaseClient.database = DatabaseClient.client[settings.MONGODB_DB_NAME]
+        
+        # Optional: Run a quick command to verify connection
+        await DatabaseClient.client.admin.command('ping')
+        print(f"[STARTUP] ✅ MongoDB Atlas connection successful to database: {settings.MONGODB_DB_NAME}")
+        
+        # 2. Application RUNTIME
+        yield
+        
+    except Exception as e:
+        print(f"[STARTUP] ❌ Failed to connect to MongoDB: {e}")
+        DatabaseClient.client = None
+        DatabaseClient.database = None
+        yield
+        
+    finally:
+        # --- SHUTDOWN PHASE (AFTER YIELD) ---
+        if DatabaseClient.client:
+            # 3. Close DB Client
+            DatabaseClient.client.close()
+            print("[SHUTDOWN] 📪 MongoDB client connection closed")
 
 
+# Get settings
+settings = get_settings()
+
+# Initialize FastAPI app with lifespan
 app = FastAPI(
-    title="PropPal API Gateway",
-    description="Multi-Agent AI-Powered Real Estate Platform",
-    version="1.0.0",
-    lifespan=lifespan
+    title=settings.APP_NAME,
+    description="Multi-Agent AI-Powered Real Estate Platform - Gateway Service",
+    version=settings.APP_VERSION,
+    lifespan=lifespan,
+    debug=settings.DEBUG
 )
 
+# Register custom exception handlers
+register_exception_handlers(app)
+
 # CORS Configuration
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=settings.get_allowed_origins_list(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+# =====================================================================
+# Health Check Endpoints
+# =====================================================================
+
 @app.get("/")
-def health_check():
+async def health_check():
     """Basic health check endpoint"""
     return {
         "status": "ok",
-        "service": "PropPal Gateway",
+        "service": settings.APP_NAME,
+        "version": settings.APP_VERSION,
         "timestamp": datetime.utcnow().isoformat()
     }
 
 
 @app.get("/health/database")
-def database_health_check():
-    """Check MongoDB database connection status"""
-    if not MONGODB_URL:
-        return {
-            "status": "error",
-            "message": "MONGODB_URL not configured",
-            "connected": False
-        }
+async def database_health_check(
+    client: AsyncIOMotorClient = Depends(get_db_client)
+):
+    """
+    Check MongoDB database connection status.
     
-    if mongo_client is None or db is None:
-        return {
-            "status": "error",
-            "message": "Database client not initialized",
-            "connected": False
-        }
+    Uses dependency injection to get the database client.
+    """
+    settings = get_settings()
     
     try:
         # Ping the database
-        mongo_client.admin.command('ping')
+        await client.admin.command('ping')
         
         # Get server info
-        server_info = mongo_client.server_info()
+        server_info = await client.server_info()
         
-        # Count collections
-        collection_count = len(db.list_collection_names())
+        # Get database and count collections
+        db = client[settings.MONGODB_DB_NAME]
+        collections = await db.list_collection_names()
         
         return {
             "status": "ok",
             "connected": True,
-            "database": MONGODB_DB_NAME,
+            "database": settings.MONGODB_DB_NAME,
             "mongodb_version": server_info.get("version", "unknown"),
-            "collections_count": collection_count,
-            "collections": db.list_collection_names(),
+            "collections_count": len(collections),
+            "collections": collections,
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:
-        return {
-            "status": "error",
-            "connected": False,
-            "message": str(e),
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        raise DatabaseConnectionException(
+            message=f"Database health check failed: {str(e)}",
+            details={"database": settings.MONGODB_DB_NAME}
+        )
 
+
+# =====================================================================
+# Test Endpoints (for development/testing)
+# =====================================================================
 
 @app.post("/test/insert")
-def test_database_insert():
-    """Test endpoint to insert a sample document"""
-    if db is None:
-        raise HTTPException(status_code=503, detail="Database not connected")
+async def test_database_insert(
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Test endpoint to insert a sample document.
     
+    Uses dependency injection to get the database instance.
+    """
     try:
         test_collection = db["test_collection"]
         
         # Insert a test document
         test_doc = {
-            "message": "Test document from PropPal",
+            "message": "Test document from PropPal Gateway",
             "timestamp": datetime.utcnow(),
-            "type": "test"
+            "type": "test",
+            "service": "gateway"
         }
         
-        result = test_collection.insert_one(test_doc)
+        result = await test_collection.insert_one(test_doc)
         
         return {
             "status": "success",
@@ -152,25 +184,30 @@ def test_database_insert():
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Insert failed: {str(e)}")
+        raise DatabaseConnectionException(
+            message=f"Insert operation failed: {str(e)}"
+        )
 
 
 @app.get("/test/documents")
-def test_get_documents():
-    """Test endpoint to retrieve documents from test collection"""
-    if db is None:
-        raise HTTPException(status_code=503, detail="Database not connected")
+async def test_get_documents(
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Test endpoint to retrieve documents from test collection.
     
+    Uses dependency injection to get the database instance.
+    """
     try:
         test_collection = db["test_collection"]
         
-        # Get all documents from test collection
-        documents = list(test_collection.find().limit(10))
+        # Get all documents from test collection (limit 10)
+        documents = await test_collection.find().limit(10).to_list(10)
         
         # Convert ObjectId to string for JSON serialization
         for doc in documents:
             doc["_id"] = str(doc["_id"])
-            if "timestamp" in doc:
+            if "timestamp" in doc and hasattr(doc["timestamp"], "isoformat"):
                 doc["timestamp"] = doc["timestamp"].isoformat()
         
         return {
@@ -180,13 +217,58 @@ def test_get_documents():
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
+        raise DatabaseConnectionException(
+            message=f"Query operation failed: {str(e)}"
+        )
 
+
+@app.get("/test/demo-error")
+async def demo_custom_error():
+    """
+    Demo endpoint to test custom error handling.
+    
+    Raises a ResourceNotFoundException to demonstrate error handling.
+    """
+    raise ResourceNotFoundException(
+        message="This is a demo error to test custom exception handling",
+        details={
+            "resource_type": "demo",
+            "resource_id": "12345"
+        }
+    )
+
+
+# =====================================================================
+# Chat Endpoint (Placeholder for NLP Integration)
+# =====================================================================
 
 @app.post("/chat")
-def chat(query: dict):
-    """Chat endpoint (placeholder for future NLP integration)"""
+async def chat(query: Dict[str, str]):
+    """
+    Chat endpoint (placeholder for future NLP integration).
+    
+    Will eventually integrate with the NLP/RAG service.
+    """
+    settings = get_settings()
+    
     return {
         "answer": f"You said: {query.get('query', 'nothing')}",
-        "timestamp": datetime.utcnow().isoformat()
+        "nlp_service": settings.NLP_SERVICE_URL,
+        "timestamp": datetime.utcnow().isoformat(),
+        "note": "This is a placeholder. NLP integration coming soon."
     }
+
+
+# =====================================================================
+# Application Entry Point
+# =====================================================================
+
+if __name__ == "__main__":
+    import uvicorn
+    
+    uvicorn.run(
+        "main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEBUG
+    )
