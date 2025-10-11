@@ -29,6 +29,9 @@ from common.errors import (
     ResourceNotFoundException,
     DatabaseConnectionException
 )
+from services.webhooks.clerk_webhooks import router as clerk_webhook_router
+from services.user_management import router as user_management_router
+from services.user_sync_api import router as user_sync_router
 
 
 @asynccontextmanager
@@ -87,6 +90,11 @@ app = FastAPI(
 
 # Register custom exception handlers
 register_exception_handlers(app)
+
+# Include routers
+app.include_router(clerk_webhook_router)
+app.include_router(user_management_router)
+app.include_router(user_sync_router)
 
 # CORS Configuration
 app.add_middleware(
