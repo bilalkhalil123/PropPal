@@ -12,14 +12,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Improve apt reliability (switch http->https where possible, add retries), then install deps
+RUN set -eux; \
+    if [ -f /etc/apt/sources.list ]; then sed -i -e 's|http://|https://|g' /etc/apt/sources.list; fi; \
+    if [ -d /etc/apt/sources.list.d ]; then find /etc/apt/sources.list.d -type f -name '*.list' -exec sed -i -e 's|http://|https://|g' {} + ; fi; \
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then sed -i -e 's|http://|https://|g' /etc/apt/sources.list.d/debian.sources; fi; \
+    echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries; \
+    apt-get update -o Acquire::Retries=5; \
+    apt-get install -y --no-install-recommends gcc curl; \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file
-COPY requirements.txt .
+# Copy requirements files (runtime excludes clerk-sdk-python which conflicts with pydantic v2)
+COPY requirements.runtime.txt ./requirements.txt
 
 # Install Python dependencies
 RUN pip install --upgrade pip && \

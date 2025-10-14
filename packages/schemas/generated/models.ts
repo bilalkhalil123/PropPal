@@ -1,7 +1,7 @@
 /**
  * AUTO-GENERATED TypeScript interfaces from Pydantic models
  * DO NOT EDIT MANUALLY - Changes will be overwritten
- * Generated on: 2025-10-12T02:09:19.025288
+ * Generated on: 2025-10-14T18:47:42.778041
  */
 
 export interface UserResponse {
@@ -50,6 +50,10 @@ export interface PropertyResponse {
   seller_id: string;
   images?: string[];
   metadata?: Record<string, any>;
+  external_id?: string | null;
+  source?: string | null;
+  source_url?: string | null;
+  date_added?: string | null;
   last_indexed_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -71,10 +75,15 @@ export interface PropertyCreate {
   lng: number;
   /** Latitude */
   lat: number;
+  seller_id: string;
   /** Array of image URLs */
   images?: string[];
   /** Additional metadata */
   metadata?: Record<string, any>;
+  external_id?: string | null;
+  source?: string | null;
+  source_url?: string | null;
+  date_added?: string | null;
 }
 
 export interface PropertyAmenityResponse {
