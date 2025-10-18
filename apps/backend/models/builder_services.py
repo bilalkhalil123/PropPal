@@ -2,7 +2,7 @@
 Builder services models
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 from pydantic import BaseModel, Field, ConfigDict
 from .base import PyObjectId
 
@@ -28,6 +28,9 @@ class BuilderService(BuilderServiceBase):
     builder_id: PyObjectId
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    embeddings: Optional[List[float]] = Field(
+        default=None, description="Vector embeddings for the builder service"
+    )
 
     model_config = ConfigDict(
         populate_by_name=True,

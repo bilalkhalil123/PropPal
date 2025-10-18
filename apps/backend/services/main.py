@@ -33,6 +33,7 @@ from services.webhooks.clerk_webhooks import router as clerk_webhook_router
 from services.user_management import router as user_management_router
 from services.user_sync_api import router as user_sync_router
 from api.search.router import router as search_router
+from api.builder.router import router as builder_router
 
 
 @asynccontextmanager
@@ -97,6 +98,7 @@ app.include_router(clerk_webhook_router)
 app.include_router(user_management_router)
 app.include_router(user_sync_router)
 app.include_router(search_router)
+app.include_router(builder_router)
 
 # CORS Configuration
 app.add_middleware(

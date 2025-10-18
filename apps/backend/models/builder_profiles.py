@@ -7,6 +7,13 @@ from pydantic import BaseModel, Field, ConfigDict
 from .base import PyObjectId
 
 
+class Location(BaseModel):
+    """Location sub-model for geographic data"""
+
+    city: str
+    latitude: float
+    longitude: float
+
 class BuilderProfileBase(BaseModel):
     """Base builder profile model"""
 
@@ -19,6 +26,8 @@ class BuilderProfileBase(BaseModel):
     portfolio_images: Optional[str] = Field(None, description="JSON array of image URLs")
     rating: Optional[float] = Field(None, ge=0, le=5)
     about: Optional[str] = None
+    founded_year: Optional[int] = Field(None, ge=1800, le=datetime.now().year)
+    location: Optional[Location] = None
 
 
 class BuilderProfile(BuilderProfileBase):
@@ -26,6 +35,7 @@ class BuilderProfile(BuilderProfileBase):
 
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     user_id: PyObjectId
+    embeddings: Optional[List[float]] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -53,4 +63,3 @@ class BuilderProfileResponse(BuilderProfileBase):
         populate_by_name=True,
         arbitrary_types_allowed=True,
     )
-
