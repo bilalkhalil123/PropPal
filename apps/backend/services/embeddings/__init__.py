@@ -1,0 +1,3 @@
+"""Embeddings service package."""
+
+

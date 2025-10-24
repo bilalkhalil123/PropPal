@@ -1,7 +1,7 @@
 /**
  * AUTO-GENERATED TypeScript interfaces from Pydantic models
  * DO NOT EDIT MANUALLY - Changes will be overwritten
- * Generated on: 2025-10-10T14:51:19.958157
+ * Generated on: 2025-10-19T13:36:33.290119
  */
 
 export interface UserResponse {
@@ -11,6 +11,8 @@ export interface UserResponse {
   /** User role: buyer, seller, builder, admin */
   role: string;
   profile_image?: string | null;
+  /** Clerk user ID for authentication */
+  clerk_id?: string | null;
   _id: string;
   created_at: string;
   updated_at: string;
@@ -23,6 +25,8 @@ export interface UserCreate {
   /** User role: buyer, seller, builder, admin */
   role: string;
   profile_image?: string | null;
+  /** Clerk user ID for authentication */
+  clerk_id?: string | null;
   password: string;
 }
 
@@ -46,6 +50,10 @@ export interface PropertyResponse {
   seller_id: string;
   images?: string[];
   metadata?: Record<string, any>;
+  external_id?: string | null;
+  source?: string | null;
+  source_url?: string | null;
+  date_added?: string | null;
   last_indexed_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -67,10 +75,15 @@ export interface PropertyCreate {
   lng: number;
   /** Latitude */
   lat: number;
+  seller_id: string;
   /** Array of image URLs */
   images?: string[];
   /** Additional metadata */
   metadata?: Record<string, any>;
+  external_id?: string | null;
+  source?: string | null;
+  source_url?: string | null;
+  date_added?: string | null;
 }
 
 export interface PropertyAmenityResponse {

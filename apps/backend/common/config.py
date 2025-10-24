@@ -34,6 +34,17 @@ class Settings(BaseSettings):
         description="MongoDB database name"
     )
     
+    # Clerk Authentication Configuration
+    CLERK_SECRET_KEY: str = Field(
+        default="",
+        description="Clerk secret key for webhook verification"
+    )
+    
+    CLERK_WEBHOOK_SECRET: str = Field(
+        default="",
+        description="Clerk webhook secret for signature verification"
+    )
+    
     # Security Configuration
     SECRET_KEY: str = Field(
         default="dev-secret-key-change-in-production",

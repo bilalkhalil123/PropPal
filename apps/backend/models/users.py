@@ -15,13 +15,15 @@ class UserBase(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     role: str = Field(..., description="User role: buyer, seller, builder, admin")
     profile_image: Optional[str] = None
+    clerk_id: Optional[str] = Field(None, description="Clerk user ID for authentication")
 
 
 class User(UserBase):
     """Complete user model (for internal use)"""
 
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    password_hash: str
+    password_hash: Optional[str] = Field(None, description="Password hash (optional with Clerk)")
+    deleted_at: Optional[datetime] = Field(None, description="Soft delete timestamp")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
