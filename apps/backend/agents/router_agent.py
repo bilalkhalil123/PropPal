@@ -52,12 +52,17 @@ class RouteQuery(BaseModel):
 # Bind the structured output to the LLM
 structured_llm = llm.with_structured_output(RouteQuery)
 
-# --- Instantiate Your Agents (Services) ---
-# We create instances of our "sub-agents" once, just like services.
-listing_agent_service = ListingAgent()
+# --- Agent Factory Functions ---
+# We create fresh instances of agents to avoid state issues
+def get_listing_agent():
+    """Get a fresh instance of ListingAgent."""
+    return ListingAgent()
+
 # In the future, you could add:
-# financial_agent_service = FinancialAgent()
-# support_agent_service = SupportAgent()
+# def get_financial_agent():
+#     return FinancialAgent()
+# def get_support_agent():
+#     return SupportAgent()
 
 
 # --- Main Router Graph Nodes ---
@@ -125,9 +130,12 @@ def listing_agent_node(state: RouterState):
     print("--- [Main Graph] Routing to Listing Agent ---")
     query = state['query']
     
+    # Create a fresh instance of ListingAgent to avoid state issues
+    listing_agent = get_listing_agent()
+    
     # Call the .process_query() method from your imported agent
     # This is the key: we are calling the compiled agent's public method.
-    result = listing_agent_service.process_query(query)
+    result = listing_agent.process_query(query)
     
     # The agent's public API returns a dict.
     # We'll use the 'response' field for the chat history.

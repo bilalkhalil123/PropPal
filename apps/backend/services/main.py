@@ -50,13 +50,13 @@ async def lifespan(app: FastAPI):
 
         # Optional: Run a quick command to verify connection
         await DatabaseClient.client.admin.command('ping')
-        print(f"[STARTUP] ✅ MongoDB Atlas connection successful to database: {settings.MONGODB_DB_NAME}")
+        print(f"[STARTUP] [OK] MongoDB Atlas connection successful to database: {settings.MONGODB_DB_NAME}")
 
         # 2. Application RUNTIME
         yield
 
     except Exception as e:
-        print(f"[STARTUP] ❌ Failed to connect to MongoDB: {e}")
+        print(f"[STARTUP] [ERROR] Failed to connect to MongoDB: {e}")
         DatabaseClient.client = None
         DatabaseClient.database = None
         yield
@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         if DatabaseClient.client:
             # 3. Close DB Client
             DatabaseClient.client.close()
-            print("[SHUTDOWN] 📪 MongoDB client connection closed")
+            print("[SHUTDOWN] [INFO] MongoDB client connection closed")
 
 
 # Get settings

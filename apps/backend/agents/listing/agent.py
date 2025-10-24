@@ -48,19 +48,20 @@ class ListingAgent:
         
         # System prompt defines the agent's role and tool use
         self.system_prompt = """You are a Property Search Agent for PropPal.
-        
-        Help users find properties by understanding their search criteria.
-        
-        You have access to a `property_search_tool`. Use this tool when a user
-        asks for property listings.
-        
-        When a user asks a general question (e.g., "hello", "how are you"),
-        just answer naturally without using any tools.
-        
-        After you receive the results from the `property_search_tool`, present
-        them to the user in a helpful, summarized way. If no properties are
-        found, inform them politely.
-        """
+
+Your job is to help users find properties by using the property_search_tool.
+
+CRITICAL INSTRUCTIONS:
+- When a user asks about properties, you MUST immediately call the property_search_tool with their exact query
+- Do NOT ask follow-up questions or explain what you're doing
+- Do NOT generate text like <function=property_search_tool> - use the actual tool call
+- Just call the tool and then present the results
+
+For general questions (like "hello", "how are you"), answer naturally without using tools.
+
+After using the property_search_tool, present the results clearly to the user.
+If no properties are found, inform them politely and suggest they try different search terms.
+"""
         
         self.tools = [property_search_tool]
         
@@ -71,7 +72,7 @@ class ListingAgent:
         self.llm = ChatGroq(
             model=model_name,
             api_key=os.getenv("GROQ_API_KEY"),
-            temperature=0.7
+            temperature=0.1  # Lower temperature for more consistent tool calling
         )
         # Bind tools to the LLM for automatic tool-call formatting
         self.llm_with_tools = self.llm.bind_tools(self.tools)
@@ -128,6 +129,15 @@ class ListingAgent:
         # Invoke the LLM with bound tools
         try:
             response = self.llm_with_tools.invoke(messages)
+            
+            # Debug: Log the response to see what's happening
+            logger.info(f"Agent response type: {type(response)}")
+            if hasattr(response, 'tool_calls'):
+                logger.info(f"Tool calls: {response.tool_calls}")
+            else:
+                logger.info(f"No tool calls in response")
+                logger.info(f"Response content: {response.content[:200]}...")
+            
             # 'add_messages' will append this to the state's 'messages' list
             return {"messages": [response]}
         except Exception as e:
@@ -139,8 +149,12 @@ class ListingAgent:
         Executes tools, parses results, and updates the state.
         """
         try:
+            logger.info(f"Tool node called with state: {state}")
+            
             # Call the pre-built ToolNode to get ToolMessages
             tool_result = self.tool_executor.invoke(state)
+            logger.info(f"Tool result type: {type(tool_result)}")
+            logger.info(f"Tool result: {tool_result}")
             
             # Extract messages from the result
             if isinstance(tool_result, dict) and "messages" in tool_result:
@@ -148,21 +162,29 @@ class ListingAgent:
             else:
                 tool_messages = tool_result
 
+            logger.info(f"Tool messages: {tool_messages}")
+
             # We assume only one tool call for property search
             data_result = {}
             success = False
             
             for msg in tool_messages:
                 if isinstance(msg, ToolMessage):
+                    logger.info(f"Processing ToolMessage: {msg.content}")
                     try:
                         # Parse the tool's JSON output
                         tool_data = json.loads(msg.content)
+                        logger.info(f"Parsed tool data: {tool_data}")
                         if tool_data.get("success"):
                             data_result = tool_data
                             success = True
                             break  # Found our data
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as e:
+                        logger.error(f"JSON decode error: {e}")
                         continue  # Not valid JSON, skip
+
+            logger.info(f"Final data_result: {data_result}")
+            logger.info(f"Final success: {success}")
 
             return {
                 "messages": tool_messages,
