@@ -21,7 +21,7 @@ def property_search_tool(query: str) -> Dict[str, Any]:
         with httpx.Client() as client:
             response = client.post(
                 "http://localhost:8000/api/search/properties",
-                json={"query": query, "k": 10},
+                json={"query": query, "k": 5},
                 timeout=120.0
             )
             

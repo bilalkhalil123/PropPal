@@ -21,7 +21,7 @@ platformdirs==4.4.0
 pycodestyle==2.14.0
 pydantic==2.11.9
 pydantic_core==2.33.2
-pydantic-settings==2.7.1
+pydantic-settings==2.10.1
 pydantic-to-typescript==2.0.0
 # clerk-sdk-python intentionally omitted for runtime image (pydantic v1 constraint)
 pyflakes==3.4.0

@@ -1,54 +1,231 @@
 """
-Listing Agent for property search using LangGraph.
+Simplified Listing Agent for property search using LangGraph.
 """
 
-from typing import Any, Dict
-from agents.base.agent import BaseAgent, AgentState
+import logging
+import os
+import json
+from typing import Any, Dict, List, Optional, TypedDict, Annotated
+from dotenv import load_dotenv
+from langchain_groq import ChatGroq
+from langgraph.graph import StateGraph, END
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode
+from langchain_core.messages import (
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from agents.listing.tools import property_search_tool
 
+# Load .env file
+load_dotenv()
 
-class ListingAgent(BaseAgent):
-    """Agent for property search operations."""
+logger = logging.getLogger(__name__)
+
+
+class AgentState(TypedDict):
+    """
+    Updated state for a cyclical agent.
+    'messages' is the core of the loop.
+    Other keys are kept to match the process_query API.
+    """
+    messages: Annotated[List[BaseMessage], add_messages]
+    query: str
+    data: Dict[str, Any]
+    error: Optional[str]
+    success: bool
+    response: str  # Will be populated at the end
+
+
+class ListingAgent:
+    """
+    A simplified, cyclical agent for property search using LangGraph.
+    """
     
-    def __init__(self):
-        system_prompt = """You are a Property Search Agent for PropPal.
+    def __init__(self, model_name: str = "llama-3.1-8b-instant"):
         
-        Help users find properties by understanding their search criteria
-        and using the property search tool to find matching listings.
+        # System prompt defines the agent's role and tool use
+        self.system_prompt = """You are a Property Search Agent for PropPal.
         
-        When users ask about properties, use the property_search_tool with their query."""
+        Help users find properties by understanding their search criteria.
         
-        super().__init__(
-            name="ListingAgent",
-            system_prompt=system_prompt,
-            tools=[property_search_tool]
+        You have access to a `property_search_tool`. Use this tool when a user
+        asks for property listings.
+        
+        When a user asks a general question (e.g., "hello", "how are you"),
+        just answer naturally without using any tools.
+        
+        After you receive the results from the `property_search_tool`, present
+        them to the user in a helpful, summarized way. If no properties are
+        found, inform them politely.
+        """
+        
+        self.tools = [property_search_tool]
+        
+        # Helper to execute tools
+        self.tool_executor = ToolNode(self.tools)
+        
+        # Initialize LLM and bind tools
+        self.llm = ChatGroq(
+            model=model_name,
+            api_key=os.getenv("GROQ_API_KEY"),
+            temperature=0.7
         )
-    
-    def _format_tool_response(self, state: AgentState) -> str:
-        """Format property search results into a helpful response."""
-        data = state.get("data", {})
+        # Bind tools to the LLM for automatic tool-call formatting
+        self.llm_with_tools = self.llm.bind_tools(self.tools)
         
-        if data.get("success"):
-            count = data.get("count", 0)
-            if count > 0:
-                return f"I found {count} properties matching your search. Here are the results:"
+        # Create the LangGraph workflow
+        self.graph = self._create_graph()
+        self.app = self.graph.compile()
+
+    def _create_graph(self) -> StateGraph:
+        """Create the LangGraph workflow."""
+        workflow = StateGraph(AgentState)
+        
+        # Add workflow nodes
+        workflow.add_node("agent", self._agent_node)
+        workflow.add_node("execute_tools", self._tool_node)
+        
+        # Set entry point
+        workflow.set_entry_point("agent")
+        
+        # Add conditional edges
+        workflow.add_conditional_edges(
+            "agent",
+            self._should_continue,
+            {
+                "continue": "execute_tools",  # If tool call, run tools
+                "end": END                   # If no tool call, end
+            }
+        )
+        
+        # Add edge from tool execution back to agent
+        workflow.add_edge("execute_tools", "agent")
+        
+        return workflow
+
+    # ========== Graph Nodes ==========
+
+    def _should_continue(self, state: AgentState) -> str:
+        """Conditional router: checks for tool calls."""
+        if not state["messages"]:
+            return "end"
+        last_message = state["messages"][-1]
+        # If the last message has tool calls, route to tool executor
+        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+            return "continue"
+        # Otherwise, end the conversation
+        return "end"
+
+    def _agent_node(self, state: AgentState) -> Dict[str, Any]:
+        """
+        The "brain" of the agent. Invokes the LLM with the current state.
+        """
+        messages = [SystemMessage(content=self.system_prompt)] + state["messages"]
+        
+        # Invoke the LLM with bound tools
+        try:
+            response = self.llm_with_tools.invoke(messages)
+            # 'add_messages' will append this to the state's 'messages' list
+            return {"messages": [response]}
+        except Exception as e:
+            logger.error(f"Agent node failed: {e}")
+            return {"error": str(e), "success": False}
+
+    def _tool_node(self, state: AgentState) -> Dict[str, Any]:
+        """
+        Executes tools, parses results, and updates the state.
+        """
+        try:
+            # Call the pre-built ToolNode to get ToolMessages
+            tool_result = self.tool_executor.invoke(state)
+            
+            # Extract messages from the result
+            if isinstance(tool_result, dict) and "messages" in tool_result:
+                tool_messages = tool_result["messages"]
             else:
-                return "I couldn't find any properties matching your criteria. Try adjusting your search terms or location."
-        else:
-            return "I encountered an issue while searching for properties. Please try again."
+                tool_messages = tool_result
+
+            # We assume only one tool call for property search
+            data_result = {}
+            success = False
+            
+            for msg in tool_messages:
+                if isinstance(msg, ToolMessage):
+                    try:
+                        # Parse the tool's JSON output
+                        tool_data = json.loads(msg.content)
+                        if tool_data.get("success"):
+                            data_result = tool_data
+                            success = True
+                            break  # Found our data
+                    except json.JSONDecodeError:
+                        continue  # Not valid JSON, skip
+
+            return {
+                "messages": tool_messages,
+                "data": data_result,  # <-- Update the state's 'data' field
+                "success": success    # <-- Update the state's 'success' field
+            }
+        
+        except Exception as e:
+            logger.error(f"Tool node failed: {e}")
+            error_message = ToolMessage(content=f"Tool execution failed: {e}", tool_call_id="error_000")
+            return {"messages": [error_message], "error": str(e), "success": False}
+
+    # ========== Public API ==========
     
     def process_query(self, query: str) -> Dict[str, Any]:
-        """Process a property search query."""
-        result = super().process_query(query)
+        """Process a property search query using the LangGraph workflow."""
         
-        # Extract property data
-        properties = result.get("data", {}).get("results", [])
-        count = result.get("data", {}).get("count", 0)
+        # Validate input
+        if not query or not query.strip():
+            return {
+                "success": False,
+                "response": "Please provide a valid search query.",
+                "properties": [],
+                "count": 0,
+                "error": "Empty query provided"
+            }
         
-        return {
-            "success": result["success"],
-            "response": result.get("response", ""),
-            "properties": properties,
-            "count": count,
-            "error": result.get("error")
-        }
+        # Create initial state
+        initial_state = AgentState(
+            messages=[HumanMessage(content=query.strip())],
+            query=query.strip(),
+            data={},
+            error=None,
+            success=False,
+            response=""
+        )
+        
+        # Run the workflow
+        try:
+            final_state = self.app.invoke(initial_state, {"recursion_limit": 5})
+            
+            # The final response is the agent's last message
+            final_response = final_state["messages"][-1].content
+            
+            # --- THIS IS THE CLEAN PART ---
+            # Data is now directly available in the final state!
+            data = final_state.get("data", {})
+            properties = data.get("results", [])
+            count = data.get("count", 0)
+            
+            return {
+                "success": final_state.get("success", True),  # 'success' was set by our tool node
+                "response": final_response,
+                "properties": properties,
+                "count": count,
+                "error": final_state.get("error")
+            }
+        except Exception as e:
+            logger.error(f"Graph invocation failed: {e}")
+            return {
+                "success": False,
+                "response": f"An unexpected error occurred: {str(e)}",
+                "properties": [],
+                "count": 0,
+                "error": str(e)
+            }

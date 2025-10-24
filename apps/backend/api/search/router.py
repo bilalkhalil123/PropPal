@@ -29,7 +29,7 @@ async def search_properties(
         price_max: Optional maximum price filter
     """
     query_text: str = body.get("query", "")
-    k: int = int(body.get("k", 10))
+    k: int = int(body.get("k", 5))
 
     if not query_text:
         return {"count": 0, "results": []}
