@@ -1,2 +1,6 @@
-"""Listing Agent for property search and management."""
+"""
+Exports for the Listing Agent module.
+"""
+from .agent import ListingAgent
 
+__all__ = ["ListingAgent"]
