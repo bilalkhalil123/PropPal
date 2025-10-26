@@ -21,6 +21,35 @@ def get_database_client():
         raise ValueError("MONGODB_URL environment variable is required")
     return AsyncIOMotorClient(mongodb_url)
 
+async def _check_builder_profile_exists_async(clerk_id: str) -> Dict[str, Any]:
+    """
+    Asynchronously checks if a builder profile exists for a given clerk_id.
+    """
+    client = None
+    try:
+        client = get_database_client()
+        db = client["proppal"]
+
+        # 1. Find the user by clerk_id to get their internal user_id
+        user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
+        if not user:
+            return {"exists": False, "error": "User with the specified Clerk ID not found."}
+
+        # 2. Find the builder profile using the user_id
+        user_id = user["_id"]
+        profile = await db["builder_profiles"].find_one({"user_id": user_id}, {"_id": 1})
+        if not profile:
+            return {"exists": False, "error": "Builder profile not found for this user. Please create a profile first."}
+        
+        return {"exists": True, "error": None}
+    finally:
+        if client:
+            client.close()
+
+def check_builder_profile_exists(clerk_id: str) -> Dict[str, Any]:
+    """Synchronous wrapper to check if a builder profile exists for a given clerk_id."""
+    return asyncio.run(_check_builder_profile_exists_async(clerk_id))
+
 async def _create_service_async(
     clerk_id: str,
     title: str,
