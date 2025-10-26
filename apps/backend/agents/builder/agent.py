@@ -45,13 +45,14 @@ class BuilderAgent:
         self.profile_creation_agent = BuilderProfileCreationAgent()
 
 
-    def process_query(self, query: str, clerk_id: str = None) -> Dict[str, Any]:
+    def process_query(self, query: str, clerk_id: str = None, user_id: str = None) -> Dict[str, Any]:
         """
         Processes a builder-related query by first classifying the intent
         and then routing to the appropriate sub-agent.
 
         Args:
             clerk_id: The ID of the user, required for creation tasks.
+            user_id: The database ID of the user, used as a fallback.
         """
         if not query or not query.strip():
             return {
@@ -75,12 +76,12 @@ class BuilderAgent:
             return result
 
         if destination == "create_service":
-            result = self.service_creation_agent.process_query(query, clerk_id=clerk_id)
+            result = self.service_creation_agent.process_query(query, clerk_id=clerk_id, user_id=user_id)
             result["classification"] = "builder_create_service"
             return result
 
         if destination == "create_profile":
-            result = self.profile_creation_agent.process_query(query, clerk_id=clerk_id)
+            result = self.profile_creation_agent.process_query(query, clerk_id=clerk_id, user_id=user_id)
             result["classification"] = "builder_create_profile"
             return result
 

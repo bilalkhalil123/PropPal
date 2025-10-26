@@ -5,25 +5,29 @@ Routes user queries to the appropriate specialized agent.
 
 import operator
 import os
-from typing import TypedDict, Annotated, List
+from typing import TypedDict, Annotated, List, Optional
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
-
 # Load .env file
 load_dotenv()
 
 # Import the ListingAgent
 from agents.listing.agent import ListingAgent
+from .builder.agent import BuilderAgent
 
 # --- Define the Router's State ---
 # This is the state for the *main orchestrator* graph.
 class RouterState(TypedDict):
     # The user's original query
     query: str
+
+    # Optional user identifiers for creation tasks
+    clerk_id: Optional[str]
+    user_id: Optional[str]
     
     # The classification result from the router
     classification: str
@@ -46,7 +50,7 @@ llm = ChatGroq(
 class RouteQuery(BaseModel):
     """Classify the user's query to route it to the correct agent."""
     destination: str = Field(
-        description="The destination node. Must be one of 'listing_agent' or 'general_chat'."
+        description="The destination node. Must be one of 'listing_agent', 'builder_agent', or 'general_chat'."
     )
 
 # Bind the structured output to the LLM
@@ -57,6 +61,10 @@ structured_llm = llm.with_structured_output(RouteQuery)
 def get_listing_agent():
     """Get a fresh instance of ListingAgent."""
     return ListingAgent()
+
+def get_builder_agent():
+    """Get a fresh instance of BuilderAgent."""
+    return BuilderAgent()
 
 # In the future, you could add:
 # def get_financial_agent():
@@ -79,7 +87,8 @@ def classify_intent_node(state: RouterState):
             "You are an expert router for PropPal, a real estate platform. Your job is to classify the user's query. "
             "Respond with 'listing_agent' if they are asking about real estate, "
             "property, listings, houses, apartments, buying, selling, renting, "
-            "property search, property details, property prices, etc. "
+            "property search, property details, or property prices. "
+            "Respond with 'builder_agent' if the query is about builders, contractors, construction, renovation, creating a builder profile, or creating a builder service. "
             "For anything else (like 'hello', 'how are you', 'who are you?', "
             "general questions, platform help, etc.), respond with 'general_chat'."
             # "In the future, you might also route to 'financial_agent' "
@@ -147,6 +156,27 @@ def listing_agent_node(state: RouterState):
         
     return {"messages": [AIMessage(content=response_message)]}
 
+def builder_agent_node(state: RouterState):
+    """
+    This node acts as a "client" to the BuilderAgent class.
+    It calls the agent's public API and formats the response for the graph.
+    """
+    print("--- [Main Graph] Routing to Builder Agent ---")
+    query = state['query']
+    clerk_id = state.get('clerk_id')
+    user_id = state.get('user_id')
+
+    # Create a fresh instance of BuilderAgent
+    builder_agent = get_builder_agent()
+
+    # Call the .process_query() method, passing along user identifiers
+    result = builder_agent.process_query(query, clerk_id=clerk_id, user_id=user_id)
+
+    response_message = result.get("response", "An error occurred in the builder agent.")
+    if not result.get("success"):
+        print(f"--- [Main Graph] Builder Agent Error: {result.get('error')}")
+
+    return {"messages": [AIMessage(content=response_message)]}
 # --- Conditional Routing Function ---
 
 def route_after_classification(state: RouterState):
@@ -158,6 +188,8 @@ def route_after_classification(state: RouterState):
     
     if classification == "listing_agent":
         return "listing_agent_node"
+    elif classification == "builder_agent":
+        return "builder_agent_node"
     # elif classification == "financial_agent":
     #     return "financial_agent_node" # For the future
     else:
@@ -172,6 +204,7 @@ workflow = StateGraph(RouterState)
 workflow.add_node("classifier", classify_intent_node)
 workflow.add_node("general_chat_node", general_chat_node)
 workflow.add_node("listing_agent_node", listing_agent_node)
+workflow.add_node("builder_agent_node", builder_agent_node)
 # In the future, you'd add more agent nodes here
 
 # 2. Define the entry point
@@ -184,7 +217,8 @@ workflow.add_conditional_edges(
     {
         # Mapping: 'classification' -> 'node_name'
         "listing_agent_node": "listing_agent_node",
-        "general_chat_node": "general_chat_node"
+        "general_chat_node": "general_chat_node",
+        "builder_agent_node": "builder_agent_node",
         # "financial_agent_node": "financial_agent_node" # For the future
     }
 )
@@ -193,6 +227,7 @@ workflow.add_conditional_edges(
 #    After any agent node runs, the graph ends.
 workflow.add_edge("general_chat_node", END)
 workflow.add_edge("listing_agent_node", END)
+workflow.add_edge("builder_agent_node", END)
 # workflow.add_edge("financial_agent_node", END) # For the future
 
 # 5. Compile the main graph
@@ -211,12 +246,14 @@ class RouterAgent:
         self.app = router_agent_app
         self.name = "RouterAgent"
     
-    def process_query(self, query: str) -> dict:
+    def process_query(self, query: str, clerk_id: Optional[str] = None, user_id: Optional[str] = None) -> dict:
         """
         Process a user query through the router agent.
         
         Args:
             query: The user's query string
+            clerk_id: The user's Clerk ID (optional).
+            user_id: The user's database ID (optional).
             
         Returns:
             dict: Response containing success, response, and metadata
@@ -232,6 +269,8 @@ class RouterAgent:
             # Create initial state
             initial_state = RouterState(
                 query=query.strip(),
+                clerk_id=clerk_id,
+                user_id=user_id,
                 classification="",
                 messages=[]
             )

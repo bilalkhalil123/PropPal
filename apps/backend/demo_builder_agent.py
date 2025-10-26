@@ -48,16 +48,19 @@ def demo_builder_agent():
             logging.exception("Query processing failed.")
             
 def demo_service_creation_conversation():
-    """Demo the conversational service creation agent."""
-    print("\n\n👷 Demo: Builder Service Creation (Interactive Chat)")
+    """Demo the conversational profile creation agent."""
+    print("\n\n👷 Demo: Builder Profile Creation (Interactive Chat)")
     print("=" * 50)
     
     agent = BuilderAgent()
-    # A mock clerk_id is required for the creation tool
-    mock_clerk_id = "user_34EQGmU8jFLV8AptbNCMrYDDfeH" # Replace with a real one from your DB for a successful run
-    result = agent.process_query(query = "I want to create a builder service", clerk_id=mock_clerk_id)
-    print(result)
-    # simulating how a real chat application would provide context.
+    # Use a fake clerk_id to simulate a new user without a profile.
+    # This allows us to test the creation flow without being blocked by the
+    # "profile already exists" check. The tool call will fail at the end
+    # because the user doesn't exist, which is expected for this test.
+    mock_clerk_id_new_user = "user_33vOLh0XjHaBocHDxtEtHfxaUcm"
+    user_id = "68f4a37745229291ffdae020"
+    # The agent will now guide you through the creation process interactively.
+    result = agent.process_query(query="I want to my builder profile", user_id = user_id)
 
 def demo_profile_creation_conversation():
     """Demo the conversational profile creation agent."""
@@ -91,7 +94,7 @@ def demo_profile_creation_conversation():
 def main():
     """Run the demo."""
     # demo_builder_agent()
-    demo_service_creation_conversation()
+    demo_service_creation_conversation() # You can create this function for service creation demo
     # demo_profile_creation_conversation()
 
 if __name__ == "__main__":
