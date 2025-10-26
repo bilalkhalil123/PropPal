@@ -9,7 +9,7 @@ import json
 from langchain_groq import ChatGroq
 from langgraph.prebuilt import ToolNode
 from agents.listing.agent import AgentState, ListingAgent # Re-using the graph structure
-from .tools import create_builder_service_tool
+from .tools import create_builder_service_tool, check_builder_profile_exists
 
 # Load .env file
 load_dotenv()
@@ -24,28 +24,27 @@ class BuilderServiceCreationAgent(ListingAgent):
 
     def __init__(self, model_name: str = "llama-3.1-8b-instant"):
 
-        # 1. Define the specific role and instructions for this agent
         self.system_prompt = """You are a "Service Creation Assistant". Your goal is to help a builder create a new service listing by filling in a JSON dictionary.
 
 CRITICAL INSTRUCTIONS:
 - You will be given the user's conversation history and the current state of a `service_data` JSON object.
 - **Your First Task:** Analyze the user's most recent message and update the `service_data` object with any new information they provided. The user might provide multiple details at once.
-- **Your Second Task:** After updating, check the `service_data` object for the next `null` value.
-  - The **required** fields are: `title`, `description`, `category`, `base_price`, `price_unit`.
-  - The **optional** fields are: `estimated_duration` (e.g., "3-5 days") and `service_features` (e.g., "3D design, material sourcing").
-- **Your Response:** Your response MUST be a single JSON object containing three keys:
-  1. `status`: Set to "continue" if you are asking for more information, or "cancelled" if the user wants to stop.
-  2. `updated_data`: The `service_data` object after you've updated it.
-  3. `response`: A brief, friendly question asking for the next missing piece of information, or a confirmation of cancellation.
-- After all **required** fields are gathered, ask about the optional ones. If the user declines or skips, that's okay.
-- Once you have all required information and have asked about optional fields, call the `create_builder_service_tool` with the collected data.
+- **Data Validation:**
+  - `base_price` MUST be a number. If the user provides text, tell them it's invalid and ask again. Convert valid number strings (e.g., "125") to numbers (e.g., 125) in the JSON.
+  - `service_features` MUST be a list of strings. If the user provides a comma-separated string, convert it to a list (e.g., "a, b" becomes `["a", "b"]`). If they say "no" or "skip", leave the value as `null`.
+- **Your Second Task (Decision Flow):** Follow this sequence strictly.
+  1.  **Gather Required Info:** Check for the first `null` value in the **required** fields (`title`, `description`, `category`, `base_price`, `price_unit`) and ask the user for it. Do not proceed until all are filled.
+  2.  **Gather Optional Info:** Once all required fields are filled, check for the first `null` value in the **optional** fields (`estimated_duration`, `service_features`) and ask for it. If the user skips, that's fine; you will move to the next step in the next turn.
+  3.  **Confirm with User:** Once all required fields are filled AND you have asked about all optional fields (i.e., you are at the end of the list), you MUST enter the `confirming` state. Summarize all collected data (ignoring `null` values) and ask for final confirmation (e.g., "I have these details: ... Should I proceed?").
+  4.  **Call the Tool:** ONLY if the user has just confirmed the details (e.g., said "yes" or "proceed"), you MUST call the `create_builder_service_tool`. Do not respond with JSON; just call the tool.
+- **Your Response Format:** Unless calling the tool, your response MUST be a single JSON object with three keys: `status` ('continue', 'confirming', or 'cancelled'), `updated_data` (the fully updated data object), and `response`.
 - The `clerk_id` is provided in the context; do not ask the user for it.
 - If the user wants to cancel, quit, or stop, set `status` to "cancelled" and provide a confirmation message in `response`.
 
 Example:
 User says: "The title is 'Expert Plumbing' and it's in the 'MEP' category."
 Your output (a single JSON object):
-{"status": "continue", "updated_data": {"title": "Expert Plumbing", "description": null, "category": "MEP", ...}, "response": "Got it. Now, could you provide a description for this service?"}
+{"status": "continue", "updated_data": {"title": "Expert Plumbing", "description": null, "category": "MEP", ...}, "response": "Got it. Now, could you provide a description?"}
 """
 
         # 2. Define the tools this agent can use
@@ -85,6 +84,11 @@ Your output (a single JSON object):
                 "response": "User could not be identified. Cannot create a service.",
                 "error": "Missing clerk_id"
             }
+
+        # **Step 1: Verify if the user has a builder profile before starting.**
+        profile_check = check_builder_profile_exists(clerk_id)
+        if not profile_check["exists"]:
+            return {"success": False, "response": profile_check["error"], "error": profile_check["error"]}
 
         # Initialize conversation state
         conversation_history = f"User: {query}\n"
@@ -140,13 +144,13 @@ Your output (a single JSON object):
                         service_data = parsed_json.get("updated_data", service_data)
                         conversation_status = parsed_json.get("status", "continue")
                     except json.JSONDecodeError:
-                        logger.warning("LLM did not return valid JSON for state update.")
+                        logger.warning(f"LLM did not return valid JSON for state update. Response: {final_response_content}")
                         response_for_user = "I didn't quite understand that. Could you please clarify?"
 
                 print(f"🤖 Agent: {response_for_user}")
                 conversation_history += f"Agent: {response_for_user}\n"
 
-                if conversation_status in ["completed", "cancelled"]:
+                if conversation_status in ["completed", "cancelled", "failed"]:
                     print("\n--- Conversation Ended ---")
                     return {
                         "success": final_state.get("success", False),
@@ -156,6 +160,9 @@ Your output (a single JSON object):
                     }
 
                 user_input = input("> You: ")
+                if user_input.lower() in ["quit", "exit", "cancel"]:
+                    user_input = "I want to cancel this process."
+
                 conversation_history += f"User: {user_input}\n"
 
             except Exception as e:
