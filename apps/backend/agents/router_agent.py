@@ -35,6 +35,10 @@ class RouterState(TypedDict):
     # The list of messages (conversation history)
     # operator.add allows us to append messages to this list
     messages: Annotated[List[BaseMessage], operator.add]
+    
+    # Properties and builders from agent responses
+    properties: List[dict]
+    builders: List[dict]
 
 # --- LLM and Router Definition ---
 
@@ -149,12 +153,16 @@ def listing_agent_node(state: RouterState):
     # The agent's public API returns a dict.
     # We'll use the 'response' field for the chat history.
     response_message = result.get("response", "An error occurred in the listing agent.")
+    properties = result.get("properties", [])
     
     if not result.get("success"):
         print(f"--- [Main Graph] Listing Agent Error: {result.get('error')}")
         # Even if it fails, we pass the error message back to the user
         
-    return {"messages": [AIMessage(content=response_message)]}
+    return {
+        "messages": [AIMessage(content=response_message)],
+        "properties": properties
+    }
 
 def builder_agent_node(state: RouterState):
     """
@@ -173,10 +181,14 @@ def builder_agent_node(state: RouterState):
     result = builder_agent.process_query(query, clerk_id=clerk_id, user_id=user_id)
 
     response_message = result.get("response", "An error occurred in the builder agent.")
+    builders = result.get("builders", result.get("results", []))
     if not result.get("success"):
         print(f"--- [Main Graph] Builder Agent Error: {result.get('error')}")
 
-    return {"messages": [AIMessage(content=response_message)]}
+    return {
+        "messages": [AIMessage(content=response_message)],
+        "builders": builders
+    }
 # --- Conditional Routing Function ---
 
 def route_after_classification(state: RouterState):
@@ -262,6 +274,9 @@ class RouterAgent:
             return {
                 "success": False,
                 "response": "Please provide a valid query.",
+                "classification": "error",
+                "properties": [],
+                "builders": [],
                 "error": "Empty query provided"
             }
         
@@ -272,7 +287,9 @@ class RouterAgent:
                 clerk_id=clerk_id,
                 user_id=user_id,
                 classification="",
-                messages=[]
+                messages=[],
+                properties=[],
+                builders=[]
             )
             
             # Run the router workflow
@@ -289,6 +306,8 @@ class RouterAgent:
                 "success": True,
                 "response": response_content,
                 "classification": final_state.get("classification", "unknown"),
+                "properties": final_state.get("properties", []),
+                "builders": final_state.get("builders", []),
                 "error": None
             }
             
@@ -297,5 +316,7 @@ class RouterAgent:
                 "success": False,
                 "response": f"An error occurred while processing your query: {str(e)}",
                 "classification": "error",
+                "properties": [],
+                "builders": [],
                 "error": str(e)
             }
