@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import ClerkWrapper from "@/components/ClerkWrapper";
-import UserSyncProvider from "@/components/UserSyncProvider";
+import { UserProvider } from "@/context/UserContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,9 +31,10 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         <ClerkWrapper>
-          <UserSyncProvider>
+          {/* UserProvider handles both context AND detailed sync logging */}
+          <UserProvider>
             {children}
-          </UserSyncProvider>
+          </UserProvider>
         </ClerkWrapper>
       </body>
     </html>

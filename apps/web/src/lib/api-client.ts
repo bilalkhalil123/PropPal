@@ -1,0 +1,155 @@
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+
+if (!API_BASE_URL) {
+  throw new Error('NEXT_PUBLIC_API_URL environment variable is not set')
+}
+
+/**
+ * Centralized API client for making authenticated requests to the backend
+ * Works with Clerk authentication - tokens are automatically handled
+ */
+class ApiClient {
+  private baseUrl: string
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl
+  }
+
+  /**
+   * Make a request to the backend API
+   * Clerk automatically adds the Authorization header via middleware
+   */
+  private async makeRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    }
+
+    // Clerk middleware automatically adds the Authorization header
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      credentials: 'include', // Include cookies if needed
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
+      throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    // Handle empty responses
+    const text = await response.text()
+    if (!text) {
+      return {} as T
+    }
+
+    return JSON.parse(text)
+  }
+
+  /**
+   * GET request
+   */
+  async get<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    return this.makeRequest<T>(endpoint, {
+      method: 'GET',
+      ...options,
+    })
+  }
+
+  /**
+   * POST request
+   */
+  async post<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    return this.makeRequest<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+      ...options,
+    })
+  }
+
+  /**
+   * PUT request
+   */
+  async put<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    return this.makeRequest<T>(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+      ...options,
+    })
+  }
+
+  /**
+   * PATCH request
+   */
+  async patch<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    return this.makeRequest<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+      ...options,
+    })
+  }
+
+  /**
+   * DELETE request
+   */
+  async delete<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    return this.makeRequest<T>(endpoint, {
+      method: 'DELETE',
+      ...options,
+    })
+  }
+}
+
+// Export singleton instance
+export const apiClient = new ApiClient(API_BASE_URL)
+
+// Export convenience methods
+export const api = {
+  /**
+   * User endpoints
+   */
+  users: {
+    getCurrent: (clerkId: string) => apiClient.get(`/api/users/me?clerk_id=${clerkId}`),
+    sync: (data: any) => apiClient.post('/api/users/sync', data),
+  },
+
+  /**
+   * Builder endpoints
+   */
+  builders: {
+    getProfile: (clerkId: string) => apiClient.get(`/api/builder/profile/${clerkId}`),
+    getMyProfile: () => apiClient.get('/api/builder/profile/me/'),
+    getServices: (clerkId: string) => apiClient.get(`/api/builder/services/${clerkId}`),
+    getMyServices: () => apiClient.get('/api/builder/services/me/'),
+    searchProfiles: (query: string, filters?: any) => 
+      apiClient.post('/api/builder/profiles/search', { query, ...filters }),
+    searchServices: (query: string, filters?: any) => 
+      apiClient.post('/api/builder/services/search', { query, ...filters }),
+  },
+
+  /**
+   * Chat endpoints
+   */
+  chat: {
+    sendMessage: (message: string, userId?: string, sessionId?: string) =>
+      apiClient.post('/api/chat/message', { message, user_id: userId, session_id: sessionId }),
+    health: () => apiClient.get('/api/chat/health'),
+    capabilities: () => apiClient.get('/api/chat/capabilities'),
+  },
+
+  /**
+   * Search endpoints
+   */
+  search: {
+    properties: (query: string, filters?: any) =>
+      apiClient.post('/api/search/properties', { query, ...filters }),
+  },
+}
+
+// Default export
+export default apiClient

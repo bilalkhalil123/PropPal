@@ -1,7 +1,7 @@
 /**
  * AUTO-GENERATED TypeScript interfaces from Pydantic models
  * DO NOT EDIT MANUALLY - Changes will be overwritten
- * Generated on: 2025-10-19T13:36:33.290119
+ * Generated on: 2025-10-27T18:54:06.865492
  */
 
 export interface UserResponse {
@@ -125,6 +125,8 @@ export interface BuilderProfileResponse {
   portfolio_images?: string | null;
   rating?: number | null;
   about?: string | null;
+  founded_year?: number | null;
+  location?: any | null;
   _id: string;
   user_id: string;
   created_at: string;
@@ -140,6 +142,8 @@ export interface BuilderProfileCreate {
   portfolio_images?: string | null;
   rating?: number | null;
   about?: string | null;
+  founded_year?: number | null;
+  location?: any | null;
 }
 
 export interface BuilderServiceResponse {
