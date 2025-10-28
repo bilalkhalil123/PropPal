@@ -447,12 +447,12 @@ export default function ChatPage() {
                           
                           {/* Action Buttons */}
                           <div className="flex space-x-2 mt-auto pt-3">
-                            <button
-                              onClick={() => { setSelectedBuilder(builder); setIsBuilderModalOpen(true) }}
-                              className="flex-1 bg-amber-600 text-white py-2.5 px-3 rounded-xl text-sm font-medium hover:bg-amber-700 transition-colors"
+                            <Link
+                              href={`/builders/${builder._id}`}
+                              className="flex-1 bg-amber-600 text-white py-2.5 px-3 rounded-xl text-sm font-medium hover:bg-amber-700 transition-colors text-center"
                             >
                               View Profile
-                            </button>
+                            </Link>
                             <button className="flex-1 border border-amber-600 text-amber-600 py-2.5 px-3 rounded-xl text-sm font-medium hover:bg-amber-50 transition-colors">
                               Contact
                             </button>

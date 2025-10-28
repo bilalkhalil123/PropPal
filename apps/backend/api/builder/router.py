@@ -201,6 +201,32 @@ async def search_builders(
     return {"count": len(results), "results": results}
 
 
+@router.get(
+    "/profiles/id/{builder_id}",
+    summary="Get a builder profile by its ObjectId",
+)
+async def get_builder_profile_by_id(
+    builder_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """Fetch a builder profile document by its ObjectId (from `builder_profiles`)."""
+    try:
+        _id = ObjectId(builder_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid builder id")
+
+    profile = await db["builder_profiles"].find_one({"_id": _id})
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Builder profile not found")
+
+    # Normalize ids
+    if profile.get("_id") is not None:
+        profile["_id"] = str(profile["_id"])
+    if profile.get("user_id") is not None:
+        profile["user_id"] = str(profile["user_id"]) if isinstance(profile["user_id"], ObjectId) else profile["user_id"]
+    return profile
+
+
 @router.post("/services/search", summary="Search for builder services")
 async def search_builder_services(
     body: Dict[str, Any],

@@ -126,6 +126,7 @@ export const api = {
     getMyProfile: () => apiClient.get('/api/builder/profile/me/'),
     getServices: (clerkId: string) => apiClient.get(`/api/builder/services/${clerkId}`),
     getMyServices: () => apiClient.get('/api/builder/services/me/'),
+    getById: (id: string) => apiClient.get(`/api/builder/profiles/id/${id}`),
     searchProfiles: (query: string, filters?: any) => 
       apiClient.post('/api/builder/profiles/search', { query, ...filters }),
     searchServices: (query: string, filters?: any) => 
@@ -148,6 +149,13 @@ export const api = {
   search: {
     properties: (query: string, filters?: any) =>
       apiClient.post('/api/search/properties', { query, ...filters }),
+  },
+
+  /**
+   * Properties endpoints
+   */
+  properties: {
+    getById: (id: string) => apiClient.get(`/api/properties/${id}`),
   },
 }
 
