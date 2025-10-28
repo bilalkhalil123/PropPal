@@ -37,25 +37,6 @@ export default function SellerPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors">
-              <HomeIcon className="h-8 w-8" />
-              <span className="text-2xl font-bold">PropPal</span>
-            </Link>
-            
-            <div className="flex items-center space-x-4">
-              <RoleDropdown currentRole={currentRole} onRoleChange={setCurrentRole} />
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">Welcome, {user?.name || 'User'}</span>
-                <UserButton afterSignOutUrl="/" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">

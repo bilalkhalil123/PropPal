@@ -129,39 +129,27 @@ async def send_message(
             "agent_type": result.get("classification", "unknown")
         }
 
-        # --- Persist chat history using existing chat_histories model shape ---
+        # --- Persist chat history per (user_id, session_id) document ---
         try:
-            # Choose a stable key: prefer database user_id if provided, else session-based key
-            # Only persist when we have a resolved internal user id
-            if resolved_user_id:
+            if resolved_user_id and request.session_id:
                 history_key: Any = ObjectId(resolved_user_id) if ObjectId.is_valid(resolved_user_id) else resolved_user_id
                 now = datetime.utcnow()
-                user_msg = {
-                    "role": "user",
-                    "content": request.message.strip(),
-                    "timestamp": now,
-                }
+                user_msg = {"role": "user", "content": request.message.strip(), "timestamp": now}
                 ai_msg = {
                     "role": "assistant",
                     "content": result.get("response", ""),
                     "timestamp": now,
-                    # Keep rich payload alongside content for recall (optional)
-                    # Stored under a separate key to avoid breaking existing model
-                    # If schema is strict elsewhere, this will be ignored by Pydantic response models
                     "_payload": {
                         "classification": result.get("classification"),
                         "properties": result.get("properties"),
                         "builders": result.get("builders"),
-                        "session_id": request.session_id,
                     },
                 }
 
                 await db["chat_histories"].update_one(
-                    {"user_id": history_key},
+                    {"user_id": history_key, "session_id": request.session_id},
                     {
-                        "$setOnInsert": {
-                            "created_at": now,
-                        },
+                        "$setOnInsert": {"created_at": now, "session_id": request.session_id},
                         "$set": {"updated_at": now},
                         "$push": {"messages": {"$each": [user_msg, ai_msg]}},
                     },
