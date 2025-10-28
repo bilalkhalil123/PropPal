@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import PropertyDetailPage from '@/components/PropertyDetailPage'
+import PropertyDetailPage from '../../../components/PropertyDetailPage'
 
 async function fetchProperty(id: string) {
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
