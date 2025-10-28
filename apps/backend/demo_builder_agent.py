@@ -58,9 +58,8 @@ def demo_service_creation_conversation():
     # "profile already exists" check. The tool call will fail at the end
     # because the user doesn't exist, which is expected for this test.
     mock_clerk_id_new_user = "user_33vOLh0XjHaBocHDxtEtHfxaUcm"
-    # user_id = "68f4a37745229291ffdae020"
     # The agent will now guide you through the creation process interactively.
-    result = agent.process_query(query="I want to create a builder service", user_id = user_id)
+    result = agent.process_query(query="I want to create a builder service", clerk_id=mock_clerk_id_new_user)
 
 def demo_profile_creation_conversation():
     """Demo the conversational profile creation agent."""
@@ -87,7 +86,7 @@ def demo_profile_creation_conversation():
     User: Islamabad
     """
     print(f"\n--- Simulating a full profile creation conversation ---")
-    result = agent.process_query(full_conversation_query, clerk_id=mock_clerk_id_new_user)
+    result = agent.process_query(query=full_conversation_query, clerk_id=mock_clerk_id_new_user)
     print(f"--- Agent Final Response: {result['response']} ---")
     print(f"--- Success: {result.get('success', 'N/A')}, Classification: {result.get('classification', 'N/A')}, Error: {result.get('error')} ---")
 

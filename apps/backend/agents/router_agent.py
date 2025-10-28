@@ -25,9 +25,8 @@ class RouterState(TypedDict):
     # The user's original query
     query: str
 
-    # Optional user identifiers for creation tasks
+    # User identifier for creation tasks
     clerk_id: Optional[str]
-    user_id: Optional[str]
     
     # The classification result from the router
     classification: str
@@ -164,13 +163,12 @@ def builder_agent_node(state: RouterState):
     print("--- [Main Graph] Routing to Builder Agent ---")
     query = state['query']
     clerk_id = state.get('clerk_id')
-    user_id = state.get('user_id')
 
     # Create a fresh instance of BuilderAgent
     builder_agent = get_builder_agent()
 
-    # Call the .process_query() method, passing along user identifiers
-    result = builder_agent.process_query(query, clerk_id=clerk_id, user_id=user_id)
+    # Call the .process_query() method, passing along clerk_id
+    result = builder_agent.process_query(query, clerk_id=clerk_id)
 
     response_message = result.get("response", "An error occurred in the builder agent.")
     if not result.get("success"):
@@ -246,14 +244,13 @@ class RouterAgent:
         self.app = router_agent_app
         self.name = "RouterAgent"
     
-    def process_query(self, query: str, clerk_id: Optional[str] = None, user_id: Optional[str] = None) -> dict:
+    def process_query(self, query: str, clerk_id: Optional[str] = None) -> dict:
         """
         Process a user query through the router agent.
         
         Args:
             query: The user's query string
             clerk_id: The user's Clerk ID (optional).
-            user_id: The user's database ID (optional).
             
         Returns:
             dict: Response containing success, response, and metadata
@@ -270,7 +267,6 @@ class RouterAgent:
             initial_state = RouterState(
                 query=query.strip(),
                 clerk_id=clerk_id,
-                user_id=user_id,
                 classification="",
                 messages=[]
             )

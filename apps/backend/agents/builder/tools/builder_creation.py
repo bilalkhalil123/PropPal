@@ -21,76 +21,83 @@ def get_database_client():
         raise ValueError("MONGODB_URL environment variable is required")
     return AsyncIOMotorClient(mongodb_url)
 
-async def _check_builder_profile_exists_async(clerk_id: Optional[str] = None, user_id: Optional[str] = None) -> Dict[str, Any]:
+async def _check_builder_profile_exists_async(clerk_id: str) -> Dict[str, Any]:
     """
-    Asynchronously checks if a builder profile exists for a given clerk_id or user_id.
+    Asynchronously checks if a builder profile exists for a given clerk_id.
+    Returns detailed status about user existence and profile existence.
     """
     client = None
     try:
         client = get_database_client()
         db = client["proppal"]
 
-        # 1. Find the user by clerk_id or user_id
-        user_query: Dict[str, Any] = {}
-        if clerk_id:
-            user_query["clerk_id"] = clerk_id
-        elif user_id:
-            user_query["_id"] = ObjectId(user_id)
-        else:
-            return {"exists": False, "error": "No user identifier (clerk_id or user_id) was provided."}
+        # 1. Validate clerk_id
+        if not clerk_id:
+            return {
+                "exists": False, 
+                "user_exists": False,
+                "error": "No clerk_id was provided."
+            }
 
-        user = await db["users"].find_one(user_query, {"_id": 1})
+        # 2. Find the user by clerk_id
+        user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
         if not user:
-            id_type = "Clerk ID" if clerk_id else "User ID"
-            return {"exists": False, "error": f"User with the specified {id_type} not found."}
+            return {
+                "exists": False,
+                "user_exists": False,
+                "error": "User with the specified Clerk ID not found."
+            }
 
-        # 2. Find the builder profile using the user_id
+        # 3. User exists, now check for builder profile
         user_id = user["_id"]
         profile = await db["builder_profiles"].find_one({"user_id": user_id}, {"_id": 1})
-        if not profile:
-            return {"exists": False, "error": "Builder profile not found for this user. Please create a profile first."}
         
-        return {"exists": True, "error": None}
+        if profile:
+            return {
+                "exists": True,
+                "user_exists": True,
+                "error": None
+            }
+        else:
+            return {
+                "exists": False,
+                "user_exists": True,
+                "error": None  # No error - user exists but no profile
+            }
     finally:
         if client:
             client.close()
 
-def check_builder_profile_exists(clerk_id: Optional[str] = None, user_id: Optional[str] = None) -> Dict[str, Any]:
-    """Synchronous wrapper to check if a builder profile exists for a given clerk_id or user_id."""
-    return asyncio.run(_check_builder_profile_exists_async(clerk_id=clerk_id, user_id=user_id))
+def check_builder_profile_exists(clerk_id: str) -> Dict[str, Any]:
+    """Synchronous wrapper to check if a builder profile exists for a given clerk_id."""
+    return asyncio.run(_check_builder_profile_exists_async(clerk_id=clerk_id))
 
 async def _create_service_async(
-    clerk_id: Optional[str],
+    clerk_id: str,
     title: str,
     description: str,
     category: str,
     base_price: float,
     price_unit: str,
     service_features: Optional[list[str]] = None,
-    user_id: Optional[str] = None,
+    estimated_duration: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Asynchronously creates a new builder service in the database.
-    Finds the user via clerk_id (priority) or user_id.
+    Finds the user via clerk_id.
     """
     client = None
     try:
         client = get_database_client()
         db = client["proppal"]
 
-        # 1. Find the user by clerk_id or user_id
-        user_query: Dict[str, Any] = {}
-        if clerk_id:
-            user_query["clerk_id"] = clerk_id
-        elif user_id:
-            user_query["_id"] = ObjectId(user_id)
-        else:
-            return {"success": False, "error": "No user identifier (clerk_id or user_id) was provided."}
+        # 1. Find the user by clerk_id
+        if not clerk_id:
+            return {"success": False, "error": "No clerk_id was provided."}
 
-        user = await db["users"].find_one(user_query, {"_id": 1})
+        user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
         if not user:
-            id_type = "Clerk ID" if clerk_id else "User ID"
-            return {"success": False, "error": f"User with the specified {id_type} not found."}
+            return {"success": False, "error": "User with the specified Clerk ID not found."}
 
         # 2. Find the builder profile using the user_id to get the builder_id
         user_id = user["_id"]
@@ -109,6 +116,7 @@ async def _create_service_async(
             "base_price": base_price,
             "price_unit": price_unit,
             "service_features": service_features or [],
+            "estimated_duration": estimated_duration,
             "embeddings": embed_text(f"Service: {title}. Description: {description}"),
         }
         
@@ -127,13 +135,12 @@ async def _create_service_async(
             client.close()
 
 async def _create_profile_async(
-    clerk_id: Optional[str],
+    clerk_id: str,
     company_name: str,
     specialization: List[str],
     experience_years: int,
     about: str,
     city: str,
-    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Asynchronously creates a new builder profile, but only if one doesn't already exist for the user.
@@ -143,19 +150,13 @@ async def _create_profile_async(
         client = get_database_client()
         db = client["proppal"]
 
-        # 1. Find the user by clerk_id or user_id
-        user_query: Dict[str, Any] = {}
-        if clerk_id:
-            user_query["clerk_id"] = clerk_id
-        elif user_id:
-            user_query["_id"] = ObjectId(user_id)
-        else:
-            return {"success": False, "error": "No user identifier (clerk_id or user_id) was provided."}
+        # 1. Find the user by clerk_id
+        if not clerk_id:
+            return {"success": False, "error": "No clerk_id was provided."}
 
-        user = await db["users"].find_one(user_query, {"_id": 1})
+        user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
         if not user:
-            id_type = "Clerk ID" if clerk_id else "User ID"
-            return {"success": False, "error": f"User with the specified {id_type} not found."}
+            return {"success": False, "error": "User with the specified Clerk ID not found."}
         user_id = user["_id"]
 
         # 2. CHECK IF A PROFILE ALREADY EXISTS FOR THIS USER
@@ -190,27 +191,48 @@ async def _create_profile_async(
 
 @tool
 def create_builder_profile_tool(
-    clerk_id: Optional[str],
+    clerk_id: str,
     company_name: str,
     specialization: List[str],
     experience_years: int,
     about: str,
     city: str,
-    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a new builder profile for a user if one does not already exist. You must have all arguments before calling this tool."""
-    return asyncio.run(_create_profile_async(clerk_id, company_name, specialization, experience_years, about, city, user_id=user_id))
+    return create_builder_profile_sync(
+        clerk_id=clerk_id,
+        company_name=company_name,
+        specialization=specialization,
+        experience_years=experience_years,
+        about=about,
+        city=city,
+    )
+
+def create_builder_profile_sync(
+    clerk_id: str,
+    company_name: str,
+    specialization: List[str],
+    experience_years: int,
+    about: str,
+    city: str,
+) -> Dict[str, Any]:
+    """Synchronous entry point to create a builder profile (non-tooled)."""
+    try:
+        loop = asyncio.get_running_loop()
+        return loop.run_until_complete(_create_profile_async(clerk_id, company_name, specialization, experience_years, about, city))
+    except RuntimeError:
+        return asyncio.run(_create_profile_async(clerk_id, company_name, specialization, experience_years, about, city))
 
 @tool
 def create_builder_service_tool(
-    clerk_id: Optional[str],
+    clerk_id: str,
     title: str,
     description: str,
     category: str,
     base_price: float,
     price_unit: str,
     service_features: Optional[list[str]] = None,
-    user_id: Optional[str] = None,
+    estimated_duration: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Creates a new service for a builder.
@@ -219,10 +241,34 @@ def create_builder_service_tool(
     The clerk_id is the unique identifier for the user who is creating the service.
     """
     # This sync wrapper is needed because LangChain tools are synchronous
+    return create_builder_service_sync(
+        clerk_id=clerk_id,
+        title=title,
+        description=description,
+        category=category,
+        base_price=base_price,
+        price_unit=price_unit,
+        service_features=service_features,
+        estimated_duration=estimated_duration,
+    )
+
+def create_builder_service_sync(
+    clerk_id: str,
+    title: str,
+    description: str,
+    category: str,
+    base_price: float,
+    price_unit: str,
+    service_features: Optional[list[str]] = None,
+    estimated_duration: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Synchronous entry point to create a builder service (non-tooled)."""
     try:
         loop = asyncio.get_running_loop()
-        result = loop.run_until_complete(_create_service_async(clerk_id, title, description, category, base_price, price_unit, service_features, user_id=user_id))
+        return loop.run_until_complete(_create_service_async(
+            clerk_id, title, description, category, base_price, price_unit, service_features, estimated_duration
+        ))
     except RuntimeError:
-        result = asyncio.run(_create_service_async(clerk_id, title, description, category, base_price, price_unit, service_features, user_id=user_id))
-
-    return result
+        return asyncio.run(_create_service_async(
+            clerk_id, title, description, category, base_price, price_unit, service_features, estimated_duration
+        ))

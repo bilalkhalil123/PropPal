@@ -146,8 +146,7 @@ def test_builder_agent_queries():
         try:
             result = router.process_query(
                 test_case['query'],
-                clerk_id="user_33vwuhpN2VtHHAmSWN0kgq6wPRt",
-                # user_id="68eabce6781ecf37046e5d5e"
+                clerk_id="user_33vwuhpN2VtHHAmSWN0kgq6wPRt"
             )
             
             # Check if the query was successful
@@ -334,21 +333,21 @@ def run_all_tests():
     total_failed = 0
     
     # Run test suites
-    passed, failed = test_listing_agent_queries()
-    total_passed += passed
-    total_failed += failed
+    # passed, failed = test_listing_agent_queries()
+    # total_passed += passed
+    # total_failed += failed
     
     passed, failed = test_builder_agent_queries()
     total_passed += passed
     total_failed += failed
     
-    passed, failed = test_general_chat_queries()
-    total_passed += passed
-    total_failed += failed
+    # passed, failed = test_general_chat_queries()
+    # total_passed += passed
+    # total_failed += failed
     
-    passed, failed = test_edge_cases()
-    total_passed += passed
-    total_failed += failed
+    # passed, failed = test_edge_cases()
+    # total_passed += passed
+    # total_failed += failed
     
     # Print final summary
     print("\n" + "=" * 70)

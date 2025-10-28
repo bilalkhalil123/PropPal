@@ -108,6 +108,55 @@ async def get_builder_services_by_clerk(
     return services
 
 
+@router.delete(
+    "/profile/{clerk_id}",
+    summary="Delete a builder profile and its services by Clerk ID",
+)
+async def delete_builder_profile_by_clerk(
+    clerk_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """
+    Deletes a builder profile identified by the user's Clerk ID and removes all
+    services associated with that profile. This operation is idempotent for services
+    removal but will 404 if the user or profile does not exist.
+    """
+    # 1) Resolve user by clerk_id
+    user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User with the specified Clerk ID not found.",
+        )
+
+    # 2) Resolve builder profile by user_id
+    user_id = user["_id"]
+    profile = await db["builder_profiles"].find_one({"user_id": user_id}, {"_id": 1})
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Builder profile not found for this user.",
+        )
+
+    builder_id = profile["_id"]
+
+    # 3) Delete all services first
+    services_result = await db["builder_services"].delete_many({"builder_id": builder_id})
+
+    # 4) Delete the profile
+    profile_result = await db["builder_profiles"].delete_one({"_id": builder_id})
+    if profile_result.deleted_count != 1:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete builder profile.",
+        )
+
+    return {
+        "success": True,
+        "deleted_services_count": getattr(services_result, "deleted_count", 0),
+        "message": "Builder profile and associated services deleted successfully.",
+    }
+
 @router.get(
     "/services/me/",
     response_model=List[BuilderServiceResponse],
