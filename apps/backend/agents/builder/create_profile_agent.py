@@ -327,7 +327,7 @@ ANTI-LOOP:
                                 profile_data["specialization"] = _parse_list(profile_data.get("specialization")) or []
                             conversation_status = parsed_json.get("status", "continue")
                         else:
-                        logger.warning(f"LLM did not return valid JSON for state update. Response: {final_response_content}")
+                            logger.warning(f"LLM did not return valid JSON for state update. Response: {final_response_content}")
                         if "Should I proceed?" in conversation_history:
                             response_for_user = "Sorry, I didn't get that. Should I proceed with creating the profile?"
                             conversation_status = "confirming"
@@ -350,6 +350,41 @@ ANTI-LOOP:
                 user_input = input("> You: ")
                 if user_input.lower() in ["quit", "exit", "cancel"]:
                     user_input = "I want to cancel this process."
+
+                # Heuristic extraction from user's latest input to reduce repeat questions
+                try:
+                    text = user_input.strip()
+                    text_lower = text.lower()
+                    # Experience years
+                    if profile_data.get("experience_years") is None:
+                        import re as _re
+                        m = _re.search(r"(\d{1,2})\s*years?", text_lower)
+                        if m:
+                            profile_data["experience_years"] = int(m.group(1))
+                    # Specialization list
+                    if not (isinstance(profile_data.get("specialization"), list) and profile_data.get("specialization")):
+                        specs = _parse_list(text)
+                        # Only set if looks like categories (contains common keywords)
+                        if specs and any(k in text_lower for k in ["construction", "interior", "plumbing", "electrical", "remodel", "design"]):
+                            profile_data["specialization"] = specs
+                            profile_data["_normalized"] = True
+                    # City detection (based in/located in/in <city>)
+                    if not profile_data.get("city"):
+                        import re as _re2
+                        mcity = _re2.search(r"(?:located in|based in|in)\s+([a-zA-Z ]{2,})$", text_lower)
+                        if mcity:
+                            profile_data["city"] = mcity.group(1).strip().title()
+                    # Company name heuristic
+                    if not profile_data.get("company_name"):
+                        import re as _re3
+                        mco = _re3.search(r"(?:we are|our company is)\s+([a-zA-Z][a-zA-Z0-9 &_-]{2,})", text_lower)
+                        if mco:
+                            profile_data["company_name"] = mco.group(1).strip().title()
+                    # About: brief description if text is longer and contains 'we'
+                    if not profile_data.get("about") and len(text) > 20 and ("we " in text_lower or "we're" in text_lower):
+                        profile_data["about"] = text
+                except Exception:
+                    pass
 
                 conversation_history += f"User: {user_input}\n"
 
