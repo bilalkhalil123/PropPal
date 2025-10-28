@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { api } from '@/lib/api-client'
 import { UserButton } from '@clerk/nextjs'
+import ChatSidebar from '@/components/ChatSidebar'
 import Link from 'next/link'
 import { 
   HomeIcon, 
@@ -51,7 +52,8 @@ interface Message {
 }
 
 export default function ChatPage() {
-  const { user, isAuthenticated, userId } = useCurrentUser()
+  const { user, isAuthenticated, userId, clerkId } = useCurrentUser()
+  const dbUserId = (user as any)?._id || userId || null
   const searchParams = useSearchParams()
   const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([
@@ -64,7 +66,9 @@ export default function ChatPage() {
   ])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const hasProcessedQueryRef = useRef(false)
+  const [sidebarRefresh, setSidebarRefresh] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -145,6 +149,21 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages])
 
+  // Initialize or restore chat session id
+  useEffect(() => {
+    try {
+      const key = 'chat_session_id'
+      let sid = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null
+      if (!sid) {
+        sid = `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+        window.localStorage.setItem(key, sid)
+      }
+      setSessionId(sid)
+    } catch {
+      setSessionId('session_fallback')
+    }
+  }, [])
+
   // Function to send a message (reusable)
   const sendMessage = useCallback(async (messageText: string, clearInput: boolean = false) => {
     if (!messageText.trim()) return
@@ -164,7 +183,7 @@ export default function ChatPage() {
 
     try {
       // Call the chat API
-      const response = await api.chat.sendMessage(messageText, userId, 'session_123') as {
+      const response = await api.chat.sendMessage(messageText, dbUserId || undefined, sessionId || 'session_fallback', clerkId || undefined) as {
         response: string
         classification: string
         properties?: Property[]
@@ -198,6 +217,7 @@ export default function ChatPage() {
       }
       
       setMessages(prev => [...prev, aiResponse])
+      setSidebarRefresh((v) => v + 1)
     } catch (error) {
       console.error('Chat API error:', error)
       const errorResponse: Message = {
@@ -210,7 +230,32 @@ export default function ChatPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [userId])
+  }, [dbUserId, clerkId])
+
+  // Load persisted history for this user (DB id only)
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!dbUserId) return
+      try {
+        const res = await api.chat.history(dbUserId, undefined, 50) as any
+        const serverMessages = (res?.messages || []) as Array<any>
+        if (serverMessages.length === 0) return
+        const mapped: Message[] = serverMessages.map((m: any, idx: number) => ({
+          id: `${m.timestamp || 'ts'}-${idx}`,
+          content: String(m.content || ''),
+          sender: m.role === 'user' ? 'user' : 'ai',
+          timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+          properties: m._payload?.properties as Property[] | undefined,
+          builders: m._payload?.builders as Builder[] | undefined,
+        }))
+        // Keep welcome message only if no history exists
+        setMessages((prev) => (prev.length <= 1 ? mapped : prev))
+      } catch (e) {
+        // ignore history load errors
+      }
+    }
+    loadHistory()
+  }, [dbUserId])
 
   // Check for query parameter from other pages
   useEffect(() => {
@@ -244,7 +289,7 @@ export default function ChatPage() {
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-slate-200 px-4 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2 text-indigo-600 hover:text-indigo-700">
             <span className="text-2xl font-bold">PropPal</span>
           </Link>
@@ -256,9 +301,12 @@ export default function ChatPage() {
       </header>
 
       {/* Chat Container */}
-      <div className="flex flex-col h-[calc(100vh-80px)] max-w-6xl mx-auto">
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="max-w-7xl mx-auto h-[calc(100vh-80px)] px-2 md:px-4">
+        <div className="flex h-full rounded-2xl bg-white border border-slate-200 overflow-hidden">
+          <ChatSidebar userId={dbUserId || undefined} sessionId={sessionId} activeSessionId={sessionId} onNewSession={(sid) => { setSessionId(sid); setSidebarRefresh((v) => v + 1) }} refreshKey={sidebarRefresh} />
+          <div className="flex flex-col flex-1">
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 bg-slate-50">
           {messages.map((message) => {
             // Determine if this message has properties or builders
             const hasProperties = message.properties && message.properties.length > 0
@@ -807,45 +855,47 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Suggested Questions */}
-        {messages.length === 1 && (
-          <div className="px-4 pb-4">
-            <div className="bg-white rounded-2xl p-5 shadow-lg">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Try asking:</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {suggestedQuestions.map((question, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setInputMessage(question)}
-                    className="text-left p-3 text-sm text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
-                  >
-                    "{question}"
-                  </button>
-                ))}
+            {/* Suggested Questions */}
+            {messages.length === 1 && (
+              <div className="px-2 md:px-0 pb-4">
+                <div className="bg-white rounded-2xl p-5 shadow">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Try asking:</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {suggestedQuestions.map((question, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setInputMessage(question)}
+                        className="text-left p-3 text-sm text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+                      >
+                        "{question}"
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
+            )}
+
+            {/* Input Area */}
+            <div className="p-4 bg-white border-t border-slate-200">
+              <form onSubmit={handleSendMessage} className="flex space-x-3">
+                <input
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  placeholder="Ask about properties, search listings, or get help..."
+                  className="flex-1 px-5 py-3.5 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
+                  disabled={isLoading}
+                />
+                <button
+                  type="submit"
+                  disabled={!inputMessage.trim() || isLoading}
+                  className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md hover:shadow-lg transition-all"
+                >
+                  Send
+                </button>
+              </form>
             </div>
           </div>
-        )}
-
-        {/* Input Area */}
-        <div className="p-4 bg-white border-t border-slate-200">
-          <form onSubmit={handleSendMessage} className="flex space-x-3">
-            <input
-              type="text"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="Ask about properties, search listings, or get help..."
-              className="flex-1 px-5 py-3.5 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              disabled={!inputMessage.trim() || isLoading}
-              className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md hover:shadow-lg transition-all"
-            >
-              Send
-            </button>
-          </form>
         </div>
       </div>
     </div>

@@ -137,10 +137,16 @@ export const api = {
    * Chat endpoints
    */
   chat: {
-    sendMessage: (message: string, userId?: string, sessionId?: string) =>
-      apiClient.post('/api/chat/message', { message, user_id: userId, session_id: sessionId }),
+    sendMessage: (message: string, userId?: string, sessionId?: string, clerkId?: string) =>
+      apiClient.post('/api/chat/message', { message, user_id: userId, session_id: sessionId, clerk_id: clerkId }),
     health: () => apiClient.get('/api/chat/health'),
     capabilities: () => apiClient.get('/api/chat/capabilities'),
+    history: (userId: string, sessionId?: string, limit: number = 50) =>
+      apiClient.get(`/api/chat/history?user_id=${encodeURIComponent(userId)}${sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : ''}&limit=${limit}`),
+    messages: (userId: string, sessionId?: string, beforeMs?: number, limit: number = 50) =>
+      apiClient.get(`/api/chat/history/messages?user_id=${encodeURIComponent(userId)}${sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : ''}${beforeMs ? `&before_ms=${beforeMs}` : ''}&limit=${limit}`),
+    sessions: (userId: string) =>
+      apiClient.get(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`),
   },
 
   /**
