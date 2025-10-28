@@ -73,6 +73,43 @@ def _parse_features_list(text_or_list):
     cleaned = [p.strip() for p in parts if p and p.strip()]
     return cleaned if cleaned else None
 
+def _parse_price_and_unit(text: str) -> tuple[Optional[float], Optional[str]]:
+    """Extract numeric base price and a price unit from free text.
+    Handles: "10000 per room", "base price is 10k", "500 per kitchen", "fixed price 2000", "flat 1500".
+    """
+    if not text:
+        return None, None
+    t = text.lower().strip()
+    # Number patterns: 10,000 / 10000 / 10k / 2.5k
+    num: Optional[float] = None
+    # 1) Look for explicit number with optional commas
+    m = re.search(r"(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)", t)
+    if m:
+        raw = m.group(1).replace(",", "")
+        try:
+            num = float(raw)
+        except Exception:
+            num = None
+    # 2) k-suffix (e.g., 10k, 2.5k)
+    mk = re.search(r"(\d+(?:\.\d+)?)\s*k\b", t)
+    if mk:
+        try:
+            num = float(mk.group(1)) * 1000.0
+        except Exception:
+            pass
+
+    # Unit patterns
+    unit: Optional[str] = None
+    # per <unit>
+    mu = re.search(r"per\s+([a-zA-Z ]{2,20})", t)
+    if mu:
+        unit = f"per {mu.group(1).strip()}"
+    # fixed / flat
+    if not unit and ("fixed" in t or "flat" in t):
+        unit = "fixed price"
+
+    return num, unit
+
 class BuilderServiceCreationAgent(ListingAgent):
     """
     An agent that guides a builder through creating a new service.
@@ -422,6 +459,21 @@ ANTI-LOOP RULES:
                 user_input = input("> You: ")
                 if user_input.lower() in ["quit", "exit", "cancel"]:
                     user_input = "I want to cancel this process."
+
+                # Heuristic updates from user's latest message to reduce repeats
+                try:
+                    base_price, price_unit = _parse_price_and_unit(user_input)
+                    if base_price is not None:
+                        service_data["base_price"] = base_price
+                    if price_unit:
+                        service_data["price_unit"] = price_unit
+                    # Also normalize features if user typed something feature-like (comma/and separated)
+                    if service_data.get("service_features") in (None, []) and any(kw in user_input.lower() for kw in ["warranty", "feature", "cleanup", "consultation"]):
+                        feats = _parse_features_list(user_input)
+                        if feats:
+                            service_data["service_features"] = feats
+                except Exception:
+                    pass
 
                 conversation_history += f"User: {user_input}\n"
 
