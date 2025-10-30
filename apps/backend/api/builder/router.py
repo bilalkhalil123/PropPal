@@ -50,6 +50,17 @@ async def get_builder_profile_by_clerk(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Builder profile not found for this user.",
         )
+    # Ensure created_at and updated_at are present
+    import datetime
+    if "created_at" not in profile or not profile["created_at"]:
+        # Use ObjectId timestamp if present, else utcnow()
+        oid = profile.get("_id")
+        if hasattr(oid, "generation_time"):
+            profile["created_at"] = oid.generation_time
+        else:
+            profile["created_at"] = datetime.datetime.utcnow()
+    if "updated_at" not in profile or not profile["updated_at"]:
+        profile["updated_at"] = profile["created_at"]
     return profile
 
 

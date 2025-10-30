@@ -38,6 +38,7 @@ class RouterState(TypedDict):
     # Properties and builders from agent responses
     properties: List[dict]
     builders: List[dict]
+    services: List[dict]
 
 # --- LLM and Router Definition ---
 
@@ -178,15 +179,56 @@ def builder_agent_node(state: RouterState):
     # Call the .process_query() method, passing along clerk_id
     result = builder_agent.process_query(query, clerk_id=clerk_id)
 
+    # Debug: log raw result from BuilderAgent
+    try:
+        print("--- [Main Graph] Raw BuilderAgent result:", {
+            "keys": list(result.keys()),
+            "success": result.get("success"),
+            "classification": result.get("classification"),
+            "results_len": len(result.get("results", []) or []),
+            "builders_len": len(result.get("builders", []) or []),
+            "services_len": len(result.get("services", []) or []),
+        })
+    except Exception:
+        pass
+
     response_message = result.get("response", "An error occurred in the builder agent.")
-    builders = result.get("builders", result.get("results", []))
+    # Normalize outputs: split generic 'results' into builders vs services when needed
+    raw_results = result.get("results", [])
+    builders = result.get("builders", [])
+    services = result.get("services", [])
+    if raw_results and (not builders or not services):
+        tmp_builders = []
+        tmp_services = []
+        for item in raw_results:
+            # Heuristic: service results contain service fields
+            if any(k in item for k in ["service_name", "builder_id", "category", "price_range_min", "price_range_max"]):
+                tmp_services.append(item)
+            else:
+                tmp_builders.append(item)
+        if not builders:
+            builders = tmp_builders
+        if not services:
+            services = tmp_services
     if not result.get("success"):
         print(f"--- [Main Graph] Builder Agent Error: {result.get('error')}")
 
-    return {
+    response_payload = {
         "messages": [AIMessage(content=response_message)],
-        "builders": builders
+        "builders": builders,
+        "services": services,
     }
+
+    # Debug: log normalized payload back to the main graph
+    try:
+        print("--- [Main Graph] BuilderAgent normalized payload:", {
+            "builders_len": len(response_payload["builders"] or []),
+            "services_len": len(response_payload["services"] or []),
+        })
+    except Exception:
+        pass
+
+    return response_payload
 # --- Conditional Routing Function ---
 
 def route_after_classification(state: RouterState):
@@ -285,7 +327,8 @@ class RouterAgent:
                 classification="",
                 messages=[],
                 properties=[],
-                builders=[]
+                builders=[],
+                services=[],
             )
             
             # Run the router workflow
@@ -298,14 +341,27 @@ class RouterAgent:
             else:
                 response_content = "No response generated"
             
-            return {
+            response_obj = {
                 "success": True,
                 "response": response_content,
                 "classification": final_state.get("classification", "unknown"),
                 "properties": final_state.get("properties", []),
                 "builders": final_state.get("builders", []),
+                "services": final_state.get("services", []),
                 "error": None
             }
+
+            # Debug: log router final response summary
+            try:
+                print("--- [Main Graph] Router final response summary:", {
+                    "classification": response_obj["classification"],
+                    "properties_len": len(response_obj["properties"] or []),
+                    "builders_len": len(response_obj["builders"] or []),
+                    "services_len": len(response_obj["services"] or []),
+                })
+            except Exception:
+                pass
+            return response_obj
             
         except Exception as e:
             return {

@@ -49,6 +49,7 @@ class ChatResponse(BaseModel):
     error: Optional[str] = Field(None, description="Error message if any")
     properties: Optional[List[Dict[str, Any]]] = Field(None, description="Properties search results")
     builders: Optional[List[Dict[str, Any]]] = Field(None, description="Builder search results")
+    services: Optional[List[Dict[str, Any]]] = Field(None, description="Builder service search results")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata about the response")
 
 
@@ -146,6 +147,7 @@ async def send_message(
                         "classification": result.get("classification"),
                         "properties": result.get("properties"),
                         "builders": result.get("builders"),
+                        "services": result.get("services"),
                     },
                 }
 
@@ -162,13 +164,14 @@ async def send_message(
             # Do not fail the chat if logging encounters an error
             pass
         
-        # Return the response with properties and builders
+        # Return the response with properties, builders, and services
         return ChatResponse(
             success=True,
             response=result.get("response", "No response generated"),
             classification=result.get("classification", "unknown"),
             properties=result.get("properties"),
             builders=result.get("builders"),
+            services=result.get("services"),
             error=None,
             metadata=metadata
         )
