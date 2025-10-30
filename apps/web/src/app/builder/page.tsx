@@ -45,7 +45,7 @@ export default function BuilderPage() {
   const { user, loading, isAuthenticated, clerkId } = useCurrentUser()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
-  const [builderProfile, setBuilderProfile] = useState<BuilderProfile | null>(null)
+  const [builderProfile, setBuilderProfile] = useState<BuilderProfile | null | undefined>(undefined)
   const [builderServices, setBuilderServices] = useState<BuilderService[]>([])
   const [dataLoading, setDataLoading] = useState(false)
   const [dataError, setDataError] = useState<string | null>(null)
@@ -97,6 +97,15 @@ export default function BuilderPage() {
 
   const handleManageServices = () => {
     router.push("/chat?q=Manage my services")
+  }
+
+  // Show spinner while loading and have not received API result; but not after fetching null
+  if ((dataLoading || loading) && typeof builderProfile === 'undefined') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-14 w-14 border-4 border-slate-300 border-t-[color:var(--color-accent-gold)]"></div>
+      </div>
+    );
   }
 
   return (

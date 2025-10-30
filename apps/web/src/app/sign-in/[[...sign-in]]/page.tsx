@@ -14,7 +14,7 @@ export default function SignInPage() {
         animate={{ opacity: 1, x: 0 }} 
         transition={{ duration: 0.8, ease: 'easeOut' }}
         className="hidden md:flex flex-col items-center justify-center relative bg-fixed bg-center bg-cover"
-        style={{ backgroundImage: "url('/hero-house.svg')" }}
+        style={{ backgroundImage: "url('/hero-house.jpg')" }}
       >
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(249,249,249,0.7),rgba(237,236,232,0.6))] backdrop-blur-sm" />
         <div className="relative z-10 text-center max-w-md px-10">

@@ -52,6 +52,17 @@ interface Builder {
   score?: number
 }
 
+interface ServiceResult {
+  _id?: string
+  service_name?: string
+  description?: string
+  category?: string
+  price_range_min?: number
+  price_range_max?: number
+  builder_id?: string
+  score?: number
+}
+
 interface Message {
   id: string
   content: string
@@ -59,6 +70,7 @@ interface Message {
   timestamp: Date
   properties?: Property[]
   builders?: Builder[]
+  services?: ServiceResult[]
 }
 
 export default function ChatPage() {
@@ -204,6 +216,7 @@ export default function ChatPage() {
           classification: string
           properties?: Property[]
           builders?: Builder[]
+          services?: ServiceResult[]
           start_interactive?: { type: "service" | "profile"; ws_path: string; clerk_id_required?: boolean }
         }
 
@@ -329,6 +342,7 @@ export default function ChatPage() {
             timestamp: new Date(),
             properties: response.properties,
             builders: response.builders,
+            services: (response as any).services,
           }
           setMessages((prev) => [...prev, aiResponse])
           setSidebarRefresh((v) => v + 1)
@@ -363,6 +377,7 @@ export default function ChatPage() {
           timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
           properties: m._payload?.properties as Property[] | undefined,
           builders: m._payload?.builders as Builder[] | undefined,
+          services: m._payload?.services as ServiceResult[] | undefined,
         }))
         setMessages((prev) => (prev.length <= 1 ? mapped : prev))
       } catch (e) {
@@ -467,7 +482,8 @@ export default function ChatPage() {
               {messages.map((message) => {
                 const hasProperties = message.properties && message.properties.length > 0
                 const hasBuilders = message.builders && message.builders.length > 0
-                const showTextMessage = !hasProperties && !hasBuilders
+                const hasServices = message.services && message.services.length > 0
+                const showTextMessage = !hasProperties && !hasBuilders && !hasServices
 
                 return (
                   <motion.div
@@ -663,6 +679,70 @@ export default function ChatPage() {
                                   >
                                     View Profile
                                   </Link>
+                                  <button className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+                                    Contact
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {message.sender === "ai" && message.services && message.services.length > 0 && (
+                      <div className="w-full max-w-6xl">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {message.services.map((svc, idx) => (
+                            <div
+                              key={`${svc._id || idx}`}
+                              className="bg-white/60 backdrop-blur rounded-xl shadow-card border border-slate-200/50 overflow-hidden hover:shadow-elevated hover:border-slate-300 transition-all duration-300 flex flex-col h-full"
+                            >
+                              {/* Top meta */}
+                              <div className="p-4 pb-0">
+                                <div className="flex items-center justify-between">
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                    {svc.category || "Service"}
+                                  </span>
+                                  {typeof svc.score === 'number' && (
+                                    <span className="text-xs bg-teal-50 text-teal-700 px-2 py-1 rounded-full font-medium">
+                                      {Math.round(svc.score * 100)}% match
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Content */}
+                              <div className="p-4 flex flex-col flex-grow">
+                                <h3 className="font-serif font-semibold text-base text-slate-900 mb-1 line-clamp-2">
+                                  {svc.service_name || "Service"}
+                                </h3>
+                                {svc.description && (
+                                  <p className="text-sm text-slate-700 mb-3 line-clamp-3">{svc.description}</p>
+                                )}
+
+                                {(svc.price_range_min || svc.price_range_max) && (
+                                  <div className="flex items-center mb-3">
+                                    <BanknotesIcon className="h-4 w-4 text-teal-600 mr-2" />
+                                    <span className="text-sm font-semibold text-teal-700">
+                                      {svc.price_range_min ? `Rs ${svc.price_range_min.toLocaleString()}` : ""}
+                                      {svc.price_range_max ? ` - Rs ${svc.price_range_max.toLocaleString()}` : ""}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {/* Actions */}
+                                <div className="mt-auto pt-2 flex gap-2">
+                                  {svc.builder_id ? (
+                                    <Link
+                                      href={`/builders/${svc.builder_id}`}
+                                      className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:shadow-md transition-all text-center"
+                                    >
+                                      View Builder
+                                    </Link>
+                                  ) : (
+                                    <div className="flex-1" />
+                                  )}
                                   <button className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
                                     Contact
                                   </button>
