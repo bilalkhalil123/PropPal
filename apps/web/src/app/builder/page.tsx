@@ -13,7 +13,7 @@ import {
   StarIcon,
 } from "@heroicons/react/24/outline"
 import { api } from "@/lib/api-client"
-import Button from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 
 interface BuilderProfile {
   _id: string
