@@ -1,38 +1,91 @@
+"use client"
+
 import { SignIn } from '@clerk/nextjs'
+import { motion } from 'framer-motion'
+import Image from 'next/image'
 
 export default function SignInPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12" style={{ background: "radial-gradient(1200px 600px at 10% -10%, rgba(224,164,88,0.06), transparent 60%), radial-gradient(800px 400px at 90% 10%, rgba(13,27,42,0.05), transparent 60%), var(--background)" }}>
-      <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white font-bold">P</div>
-          <h2 className="mt-4 text-3xl font-bold text-slate-900">Welcome back</h2>
-          <p className="mt-1 text-sm text-slate-600">Sign in to your account to continue</p>
+    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 overflow-hidden bg-[linear-gradient(to_bottom,#f9f9f9,#eceae4)]">
+      
+      {/* Left Visual Section */}
+      <motion.div 
+        initial={{ opacity: 0, x: -40 }} 
+        animate={{ opacity: 1, x: 0 }} 
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        className="hidden md:flex flex-col items-center justify-center relative bg-fixed bg-center bg-cover"
+        style={{ backgroundImage: "url('/hero-house.svg')" }}
+      >
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(249,249,249,0.7),rgba(237,236,232,0.6))] backdrop-blur-sm" />
+        <div className="relative z-10 text-center max-w-md px-10">
+          <motion.h2 
+            className="text-4xl font-bold text-[color:var(--color-primary)] mb-4"
+            style={{ fontFamily: 'var(--font-serif)' }}
+          >
+            Welcome to PropPal
+          </motion.h2>
+          <p className="text-slate-700 leading-relaxed text-base">
+            Your intelligent partner in finding dream properties with AI precision and elegance.
+          </p>
         </div>
-        <div className="flex justify-center">
-          <SignIn
-            appearance={{
-              variables: {
-                colorPrimary: 'var(--color-gold)',
-                colorText: 'var(--foreground)',
-                colorBackground: '#ffffff',
-                borderRadius: '12px',
-                fontSize: '14px',
-              },
-              elements: {
-                card: 'rounded-2xl border border-slate-200 shadow-sm',
-                headerTitle: 'text-slate-900',
-                headerSubtitle: 'text-slate-600',
-                formButtonPrimary: 'text-white rounded-xl hover:shadow-lg transition-all bg-[linear-gradient(to_right,#f59e0b,var(--color-gold))]',
-                formFieldInput: 'rounded-xl border-slate-300 focus:ring-2 focus:ring-[color:var(--color-gold)]',
-                footerActionLink: 'text-[color:var(--color-gold)] hover:text-amber-600',
-                socialButtonsBlockButton: 'rounded-xl border-slate-300 hover:bg-slate-50',
-                formFieldLabel: 'text-slate-700',
-              },
-            }}
-          />
+      </motion.div>
+
+      {/* Right Sign-In Card */}
+      <motion.div 
+        initial={{ opacity: 0, x: 40 }} 
+        animate={{ opacity: 1, x: 0 }} 
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        className="flex items-center justify-center py-20 px-6 md:px-12 lg:px-24 bg-white/40 backdrop-blur-lg"
+      >
+        <div className="w-full max-w-md">
+          {/* <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-8 rounded-2xl border border-slate-200/70 bg-white/70 backdrop-blur-xl shadow-card p-8"
+          >
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl text-white font-bold bg-[linear-gradient(to_right,var(--color-primary),var(--color-accent-gold))]">P</div>
+            <h2 className="mt-4 text-3xl md:text-4xl font-bold tracking-tight text-[color:var(--color-primary)]" style={{ fontFamily: 'var(--font-serif)' }}>
+              Welcome Back
+            </h2>
+            <p className="mt-1 text-sm text-slate-700" style={{ fontFamily: 'var(--font-sans)' }}>
+              Sign in to continue your property journey
+            </p>
+          </motion.div> */}
+
+          <div className="flex justify-center">
+            <SignIn
+              routing="hash"
+              appearance={{
+                 variables: {
+                   colorPrimary: 'var(--color-accent-gold)',
+                   colorText: '#111827',
+                   colorBackground: '#ffffff',
+                   borderRadius: '12px',
+                   fontSize: '15px',
+                 },
+                elements: {
+                  card: 'rounded-2xl border border-slate-300 bg-white shadow-elevated',
+                  headerTitle: 'text-slate-900 text-2xl md:text-3xl font-semibold tracking-tight',
+                  headerSubtitle: 'text-slate-700 text-base',
+                  formButtonPrimary:
+                    'text-white rounded-2xl hover:ring-2 hover:ring-[color:var(--color-accent-gold)] active:scale-95 transition-all bg-[linear-gradient(to_right,var(--color-primary),var(--color-accent-gold))]',
+                  formFieldInput:
+                     'rounded-xl border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[color:var(--color-accent-gold)] focus:border-[color:var(--color-accent-gold)]',
+                  formFieldLabel: 'text-slate-900',
+                  dividerLine: 'bg-slate-300',
+                  dividerText: 'text-slate-700',
+                  footerActionText: 'text-slate-800',
+                  footerActionLink: 'text-[color:var(--color-accent-gold)] hover:text-amber-600',
+                  socialButtonsBlockButton: 'rounded-xl border-slate-300 hover:bg-slate-50 text-slate-900',
+                  identityPreview: 'text-slate-900',
+                  formFieldHintText: 'text-slate-700',
+                },
+              }}
+            />
+          </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

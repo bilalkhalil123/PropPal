@@ -3,11 +3,13 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { motion } from 'framer-motion'
 import { HomeIcon, SparklesIcon, UsersIcon, ChatBubbleLeftIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 
 export default function LandingClient() {
   const [scrolled, setScrolled] = useState(false)
+  const { isAuthenticated, loading } = useCurrentUser()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -104,12 +106,14 @@ export default function LandingClient() {
               >
                 Get Started
               </Link>
-              <Link
-                href="/sign-in"
-                className="px-8 py-4 rounded-2xl text-lg font-semibold transition-all duration-200 active:scale-95 border text-[color:var(--color-primary)] border-[color:var(--color-primary)] bg-white/70 hover:bg-white"
-              >
-                Sign In
-              </Link>
+              {!loading && !isAuthenticated && (
+                <Link
+                  href="/sign-in"
+                  className="px-8 py-4 rounded-2xl text-lg font-semibold transition-all duration-200 active:scale-95 border text-[color:var(--color-primary)] border-[color:var(--color-primary)] bg-white/70 hover:bg-white"
+                >
+                  Sign In
+                </Link>
+              )}
             </motion.div>
           </motion.div>
         </div>
