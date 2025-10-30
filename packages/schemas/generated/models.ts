@@ -1,7 +1,7 @@
 /**
  * AUTO-GENERATED TypeScript interfaces from Pydantic models
  * DO NOT EDIT MANUALLY - Changes will be overwritten
- * Generated on: 2025-10-28T16:26:03.128863
+ * Generated on: 2025-10-30T05:40:28.570956
  */
 
 export interface UserResponse {
@@ -159,8 +159,8 @@ export interface BuilderServiceResponse {
   service_features?: string[];
   _id: string;
   builder_id: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface BuilderServiceCreate {

@@ -56,6 +56,7 @@ export default function ChatPage() {
   const dbUserId = (user as any)?._id || userId || null
   const searchParams = useSearchParams()
   const router = useRouter()
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL as string | undefined
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -70,6 +71,8 @@ export default function ChatPage() {
   const hasProcessedQueryRef = useRef(false)
   const [sidebarRefresh, setSidebarRefresh] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const wsRef = useRef<WebSocket | null>(null)
+  const [interactiveActive, setInteractiveActive] = useState(false)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -188,6 +191,7 @@ export default function ChatPage() {
         classification: string
         properties?: Property[]
         builders?: Builder[]
+        start_interactive?: { type: 'service' | 'profile', ws_path: string, clerk_id_required?: boolean }
       }
 
       // Log the API response to console
@@ -207,17 +211,103 @@ export default function ChatPage() {
       }
       console.log('========================')
 
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response.response,
-        sender: 'ai',
-        timestamp: new Date(),
-        properties: response.properties,
-        builders: response.builders
+      // If agent requests interactive websocket flow, start it and route subsequent messages over WS
+      const handoffMessages = [
+        "Starting service creation. Please connect via websocket to continue.",
+        "Starting builder profile creation. Please connect via websocket to continue."
+      ]
+      const si = (response as any).start_interactive as { type: 'service' | 'profile', ws_path: string } | undefined
+      const isHandoff = handoffMessages.includes(response.response)
+      
+      // Determine the websocket path based on the response
+      let wsPath: string | null = null
+      if (si?.ws_path) {
+        wsPath = si.ws_path
+      } else if (isHandoff) {
+        // Map handoff message to default websocket path
+        if (response.response.includes('service creation')) {
+          wsPath = '/api/chat/ws/service/create'
+        } else if (response.response.includes('builder profile creation')) {
+          wsPath = '/api/chat/ws/profile/create'
+        }
       }
       
-      setMessages(prev => [...prev, aiResponse])
-      setSidebarRefresh((v) => v + 1)
+      if (wsPath && API_BASE_URL) {
+        // Do NOT show the handoff message to the user; silently start websocket flow
+        // Keep the user message visible - we'll resend via WS but also show in chat
+        // Build WS URL
+        let wsOrigin: string
+        try {
+          const urlObj = new URL(API_BASE_URL)
+          wsOrigin = (urlObj.protocol === 'https:' ? 'wss://' : 'ws://') + urlObj.host
+        } catch {
+          const baseNoSlash = API_BASE_URL.replace(/\/$/, '')
+          wsOrigin = baseNoSlash.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:')
+        }
+        const qs = `?clerk_id=${encodeURIComponent(clerkId || '')}`
+        const wsUrl = `${wsOrigin}${wsPath}${qs}`
+          try {
+            const ws = new WebSocket(wsUrl)
+            wsRef.current = ws
+            setInteractiveActive(true)
+
+            ws.onopen = () => {
+              // Immediately send the user's original intent so the agent can start asking relevant questions
+              try { ws.send(JSON.stringify({ type: 'user', text: messageText })) } catch {}
+            }
+
+            ws.onmessage = (evt) => {
+              try {
+                const payload = JSON.parse(evt.data)
+                if (payload.type === 'agent') {
+                  setMessages(prev => [...prev, { id: `${Date.now()}-agent`, content: String(payload.text || ''), sender: 'ai', timestamp: new Date() }])
+                } else if (payload.type === 'completed') {
+                  setMessages(prev => [...prev, { id: `${Date.now()}-done`, content: String(payload.message || 'Completed'), sender: 'ai', timestamp: new Date() }])
+                  ws.close()
+                  wsRef.current = null
+                  setInteractiveActive(false)
+                } else if (payload.type === 'error') {
+                  setMessages(prev => [...prev, { id: `${Date.now()}-err`, content: `Error: ${String(payload.message || 'Unknown error')}`, sender: 'ai', timestamp: new Date() }])
+                  ws.close()
+                  wsRef.current = null
+                  setInteractiveActive(false)
+                }
+              } catch {
+                // ignore malformed
+              }
+            }
+
+            ws.onerror = () => {
+              setMessages(prev => [...prev, { id: `${Date.now()}-wserr`, content: 'Connection error during interactive flow.', sender: 'ai', timestamp: new Date() }])
+              wsRef.current = null
+              setInteractiveActive(false)
+            }
+
+            ws.onclose = () => {
+              wsRef.current = null
+              setInteractiveActive(false)
+            }
+
+            // No need for setTimeout; we send on onopen
+          } catch (e) {
+            setMessages(prev => [...prev, { id: `${Date.now()}-wsex`, content: 'Failed to start interactive flow.', sender: 'ai', timestamp: new Date() }])
+          }
+      } else if (!isHandoff) {
+        // Normal non-interactive response: show AI message unless it's a handoff message
+        const aiResponse: Message = {
+          id: (Date.now() + 1).toString(),
+          content: response.response,
+          sender: 'ai',
+          timestamp: new Date(),
+          properties: response.properties,
+          builders: response.builders
+        }
+        setMessages(prev => [...prev, aiResponse])
+        setSidebarRefresh((v) => v + 1)
+      } else {
+        // Handoff message without start_interactive flag - just suppress the AI message
+        // Keep the user message visible
+      }
     } catch (error) {
       console.error('Chat API error:', error)
       const errorResponse: Message = {
@@ -230,7 +320,7 @@ export default function ChatPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [dbUserId, clerkId])
+  }, [dbUserId, clerkId, API_BASE_URL, sessionId])
 
   // Load persisted history for this user (DB id only)
   useEffect(() => {
@@ -272,6 +362,15 @@ export default function ChatPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
+    // If interactive flow is active, route message over the existing websocket
+    if (interactiveActive && wsRef.current) {
+      const text = inputMessage
+      if (!text.trim()) return
+      setMessages(prev => [...prev, { id: Date.now().toString(), content: text, sender: 'user', timestamp: new Date() }])
+      try { wsRef.current.send(JSON.stringify({ type: 'user', text })) } catch {}
+      setInputMessage('')
+      return
+    }
     sendMessage(inputMessage, true)
   }
 

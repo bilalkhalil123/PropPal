@@ -14,10 +14,13 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from agents import RouterAgent
+from agents.builder.create_service_agent import BuilderServiceCreationAgent
+from agents.builder.create_profile_agent import BuilderProfileCreationAgent
 from common.db import get_database
 from common.repositories.user_repository import UserRepository, get_user_repository
 from bson import ObjectId
 from datetime import datetime
+from fastapi import WebSocket, WebSocketDisconnect
 
 # Initialize the router
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -99,7 +102,7 @@ async def send_message(
         
         # Process the query through the RouterAgent
         agent = get_router_agent()
-        result = agent.process_query(request.message.strip())
+        result = agent.process_query(request.message.strip(), clerk_id=request.clerk_id)
         
         # Check if the agent processing was successful
         if not result.get("success", False):
@@ -179,6 +182,83 @@ async def send_message(
             status_code=500,
             detail=f"Internal server error: {str(e)}"
         )
+
+
+@router.websocket("/ws/service/create")
+async def ws_service_create(websocket: WebSocket, clerk_id: str):
+    """Interactive websocket endpoint for the service creation agent.
+    Frontend connects and exchanges JSON messages: { type: 'user', text: '...' }
+    Server sends: { type: 'agent'|'completed'|'error', ... }
+    """
+    await websocket.accept()
+    agent = BuilderServiceCreationAgent()
+
+    async def send(payload: Dict[str, Any]):
+        await websocket.send_json(payload)
+
+    async def recv_text() -> str:
+        try:
+            data = await websocket.receive_json()
+            if isinstance(data, dict) and data.get("type") == "user":
+                return str(data.get("text") or "").strip()
+            # Fallback to raw text
+            if isinstance(data, str):
+                return data
+            return ""
+        except WebSocketDisconnect:
+            return "cancel"
+
+    # Expect the first client message to include the initial intent/query
+    first = await recv_text()
+    if not first:
+        await send({"type": "error", "message": "No initial message provided."})
+        await websocket.close()
+        return
+
+    try:
+        result = await agent.process_query_interactive(first, clerk_id=clerk_id, send=send, recv_text=recv_text)
+        # Final message already sent in the loop; ensure socket closed gracefully
+        await websocket.close()
+        return
+    except Exception as e:
+        await send({"type": "error", "message": str(e)})
+        await websocket.close()
+
+
+@router.websocket("/ws/profile/create")
+async def ws_profile_create(websocket: WebSocket, clerk_id: str):
+    """Interactive websocket endpoint for builder profile creation."""
+    await websocket.accept()
+    agent = BuilderProfileCreationAgent()
+
+    async def send(payload: Dict[str, Any]):
+        await websocket.send_json(payload)
+
+    async def recv_text() -> str:
+        try:
+            data = await websocket.receive_json()
+            if isinstance(data, dict) and data.get("type") == "user":
+                return str(data.get("text") or "").strip()
+            if isinstance(data, str):
+                return data
+            return ""
+        except WebSocketDisconnect:
+            return "cancel"
+
+    # Expect first client message with initial intent
+    first = await recv_text()
+    if not first:
+        await send({"type": "error", "message": "No initial message provided."})
+        await websocket.close()
+        return
+
+    try:
+        result = await agent.process_query_interactive(first, clerk_id=clerk_id, send=send, recv_text=recv_text)
+        await websocket.close()
+        return
+    except Exception as e:
+        await send({"type": "error", "message": str(e)})
+        await websocket.close()
 
 
 @router.post("/conversation", response_model=ChatResponse)

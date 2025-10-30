@@ -45,14 +45,13 @@ class BuilderAgent:
         self.profile_creation_agent = BuilderProfileCreationAgent()
 
 
-    def process_query(self, query: str, clerk_id: str = None, user_id: str = None) -> Dict[str, Any]:
+    def process_query(self, query: str, clerk_id: str = None) -> Dict[str, Any]:
         """
         Processes a builder-related query by first classifying the intent
         and then routing to the appropriate sub-agent.
 
         Args:
-            clerk_id: The ID of the user, required for creation tasks.
-            user_id: The database ID of the user, used as a fallback.
+            clerk_id: The Clerk ID of the user, required for creation tasks.
         """
         if not query or not query.strip():
             return {
@@ -76,14 +75,28 @@ class BuilderAgent:
             return result
 
         if destination == "create_service":
-            result = self.service_creation_agent.process_query(query, clerk_id=clerk_id, user_id=user_id)
-            result["classification"] = "builder_create_service"
-            return result
+            return {
+                "success": True,
+                "response": "Starting service creation. Please connect via websocket to continue.",
+                "classification": "builder_create_service",
+                "start_interactive": {
+                    "type": "service",
+                    "ws_path": "/api/chat/ws/service/create",
+                    "clerk_id_required": True,
+                },
+            }
 
         if destination == "create_profile":
-            result = self.profile_creation_agent.process_query(query, clerk_id=clerk_id, user_id=user_id)
-            result["classification"] = "builder_create_profile"
-            return result
+            return {
+                "success": True,
+                "response": "Starting builder profile creation. Please connect via websocket to continue.",
+                "classification": "builder_create_profile",
+                "start_interactive": {
+                    "type": "profile",
+                    "ws_path": "/api/chat/ws/profile/create",
+                    "clerk_id_required": True,
+                },
+            }
 
         # Default to a general response if no specific route is matched
         return {

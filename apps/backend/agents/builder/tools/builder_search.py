@@ -72,16 +72,15 @@ async def _search_async(query: str, collection_name: str, index_name: str, proje
             client.close()
 
 def _run_async_search(search_coro):
-    """Helper to run asyncio code from a sync context."""
+    """Helper to run asyncio code from a sync context (safe in running loops)."""
     try:
-        try:
-            asyncio.get_running_loop()
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(asyncio.run, search_coro)
-                return future.result()
-        except RuntimeError:
-            return asyncio.run(search_coro)
+        asyncio.get_running_loop()
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, search_coro)
+            return future.result()
+    except RuntimeError:
+        return asyncio.run(search_coro)
     except Exception as e:
         return {"success": False, "error": str(e), "results": [], "count": 0}
 

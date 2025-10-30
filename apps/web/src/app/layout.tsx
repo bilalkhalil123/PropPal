@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import ClerkWrapper from "@/components/ClerkWrapper";
 import { UserProvider } from "@/context/UserContext";
 import "./globals.css";
-import Topbar from "@/components/Topbar";
+import TopbarWrapper from "@/components/TopbarWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +34,7 @@ export default function RootLayout({
         <ClerkWrapper>
           {/* UserProvider handles both context AND detailed sync logging */}
           <UserProvider>
-            <Topbar />
+            <TopbarWrapper />
             {children}
           </UserProvider>
         </ClerkWrapper>

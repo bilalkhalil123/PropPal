@@ -7,6 +7,8 @@ import { UserButton } from '@clerk/nextjs'
 import Link from 'next/link'
 import { HomeIcon, MagnifyingGlassIcon, WrenchScrewdriverIcon, PlusIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import RoleDropdown from '@/components/RoleDropdown'
+import { api } from '@/lib/api-client'
+// no direct token use when calling clerk-id routes
 
 interface BuilderProfile {
   _id: string
@@ -26,18 +28,24 @@ interface BuilderProfile {
 
 interface BuilderService {
   _id: string
-  name: string
+  title: string
   description: string
   category: string
-  price_range?: string
-  availability: boolean
+  base_price?: number
+  price_unit?: string
+  service_features?: string[]
 }
 
 export default function BuilderPage() {
-  const { user, loading, isAuthenticated } = useCurrentUser()
+  const { user, loading, isAuthenticated, clerkId } = useCurrentUser()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentRole, setCurrentRole] = useState<'buyer' | 'seller' | 'builder'>('builder')
+  // Ensure all hooks are declared before any early returns
+  const [builderProfile, setBuilderProfile] = useState<BuilderProfile | null>(null)
+  const [builderServices, setBuilderServices] = useState<BuilderService[]>([])
+  const [dataLoading, setDataLoading] = useState(false)
+  const [dataError, setDataError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -61,49 +69,31 @@ export default function BuilderPage() {
     return null
   }
 
-  // Dummy data - in real app, this would come from API
-  const [builderProfile, setBuilderProfile] = useState<BuilderProfile | null>({
-    _id: 'builder_123',
-    company_name: 'Elite Construction Co.',
-    specialization: ['Residential Construction', 'Commercial Projects', 'Renovation'],
-    experience_years: 15,
-    rating: 4.8,
-    location: {
-      city: 'Lahore',
-      latitude: 31.5204,
-      longitude: 74.3587
-    },
-    about: 'We are a leading construction company with over 15 years of experience in delivering high-quality residential and commercial projects across Pakistan.',
-    founded_year: 2008,
-    portfolio_images: ['/hero-house.svg', '/hero-house.svg', '/hero-house.svg']
-  })
-
-  const [builderServices, setBuilderServices] = useState<BuilderService[]>([
-    {
-      _id: 'service_1',
-      name: 'Home Construction',
-      description: 'Complete home construction from foundation to finishing',
-      category: 'Construction',
-      price_range: 'Rs 2,000 - 3,000 per sqft',
-      availability: true
-    },
-    {
-      _id: 'service_2',
-      name: 'Roof Repair',
-      description: 'Professional roof repair and maintenance services',
-      category: 'Repair',
-      price_range: 'Rs 500 - 1,500 per sqft',
-      availability: true
-    },
-    {
-      _id: 'service_3',
-      name: 'Interior Design',
-      description: 'Modern interior design and decoration services',
-      category: 'Design',
-      price_range: 'Rs 1,000 - 2,000 per sqft',
-      availability: true
+  useEffect(() => {
+    if (!isAuthenticated || loading) return
+    if (!clerkId) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        setDataLoading(true)
+        setDataError(null)
+        const [profile, services] = await Promise.all([
+          api.builders.getProfile(clerkId).catch(() => null) as Promise<BuilderProfile | null>,
+          api.builders.getServices(clerkId).catch(() => []) as Promise<BuilderService[]>,
+        ])
+        if (!cancelled) {
+          setBuilderProfile(profile)
+          setBuilderServices(services || [])
+        }
+      } catch (err: any) {
+        if (!cancelled) setDataError(err?.message || 'Failed to load builder data')
+      } finally {
+        if (!cancelled) setDataLoading(false)
+      }
     }
-  ])
+    load()
+    return () => { cancelled = true }
+  }, [isAuthenticated, loading, clerkId])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -153,6 +143,18 @@ export default function BuilderPage() {
           </div>
 
           {/* Profile Section */}
+          {dataLoading && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <p className="text-gray-600">Loading your builder data…</p>
+            </div>
+          )}
+
+          {dataError && (
+            <div className="bg-white rounded-xl shadow-sm border border-red-200 p-6">
+              <p className="text-red-600">{dataError}</p>
+            </div>
+          )}
+
           {builderProfile ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
@@ -247,19 +249,19 @@ export default function BuilderPage() {
                 {builderServices.map((service) => (
                   <div key={service._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-gray-900">{service.name}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        service.availability 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {service.availability ? 'Available' : 'Unavailable'}
-                      </span>
+                      <h3 className="font-semibold text-gray-900">{service.title}</h3>
                     </div>
                     <p className="text-sm text-gray-600 mb-2">{service.description}</p>
                     <div className="text-xs text-gray-500">
                       <div>Category: {service.category}</div>
-                      {service.price_range && <div>Price: {service.price_range}</div>}
+                      {(service.base_price || service.price_unit) && (
+                        <div>
+                          Price: {service.base_price ? `Rs ${service.base_price.toLocaleString()}` : ''}{service.price_unit ? ` ${service.price_unit}` : ''}
+                        </div>
+                      )}
+                      {service.service_features && service.service_features.length > 0 && (
+                        <div className="mt-1">Features: {service.service_features.slice(0, 3).join(', ')}{service.service_features.length > 3 ? '…' : ''}</div>
+                      )}
                     </div>
                   </div>
                 ))}

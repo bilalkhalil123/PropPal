@@ -122,15 +122,20 @@ export const api = {
    * Builder endpoints
    */
   builders: {
-    getProfile: (clerkId: string) => apiClient.get(`/api/builder/profile/${clerkId}`),
-    getMyProfile: () => apiClient.get('/api/builder/profile/me/'),
-    getServices: (clerkId: string) => apiClient.get(`/api/builder/services/${clerkId}`),
-    getMyServices: () => apiClient.get('/api/builder/services/me/'),
-    getById: (id: string) => apiClient.get(`/api/builder/profiles/id/${id}`),
-    searchProfiles: (query: string, filters?: any) => 
-      apiClient.post('/api/builder/profiles/search', { query, ...filters }),
-    searchServices: (query: string, filters?: any) => 
-      apiClient.post('/api/builder/services/search', { query, ...filters }),
+    getProfile: (clerkId: string, options?: RequestInit) => 
+      apiClient.get(`/api/builder/profile/${clerkId}`, options),
+    getMyProfile: (options?: RequestInit) => 
+      apiClient.get('/api/builder/profile/me/', options),
+    getServices: (clerkId: string, options?: RequestInit) => 
+      apiClient.get(`/api/builder/services/${clerkId}`, options),
+    getMyServices: (options?: RequestInit) => 
+      apiClient.get('/api/builder/services/me/', options),
+    getById: (id: string, options?: RequestInit) => 
+      apiClient.get(`/api/builder/profiles/id/${id}`, options),
+    searchProfiles: (query: string, filters?: any, options?: RequestInit) => 
+      apiClient.post('/api/builder/profiles/search', { query, ...filters }, options),
+    searchServices: (query: string, filters?: any, options?: RequestInit) => 
+      apiClient.post('/api/builder/services/search', { query, ...filters }, options),
   },
 
   /**
