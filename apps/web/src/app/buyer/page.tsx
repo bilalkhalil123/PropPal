@@ -1,13 +1,36 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import Link from "next/link"
-import { MagnifyingGlassIcon, MapPinIcon, BanknotesIcon, HomeIcon, SparklesIcon } from "@heroicons/react/24/outline"
-import Button from "@/components/ui/Button"
+import { motion } from "framer-motion"
+import {
+  MagnifyingGlassIcon,
+  MapPinIcon,
+  HomeIcon,
+  FunnelIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"
+import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet"
 
 interface Property {
   _id: string
@@ -19,13 +42,15 @@ interface Property {
   area_sqft: number
   images?: string[]
   property_type: string
-  score?: number
 }
 
 export default function BuyerPage() {
   const { user, loading, isAuthenticated } = useCurrentUser()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
+  const [priceRange, setPriceRange] = useState([0, 50000000])
+  const [selectedCity, setSelectedCity] = useState<string | null>(null)
+  const [selectedType, setSelectedType] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -33,19 +58,11 @@ export default function BuyerPage() {
     }
   }, [loading, isAuthenticated, router])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
-    return null
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/chat?q=${encodeURIComponent(searchQuery)}`)
+    }
   }
 
   const sampleProperties: Property[] = [
@@ -93,149 +110,229 @@ export default function BuyerPage() {
       property_type: "House",
       images: ["/hero-house.svg"],
     },
-    {
-      _id: "5",
-      title: "Penthouse in Defence",
-      price: 65000000,
-      city: "Karachi",
-      bedrooms: 6,
-      bathrooms: 5,
-      area_sqft: 4000,
-      property_type: "Penthouse",
-      images: ["/hero-house.svg"],
-    },
-    {
-      _id: "6",
-      title: "Family Home in Blue Area",
-      price: 28000000,
-      city: "Islamabad",
-      bedrooms: 4,
-      bathrooms: 3,
-      area_sqft: 2200,
-      property_type: "House",
-      images: ["/hero-house.svg"],
-    },
   ]
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      router.push(`/chat?q=${encodeURIComponent(searchQuery)}`)
-    }
-  }
+  const filteredProperties = sampleProperties.filter((property) => {
+    const matchesCity = selectedCity ? property.city === selectedCity : true
+    const matchesType = selectedType
+      ? property.property_type === selectedType
+      : true
+    const matchesPrice =
+      property.price >= priceRange[0] && property.price <= priceRange[1]
+    const matchesSearch = property.title
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
+    return matchesCity && matchesType && matchesPrice && matchesSearch
+  })
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-PK", {
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("en-PK", {
       style: "currency",
       currency: "PKR",
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
     }).format(price)
-  }
+
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-[color:var(--color-primary)]"></div>
+      </div>
+    )
+
+  if (!isAuthenticated) return null
 
   return (
-    <div className="min-h-screen" style={{ background: "radial-gradient(1200px 600px at 10% -10%, rgba(224,164,88,0.06), transparent 60%), radial-gradient(800px 400px at 90% 10%, rgba(13,27,42,0.05), transparent 60%), var(--background)" }}>
-      {/* Search Section */}
-      <div className="bg-white/70 backdrop-blur border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-6 py-10">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-slate-900 mb-2">Find Your Dream Property</h1>
-            <p className="text-lg text-slate-600">Explore thousands of properties across Pakistan</p>
+    <div
+      className="min-h-screen"
+      style={{
+        background:
+          "linear-gradient(to bottom right, var(--background), #f8f6f3)",
+      }}
+    >
+      {/* Hero Section with AI Search */}
+      <section className="border-b border-slate-200/50 bg-white/70 backdrop-blur-md py-16 text-center">
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-[color:var(--foreground)] mb-4">
+          Discover Your Next Home
+        </h1>
+        <p className="text-slate-600 mb-6">
+          Use AI to find homes that perfectly match your preferences.
+        </p>
+
+        <form
+          onSubmit={handleSearch}
+          className="flex justify-center flex-col sm:flex-row gap-3 px-6"
+        >
+          <div className="relative w-full sm:w-96">
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <Input
+              placeholder='Try "Homes under 50 lakhs in Islamabad"...'
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-12 rounded-xl bg-white/70 border border-slate-300"
+            />
           </div>
-          <form onSubmit={handleSearch} className="flex gap-3">
-            <div className="flex-1 relative">
-              <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search for properties... (e.g., 'Find houses in Lahore')"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[color:var(--color-gold)] focus:border-transparent transition-all text-slate-900 placeholder:text-slate-400 bg-white"
-              />
-            </div>
-            <Button type="submit" className="flex items-center gap-2">
-              <SparklesIcon className="h-5 w-5" />
-              Search
-            </Button>
-          </form>
-          <p className="text-sm text-slate-500 mt-3">
-            💡 Try natural language queries like "Find houses under 50 lakhs" or "Show me apartments in Islamabad"
-          </p>
-        </div>
-      </div>
-
-      {/* Featured Properties */}
-      <div className="max-w-6xl mx-auto px-6 py-16">
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">Featured Properties</h2>
-          <p className="text-slate-600">Discover amazing properties across Pakistan</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sampleProperties.map((property) => (
-            <div
-              key={property._id}
-              className="group rounded-2xl overflow-hidden"
-            >
-              {/* Property Image */}
-              <div className="h-48 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform duration-300" style={{ backgroundImage: "linear-gradient(135deg, var(--color-primary), var(--color-accent))" }}>
-                <HomeIcon className="h-16 w-16 text-white opacity-60" />
-              </div>
-
-              {/* Property Details */}
-              <div className="p-5">
-                <h3 className="font-semibold text-lg text-slate-900 mb-3 line-clamp-2 group-hover:text-teal-600 transition-colors">
-                  {property.title}
-                </h3>
-
-                {/* Price */}
-                <div className="flex items-center mb-3">
-                  <BanknotesIcon className="h-5 w-5 text-[color:var(--color-gold)] mr-2" />
-                  <span className="text-lg font-bold text-[color:var(--color-gold)]">{formatPrice(property.price)}</span>
-                </div>
-
-                {/* Location */}
-                <div className="flex items-center mb-4">
-                  <MapPinIcon className="h-4 w-4 text-slate-500 mr-2" />
-                  <span className="text-sm text-slate-600">{property.city}</span>
-                </div>
-
-                {/* Property Details */}
-                <div className="flex items-center justify-between text-sm text-slate-600 mb-4 pb-4 border-b border-slate-200">
-                  <span className="font-medium">{property.bedrooms} beds</span>
-                  <span className="font-medium">{property.bathrooms} baths</span>
-                  <span className="font-medium">{property.area_sqft} sqft</span>
-                </div>
-
-                {/* Property Type & Action */}
-                <div className="flex items-center justify-between">
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "rgba(224,164,88,0.12)", color: "var(--color-gold)" }}>
-                    {property.property_type}
-                  </span>
-                  <Button href={`/properties/${property._id}`} variant="ghost" className="font-semibold text-sm">
-                    View →
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white py-16">
-        <div className="max-w-4xl mx-auto text-center px-6">
-          <h2 className="text-3xl font-bold mb-4">Can't Find What You're Looking For?</h2>
-          <p className="text-lg text-teal-100 mb-8">Use our AI-powered search to find exactly what you need</p>
-          <button
-            onClick={() => router.push("/chat")}
-            className="bg-white text-teal-600 px-8 py-3 rounded-xl font-semibold hover:bg-slate-50 transition-colors shadow-lg hover:shadow-xl"
+          <Button
+            type="submit"
+            className="rounded-xl px-6 py-3 text-sm font-semibold bg-[linear-gradient(to_right,var(--color-primary),var(--color-accent-gold))] text-white shadow-md hover:shadow-lg transition-all"
           >
-            Try AI Search
-          </button>
+            <SparklesIcon className="h-5 w-5 mr-1" />
+            AI Search
+          </Button>
+        </form>
+      </section>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-[280px_1fr] gap-8">
+        {/* Sidebar Filters */}
+        <aside className="hidden md:block sticky top-24 h-fit bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200/70 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4 text-[color:var(--foreground)]">
+            Filters
+          </h3>
+
+          <div className="space-y-6">
+            {/* City Filter */}
+            <div>
+              <label className="text-sm font-medium text-slate-700">
+                City
+              </label>
+              <Select onValueChange={setSelectedCity}>
+                <SelectTrigger className="w-full mt-2 bg-white/60 rounded-lg">
+                  <SelectValue placeholder="Select city" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Lahore">Lahore</SelectItem>
+                  <SelectItem value="Karachi">Karachi</SelectItem>
+                  <SelectItem value="Islamabad">Islamabad</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Property Type */}
+            <div>
+              <label className="text-sm font-medium text-slate-700">
+                Property Type
+              </label>
+              <Select onValueChange={setSelectedType}>
+                <SelectTrigger className="w-full mt-2 bg-white/60 rounded-lg">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Villa">Villa</SelectItem>
+                  <SelectItem value="Apartment">Apartment</SelectItem>
+                  <SelectItem value="House">House</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Price Range */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">
+                Price Range
+              </label>
+              <Slider
+                min={0}
+                max={50000000}
+                step={5000000}
+                value={priceRange}
+                onValueChange={setPriceRange}
+              />
+              <div className="flex justify-between text-xs text-slate-500 mt-1">
+                <span>{formatPrice(priceRange[0])}</span>
+                <span>{formatPrice(priceRange[1])}</span>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => {
+                setSelectedCity(null)
+                setSelectedType(null)
+                setPriceRange([0, 50000000])
+                setSearchQuery("")
+              }}
+              className="w-full mt-4 rounded-xl bg-[color:var(--color-primary)] text-white hover:bg-[color:var(--color-accent-gold)] transition"
+            >
+              Reset Filters
+            </Button>
+          </div>
+        </aside>
+
+        {/* Mobile Filter Sheet */}
+        <div className="md:hidden flex justify-end mb-4">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 border-slate-300"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                Filters
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-6">
+              <h3 className="text-lg font-semibold mb-4 text-[color:var(--foreground)]">
+                Filters
+              </h3>
+              {/* ...same filter content as sidebar (reuse here if needed)... */}
+            </SheetContent>
+          </Sheet>
         </div>
+
+        {/* Property Cards */}
+        <motion.div
+          layout
+          className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8"
+        >
+          {filteredProperties.map((property, idx) => (
+            <motion.div
+              key={property._id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              viewport={{ once: true }}
+            >
+              <Card className="group rounded-2xl bg-white/60 backdrop-blur-md border border-slate-200/70 hover:shadow-xl hover:scale-[1.02] transition-all">
+                <div className="h-48 relative bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent-gold)] flex items-center justify-center">
+                  <HomeIcon className="h-16 w-16 text-white/70" />
+                </div>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-slate-900 group-hover:text-[color:var(--color-primary)] transition-colors">
+                    {property.title}
+                  </CardTitle>
+                  <CardDescription className="flex items-center gap-1 text-slate-600 text-sm">
+                    <MapPinIcon className="h-4 w-4" /> {property.city}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-lg font-semibold text-[color:var(--color-accent-gold)]">
+                      {formatPrice(property.price)}
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className="bg-[rgba(224,164,88,0.15)] text-[color:var(--color-accent-gold)] rounded-full"
+                    >
+                      {property.property_type}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-3 text-sm text-slate-600 border-t border-slate-200 pt-3">
+                    <span>{property.bedrooms} beds</span>
+                    <span>{property.bathrooms} baths</span>
+                    <span>{property.area_sqft} sqft</span>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <Link
+                      href={`/properties/${property._id}`}
+                      className="text-sm font-semibold text-[color:var(--color-primary)] hover:text-[color:var(--color-accent-gold)] transition-all"
+                    >
+                      View →
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
     </div>
   )
 }
-

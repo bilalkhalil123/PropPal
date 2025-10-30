@@ -32,7 +32,7 @@ export default function LandingClient() {
       {/* Hero Section */}
       <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* Full-width parallax background image */}
-        <div className="absolute inset-0 -z-10 bg-fixed bg-center bg-cover" style={{ backgroundImage: "url('/hero-house.svg')" }} />
+        <div className="absolute inset-0 -z-10 bg-fixed bg-center bg-cover" style={{ backgroundImage: "url('/hero-house.jpg')" }} />
         {/* Light luxury gradient overlay (reduced opacity for readability) */}
         <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(249,249,249,0.6),rgba(237,236,232,0.6))]" />
         <div aria-hidden className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
