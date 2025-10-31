@@ -64,6 +64,8 @@ For general conversation (like "hello"), respond naturally without using tools.
         Process a builder/service search query and format the output correctly.
         This overrides the parent ListingAgent's method to return a generic 'results' key.
         """
+
+        print("query given: ", query.strip())
         if not query or not query.strip():
             return {
                 "success": False,
