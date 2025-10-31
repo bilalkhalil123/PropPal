@@ -1,36 +1,30 @@
-"use client"
+'use client'
 
-import React, { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useCurrentUser } from "@/hooks/useCurrentUser"
-import Link from "next/link"
-import { motion } from "framer-motion"
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
 import {
   MagnifyingGlassIcon,
   MapPinIcon,
   HomeIcon,
   FunnelIcon,
   SparklesIcon,
-} from "@heroicons/react/24/outline"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Slider } from "@/components/ui/slider"
+} from '@heroicons/react/24/outline'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select"
-import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet"
+} from '@/components/ui/select'
+import { Sheet, SheetTrigger, SheetContent } from '@/components/ui/sheet'
 
 interface Property {
   _id: string
@@ -47,14 +41,14 @@ interface Property {
 export default function BuyerPage() {
   const { user, loading, isAuthenticated } = useCurrentUser()
   const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
   const [priceRange, setPriceRange] = useState([0, 50000000])
   const [selectedCity, setSelectedCity] = useState<string | null>(null)
   const [selectedType, setSelectedType] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push("/sign-in")
+      router.push('/sign-in')
     }
   }, [loading, isAuthenticated, router])
 
@@ -67,68 +61,63 @@ export default function BuyerPage() {
 
   const sampleProperties: Property[] = [
     {
-      _id: "1",
-      title: "Modern Villa in DHA Phase 5",
+      _id: '1',
+      title: 'Modern Villa in DHA Phase 5',
       price: 45000000,
-      city: "Lahore",
+      city: 'Lahore',
       bedrooms: 4,
       bathrooms: 3,
       area_sqft: 2500,
-      property_type: "Villa",
-      images: ["/hero-house.svg"],
+      property_type: 'Villa',
+      images: ['/hero-house.svg'],
     },
     {
-      _id: "2",
-      title: "Luxury Apartment in Clifton",
+      _id: '2',
+      title: 'Luxury Apartment in Clifton',
       price: 25000000,
-      city: "Karachi",
+      city: 'Karachi',
       bedrooms: 3,
       bathrooms: 2,
       area_sqft: 1800,
-      property_type: "Apartment",
-      images: ["/hero-house.svg"],
+      property_type: 'Apartment',
+      images: ['/hero-house.svg'],
     },
     {
-      _id: "3",
-      title: "Spacious House in F-8",
+      _id: '3',
+      title: 'Spacious House in F-8',
       price: 35000000,
-      city: "Islamabad",
+      city: 'Islamabad',
       bedrooms: 5,
       bathrooms: 4,
       area_sqft: 3000,
-      property_type: "House",
-      images: ["/hero-house.svg"],
+      property_type: 'House',
+      images: ['/hero-house.svg'],
     },
     {
-      _id: "4",
-      title: "Cozy Home in Gulberg",
+      _id: '4',
+      title: 'Cozy Home in Gulberg',
       price: 18000000,
-      city: "Lahore",
+      city: 'Lahore',
       bedrooms: 2,
       bathrooms: 2,
       area_sqft: 1200,
-      property_type: "House",
-      images: ["/hero-house.svg"],
+      property_type: 'House',
+      images: ['/hero-house.svg'],
     },
   ]
 
   const filteredProperties = sampleProperties.filter((property) => {
     const matchesCity = selectedCity ? property.city === selectedCity : true
-    const matchesType = selectedType
-      ? property.property_type === selectedType
-      : true
-    const matchesPrice =
-      property.price >= priceRange[0] && property.price <= priceRange[1]
-    const matchesSearch = property.title
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
+    const matchesType = selectedType ? property.property_type === selectedType : true
+    const matchesPrice = property.price >= priceRange[0] && property.price <= priceRange[1]
+    const matchesSearch = property.title.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCity && matchesType && matchesPrice && matchesSearch
   })
 
   const formatPrice = (price: number) =>
-    new Intl.NumberFormat("en-PK", {
-      style: "currency",
-      currency: "PKR",
+    new Intl.NumberFormat('en-PK', {
+      style: 'currency',
+      currency: 'PKR',
       minimumFractionDigits: 0,
     }).format(price)
 
@@ -145,8 +134,7 @@ export default function BuyerPage() {
     <div
       className="min-h-screen"
       style={{
-        background:
-          "linear-gradient(to bottom right, var(--background), #f8f6f3)",
+        background: 'linear-gradient(to bottom right, var(--background), #f8f6f3)',
       }}
     >
       {/* Hero Section with AI Search */}
@@ -185,16 +173,12 @@ export default function BuyerPage() {
       <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-[280px_1fr] gap-8">
         {/* Sidebar Filters */}
         <aside className="hidden md:block sticky top-24 h-fit bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200/70 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 text-[color:var(--foreground)]">
-            Filters
-          </h3>
+          <h3 className="text-lg font-semibold mb-4 text-[color:var(--foreground)]">Filters</h3>
 
           <div className="space-y-6">
             {/* City Filter */}
             <div>
-              <label className="text-sm font-medium text-slate-700">
-                City
-              </label>
+              <label className="text-sm font-medium text-slate-700">City</label>
               <Select onValueChange={setSelectedCity}>
                 <SelectTrigger className="w-full mt-2 bg-white/60 rounded-lg">
                   <SelectValue placeholder="Select city" />
@@ -209,9 +193,7 @@ export default function BuyerPage() {
 
             {/* Property Type */}
             <div>
-              <label className="text-sm font-medium text-slate-700">
-                Property Type
-              </label>
+              <label className="text-sm font-medium text-slate-700">Property Type</label>
               <Select onValueChange={setSelectedType}>
                 <SelectTrigger className="w-full mt-2 bg-white/60 rounded-lg">
                   <SelectValue placeholder="Select type" />
@@ -226,9 +208,7 @@ export default function BuyerPage() {
 
             {/* Price Range */}
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-2 block">
-                Price Range
-              </label>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">Price Range</label>
               <Slider
                 min={0}
                 max={50000000}
@@ -247,7 +227,7 @@ export default function BuyerPage() {
                 setSelectedCity(null)
                 setSelectedType(null)
                 setPriceRange([0, 50000000])
-                setSearchQuery("")
+                setSearchQuery('')
               }}
               className="w-full mt-4 rounded-xl bg-[color:var(--color-primary)] text-white hover:bg-[color:var(--color-accent-gold)] transition"
             >
@@ -260,28 +240,20 @@ export default function BuyerPage() {
         <div className="md:hidden flex justify-end mb-4">
           <Sheet>
             <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                className="flex items-center gap-2 border-slate-300"
-              >
+              <Button variant="outline" className="flex items-center gap-2 border-slate-300">
                 <FunnelIcon className="h-5 w-5" />
                 Filters
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-6">
-              <h3 className="text-lg font-semibold mb-4 text-[color:var(--foreground)]">
-                Filters
-              </h3>
+              <h3 className="text-lg font-semibold mb-4 text-[color:var(--foreground)]">Filters</h3>
               {/* ...same filter content as sidebar (reuse here if needed)... */}
             </SheetContent>
           </Sheet>
         </div>
 
         {/* Property Cards */}
-        <motion.div
-          layout
-          className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8"
-        >
+        <motion.div layout className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredProperties.map((property, idx) => (
             <motion.div
               key={property._id}

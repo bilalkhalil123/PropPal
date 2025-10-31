@@ -194,6 +194,10 @@ async def ws_service_create(websocket: WebSocket, clerk_id: str):
     Server sends: { type: 'agent'|'completed'|'error', ... }
     """
     await websocket.accept()
+    if not clerk_id:
+        await websocket.send_json({"type": "error", "message": "Missing clerk_id. Cannot start service creation."})
+        await websocket.close()
+        return
     agent = BuilderServiceCreationAgent()
 
     async def send(payload: Dict[str, Any]):
@@ -220,7 +224,17 @@ async def ws_service_create(websocket: WebSocket, clerk_id: str):
 
     try:
         result = await agent.process_query_interactive(first, clerk_id=clerk_id, send=send, recv_text=recv_text)
-        # Final message already sent in the loop; ensure socket closed gracefully
+        # Ensure a final message is sent even if the agent exited early
+        try:
+            if isinstance(result, dict) and result.get("response"):
+                await send({
+                    "type": "final",
+                    "text": result.get("response"),
+                    "success": result.get("success", False),
+                    "status": result.get("status", "unknown"),
+                })
+        except Exception:
+            pass
         await websocket.close()
         return
     except Exception as e:
@@ -232,6 +246,10 @@ async def ws_service_create(websocket: WebSocket, clerk_id: str):
 async def ws_profile_create(websocket: WebSocket, clerk_id: str):
     """Interactive websocket endpoint for builder profile creation."""
     await websocket.accept()
+    if not clerk_id:
+        await websocket.send_json({"type": "error", "message": "Missing clerk_id. Cannot start profile creation."})
+        await websocket.close()
+        return
     agent = BuilderProfileCreationAgent()
 
     async def send(payload: Dict[str, Any]):
@@ -257,6 +275,17 @@ async def ws_profile_create(websocket: WebSocket, clerk_id: str):
 
     try:
         result = await agent.process_query_interactive(first, clerk_id=clerk_id, send=send, recv_text=recv_text)
+        # Ensure a final message is sent even if the agent exited early
+        try:
+            if isinstance(result, dict) and result.get("response"):
+                await send({
+                    "type": "final",
+                    "text": result.get("response"),
+                    "success": result.get("success", False),
+                    "status": result.get("status", "unknown"),
+                })
+        except Exception:
+            pass
         await websocket.close()
         return
     except Exception as e:

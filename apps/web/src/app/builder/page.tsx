@@ -1,19 +1,19 @@
-"use client"
+'use client'
 
-import type React from "react"
+import type React from 'react'
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 import {
   MagnifyingGlassIcon,
   WrenchScrewdriverIcon,
   PlusIcon,
   ChatBubbleLeftRightIcon,
   StarIcon,
-} from "@heroicons/react/24/outline"
-import { api } from "@/lib/api-client"
-import { Button } from "@/components/ui/button"
+} from '@heroicons/react/24/outline'
+import { api } from '@/lib/api-client'
+import { Button } from '@/components/ui/button'
 
 interface BuilderProfile {
   _id: string
@@ -44,7 +44,7 @@ interface BuilderService {
 export default function BuilderPage() {
   const { user, loading, isAuthenticated, clerkId } = useCurrentUser()
   const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
   const [builderProfile, setBuilderProfile] = useState<BuilderProfile | null | undefined>(undefined)
   const [builderServices, setBuilderServices] = useState<BuilderService[]>([])
   const [dataLoading, setDataLoading] = useState(false)
@@ -67,7 +67,7 @@ export default function BuilderPage() {
           setBuilderServices(services || [])
         }
       } catch (err: any) {
-        if (!cancelled) setDataError(err?.message || "Failed to load builder data")
+        if (!cancelled) setDataError(err?.message || 'Failed to load builder data')
       } finally {
         if (!cancelled) setDataLoading(false)
       }
@@ -80,7 +80,7 @@ export default function BuilderPage() {
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push("/sign-in")
+      router.push('/sign-in')
     }
   }, [loading, isAuthenticated, router])
 
@@ -92,11 +92,11 @@ export default function BuilderPage() {
   }
 
   const handleCreateProfile = () => {
-    router.push("/chat?q=Create my builder profile")
+    router.push('/chat?q=Create my builder profile')
   }
 
   const handleManageServices = () => {
-    router.push("/chat?q=Manage my services")
+    router.push('/chat?q=Manage my services')
   }
 
   // Show spinner while loading and have not received API result; but not after fetching null
@@ -105,18 +105,26 @@ export default function BuilderPage() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="animate-spin rounded-full h-14 w-14 border-4 border-slate-300 border-t-[color:var(--color-accent-gold)]"></div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "radial-gradient(1200px 600px at 10% -10%, rgba(224,164,88,0.06), transparent 60%), radial-gradient(800px 400px at 90% 10%, rgba(13,27,42,0.05), transparent 60%), var(--background)" }}>
+    <div
+      className="min-h-screen"
+      style={{
+        background:
+          'radial-gradient(1200px 600px at 10% -10%, rgba(224,164,88,0.06), transparent 60%), radial-gradient(800px 400px at 90% 10%, rgba(13,27,42,0.05), transparent 60%), var(--background)',
+      }}
+    >
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="space-y-8">
           {/* Search Section */}
           <div className="bg-white/70 backdrop-blur rounded-2xl shadow-card border border-slate-200 p-8">
             <div className="mb-6">
               <h1 className="text-4xl font-bold text-slate-900 mb-2">Builder Dashboard</h1>
-              <p className="text-slate-600">Manage your profile, services, and connect with clients</p>
+              <p className="text-slate-600">
+                Manage your profile, services, and connect with clients
+              </p>
             </div>
             <form onSubmit={handleSearch} className="flex gap-3">
               <div className="flex-1 relative">
@@ -156,10 +164,16 @@ export default function BuilderPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h2 className="text-3xl font-bold text-slate-900">{builderProfile.company_name}</h2>
+                  <h2 className="text-3xl font-bold text-slate-900">
+                    {builderProfile.company_name}
+                  </h2>
                   <p className="text-slate-600 mt-1">Your professional profile</p>
                 </div>
-                <Button onClick={() => router.push("/chat?q=Update my builder profile")} variant="ghost" className="px-6 py-2.5 text-sm">
+                <Button
+                  onClick={() => router.push('/chat?q=Update my builder profile')}
+                  variant="ghost"
+                  className="px-6 py-2.5 text-sm"
+                >
                   Edit Profile
                 </Button>
               </div>
@@ -169,22 +183,30 @@ export default function BuilderPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <span className="text-sm text-slate-600 font-medium">Experience</span>
-                    <span className="text-lg font-bold text-slate-900">{builderProfile.experience_years} years</span>
+                    <span className="text-lg font-bold text-slate-900">
+                      {builderProfile.experience_years} years
+                    </span>
                   </div>
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <span className="text-sm text-slate-600 font-medium">Founded</span>
-                    <span className="text-lg font-bold text-slate-900">{builderProfile.founded_year}</span>
+                    <span className="text-lg font-bold text-slate-900">
+                      {builderProfile.founded_year}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <span className="text-sm text-slate-600 font-medium">Location</span>
-                    <span className="text-lg font-bold text-slate-900">{builderProfile.location.city}</span>
+                    <span className="text-lg font-bold text-slate-900">
+                      {builderProfile.location.city}
+                    </span>
                   </div>
                   {builderProfile.rating && (
                     <div className="flex items-center justify-between p-4 bg-amber-50 rounded-lg border border-amber-200">
                       <span className="text-sm text-slate-600 font-medium">Rating</span>
                       <div className="flex items-center gap-2">
                         <StarIcon className="h-5 w-5 text-amber-500 fill-amber-500" />
-                        <span className="text-lg font-bold text-slate-900">{builderProfile.rating}</span>
+                        <span className="text-lg font-bold text-slate-900">
+                          {builderProfile.rating}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -219,7 +241,8 @@ export default function BuilderPage() {
               </div>
               <h2 className="text-2xl font-bold text-slate-900 mb-3">No Profile Found</h2>
               <p className="text-slate-600 mb-8 max-w-md mx-auto">
-                Create your builder profile to start managing your services and connecting with clients.
+                Create your builder profile to start managing your services and connecting with
+                clients.
               </p>
               <Button onClick={handleCreateProfile} className="inline-flex items-center gap-2">
                 <PlusIcon className="h-5 w-5" />
@@ -236,7 +259,11 @@ export default function BuilderPage() {
                   <h2 className="text-2xl font-bold text-slate-900">Your Services</h2>
                   <p className="text-slate-600 mt-1">Manage and showcase your offerings</p>
                 </div>
-                <Button onClick={handleManageServices} variant="ghost" className="px-6 py-2.5 text-sm">
+                <Button
+                  onClick={handleManageServices}
+                  variant="ghost"
+                  className="px-6 py-2.5 text-sm"
+                >
                   Manage Services
                 </Button>
               </div>
@@ -244,20 +271,27 @@ export default function BuilderPage() {
               {builderServices.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {builderServices.map((service) => (
-                    <div key={service._id} className="border border-slate-200 rounded-xl p-6 hover:shadow-elevated transition-all duration-300 bg-white/70 backdrop-blur">
+                    <div
+                      key={service._id}
+                      className="border border-slate-200 rounded-xl p-6 hover:shadow-elevated transition-all duration-300 bg-white/70 backdrop-blur"
+                    >
                       <div className="flex items-start justify-between mb-3">
-                        <h3 className="font-semibold text-lg text-slate-900 flex-1">{service.title}</h3>
+                        <h3 className="font-semibold text-lg text-slate-900 flex-1">
+                          {service.title}
+                        </h3>
                       </div>
-                      <p className="text-sm text-slate-600 mb-4 line-clamp-2">{service.description}</p>
+                      <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                        {service.description}
+                      </p>
                       <div className="space-y-2 text-xs text-slate-500 mb-4 pb-4 border-b border-slate-200">
                         <div>
                           <span className="font-medium">Category:</span> {service.category}
                         </div>
                         {(service.base_price || service.price_unit) && (
                           <div>
-                            <span className="font-medium">Price:</span>{" "}
-                            {service.base_price ? `Rs ${service.base_price.toLocaleString()}` : ""}
-                            {service.price_unit ? ` ${service.price_unit}` : ""}
+                            <span className="font-medium">Price:</span>{' '}
+                            {service.base_price ? `Rs ${service.base_price.toLocaleString()}` : ''}
+                            {service.price_unit ? ` ${service.price_unit}` : ''}
                           </div>
                         )}
                       </div>
@@ -266,12 +300,17 @@ export default function BuilderPage() {
                           <span className="font-medium text-slate-700">Features:</span>
                           <div className="flex flex-wrap gap-1 mt-2">
                             {service.service_features.slice(0, 3).map((feature, idx) => (
-                              <span key={idx} className="bg-amber-100 text-amber-700 px-2 py-1 rounded">
+                              <span
+                                key={idx}
+                                className="bg-amber-100 text-amber-700 px-2 py-1 rounded"
+                              >
                                 {feature}
                               </span>
                             ))}
                             {service.service_features.length > 3 && (
-                              <span className="text-slate-500">+{service.service_features.length - 3} more</span>
+                              <span className="text-slate-500">
+                                +{service.service_features.length - 3} more
+                              </span>
                             )}
                           </div>
                         </div>
@@ -297,4 +336,3 @@ export default function BuilderPage() {
     </div>
   )
 }
-

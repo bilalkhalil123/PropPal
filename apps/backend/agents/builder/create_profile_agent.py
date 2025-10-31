@@ -410,8 +410,12 @@ ANTI-LOOP:
 
         profile_check = check_builder_profile_exists(clerk_id=clerk_id)
         if not profile_check.get("user_exists", False):
+            # Inform user over the websocket before closing the flow
+            await send({"type": "agent", "message": "User account not found. Please ensure you are registered in the system."})
             return {"success": False, "response": "User account not found. Please ensure you are registered in the system.", "error": "User not found"}
         if profile_check.get("exists", True):
+            # Inform user over the websocket before closing the flow
+            await send({"type": "agent", "message": "A builder profile already exists for this user. You can only have one."})
             return {"success": False, "response": "A builder profile already exists for this user. You can only have one.", "error": "Profile already exists"}
 
         conversation_history = f"User: {query}\n"
