@@ -49,8 +49,8 @@ class BuilderServiceResponse(BuilderServiceBase):
 
     id: PyObjectId = Field(alias="_id")
     builder_id: PyObjectId
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(
         populate_by_name=True,

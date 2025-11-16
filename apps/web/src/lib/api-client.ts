@@ -122,24 +122,36 @@ export const api = {
    * Builder endpoints
    */
   builders: {
-    getProfile: (clerkId: string) => apiClient.get(`/api/builder/profile/${clerkId}`),
-    getMyProfile: () => apiClient.get('/api/builder/profile/me/'),
-    getServices: (clerkId: string) => apiClient.get(`/api/builder/services/${clerkId}`),
-    getMyServices: () => apiClient.get('/api/builder/services/me/'),
-    searchProfiles: (query: string, filters?: any) => 
-      apiClient.post('/api/builder/profiles/search', { query, ...filters }),
-    searchServices: (query: string, filters?: any) => 
-      apiClient.post('/api/builder/services/search', { query, ...filters }),
+    getProfile: (clerkId: string, options?: RequestInit) => 
+      apiClient.get(`/api/builder/profile/${clerkId}`, options),
+    getMyProfile: (options?: RequestInit) => 
+      apiClient.get('/api/builder/profile/me/', options),
+    getServices: (clerkId: string, options?: RequestInit) => 
+      apiClient.get(`/api/builder/services/${clerkId}`, options),
+    getMyServices: (options?: RequestInit) => 
+      apiClient.get('/api/builder/services/me/', options),
+    getById: (id: string, options?: RequestInit) => 
+      apiClient.get(`/api/builder/profiles/id/${id}`, options),
+    searchProfiles: (query: string, filters?: any, options?: RequestInit) => 
+      apiClient.post('/api/builder/profiles/search', { query, ...filters }, options),
+    searchServices: (query: string, filters?: any, options?: RequestInit) => 
+      apiClient.post('/api/builder/services/search', { query, ...filters }, options),
   },
 
   /**
    * Chat endpoints
    */
   chat: {
-    sendMessage: (message: string, userId?: string, sessionId?: string) =>
-      apiClient.post('/api/chat/message', { message, user_id: userId, session_id: sessionId }),
+    sendMessage: (message: string, userId?: string, sessionId?: string, clerkId?: string) =>
+      apiClient.post('/api/chat/message', { message, user_id: userId, session_id: sessionId, clerk_id: clerkId }),
     health: () => apiClient.get('/api/chat/health'),
     capabilities: () => apiClient.get('/api/chat/capabilities'),
+    history: (userId: string, sessionId?: string, limit: number = 50) =>
+      apiClient.get(`/api/chat/history?user_id=${encodeURIComponent(userId)}${sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : ''}&limit=${limit}`),
+    messages: (userId: string, sessionId?: string, beforeMs?: number, limit: number = 50) =>
+      apiClient.get(`/api/chat/history/messages?user_id=${encodeURIComponent(userId)}${sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : ''}${beforeMs ? `&before_ms=${beforeMs}` : ''}&limit=${limit}`),
+    sessions: (userId: string) =>
+      apiClient.get(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`),
   },
 
   /**
@@ -148,6 +160,13 @@ export const api = {
   search: {
     properties: (query: string, filters?: any) =>
       apiClient.post('/api/search/properties', { query, ...filters }),
+  },
+
+  /**
+   * Properties endpoints
+   */
+  properties: {
+    getById: (id: string) => apiClient.get(`/api/properties/${id}`),
   },
 }
 

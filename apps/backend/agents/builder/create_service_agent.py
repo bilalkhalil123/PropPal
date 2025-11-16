@@ -13,6 +13,7 @@ from agents.listing.agent import AgentState, ListingAgent # Re-using the graph s
 from .tools import create_builder_service_tool, check_builder_profile_exists
 from .tools.builder_creation import create_builder_service_sync
 import re
+from typing import Awaitable, Callable, Dict, Any
 
 # Load .env file
 load_dotenv()
@@ -186,8 +187,10 @@ WORKFLOW:
 
 **3. CHECK WHAT'S MISSING:**
    - After extraction, check which REQUIRED fields are still null
+   - CRITICAL: All 5 required fields MUST be collected: title, description, category, base_price, price_unit
    - If multiple fields are null, ask for ALL missing required fields in ONE question
-   - Example: "I need a few more details: What's the service title, description, and price unit?"
+   - ALWAYS explicitly ask for category if it's missing: "What category is this service? (e.g., 'construction', 'plumbing', 'electrical')"
+   - Example: "I need a few more details: What's the service title, description, category, and price unit?"
 
 **4. HANDLE UPDATES:**
    - User says "actually, change the price to 6000" → Update base_price immediately
@@ -484,3 +487,203 @@ ANTI-LOOP RULES:
                     "response": f"An unexpected error occurred: {str(e)}",
                     "error": str(e)
                 }
+
+    async def process_query_interactive(
+        self,
+        query: str,
+        clerk_id: str,
+        send: Callable[[Dict[str, Any]], Awaitable[None]],
+        recv_text: Callable[[], Awaitable[str]],
+    ) -> dict:
+        """Interactive, websocket-friendly flow. Uses send/recv callables for I/O."""
+        if not query or not query.strip():
+            return {
+                "success": False,
+                "response": "Please provide a valid query.",
+                "error": "Empty query provided",
+            }
+
+        if not clerk_id:
+            return {
+                "success": False,
+                "response": "User could not be identified. Cannot create a service.",
+                "error": "Missing clerk_id",
+            }
+
+        profile_check = check_builder_profile_exists(clerk_id=clerk_id)
+        if not profile_check.get("user_exists", False):
+            # Inform user over the websocket before closing the flow
+            await send({"type": "agent", "message": "User account not found. Please ensure you are registered in the system."})
+            return {
+                "success": False,
+                "response": "User account not found. Please ensure you are registered in the system.",
+                "error": "User not found",
+            }
+        if not profile_check.get("exists", False):
+            error_msg = profile_check.get("error") or "Builder profile not found for this user. Please create a profile first."
+            # Inform user over the websocket before closing the flow
+            await send({"type": "agent", "message": error_msg})
+            return {"success": False, "response": error_msg, "error": error_msg}
+
+        conversation_history = f"User: {query}\n"
+        service_data: Dict[str, Any] = {
+            "title": None,
+            "description": None,
+            "category": None,
+            "base_price": None,
+            "price_unit": None,
+            "estimated_duration": None,
+            "service_features": None,
+            "_opt_asked_duration": False,
+            "_opt_asked_features": False,
+        }
+
+        while True:
+            required_complete = all([
+                bool(service_data.get("title")),
+                bool(service_data.get("description")),
+                bool(service_data.get("category")),
+                service_data.get("base_price") is not None,
+                bool(service_data.get("price_unit")),
+            ])
+
+            if required_complete:
+                if not service_data.get("_opt_asked_duration", False):
+                    prompt = "Would you like to add an estimated duration? (e.g., '2 hours', '1 day'). If not, reply 'skip'."
+                    await send({"type": "agent", "text": prompt, "status": "ask_duration"})
+                    user_input = (await recv_text()).strip()
+                    if user_input.lower() in ["skip", "no", "none", ""]:
+                        service_data["estimated_duration"] = None
+                    else:
+                        service_data["estimated_duration"] = user_input
+                    service_data["_opt_asked_duration"] = True
+                    conversation_history += f"Agent: {prompt}\nUser: {user_input}\n"
+                    continue
+
+                if not service_data.get("_opt_asked_features", False):
+                    prompt = "Would you like to add any special features? (e.g., 'warranty', 'free consultation'). If not, reply 'skip'."
+                    await send({"type": "agent", "text": prompt, "status": "ask_features"})
+                    user_input = (await recv_text()).strip()
+                    if user_input.lower() in ["skip", "no", "none", ""]:
+                        service_data["service_features"] = None
+                    else:
+                        service_data["service_features"] = _parse_features_list(user_input)
+                    service_data["_opt_asked_features"] = True
+                    conversation_history += f"Agent: {prompt}\nUser: {user_input}\n"
+                    continue
+
+                tool_result = create_builder_service_sync(
+                    clerk_id=clerk_id,
+                    title=service_data["title"],
+                    description=service_data["description"],
+                    category=service_data["category"],
+                    base_price=service_data["base_price"],
+                    price_unit=service_data["price_unit"],
+                    service_features=service_data.get("service_features") or None,
+                    estimated_duration=service_data.get("estimated_duration") or None,
+                )
+                msg = tool_result.get("message", "Service created successfully!")
+                await send({"type": "completed", "success": tool_result.get("success", True), "message": msg})
+                return {
+                    "success": tool_result.get("success", True),
+                    "response": msg,
+                    "status": "completed" if tool_result.get("success", True) else "failed",
+                    "error": tool_result.get("error", None),
+                }
+
+            prompt_for_llm = f"""
+            SYSTEM: {self.system_prompt}
+
+            Conversation History:
+            {conversation_history}
+
+            Current Data State (JSON):
+            {json.dumps(service_data)}
+
+            User Context: The user's clerk_id is '{clerk_id}'. You must use this ID when calling the create_builder_service_tool.
+            
+            NOW RESPOND - Check if all required fields are complete, if YES call the tool, if NO return JSON.
+            """
+
+            initial_state = AgentState(
+                messages=[{"role": "user", "content": prompt_for_llm.strip()}],
+                query=conversation_history.strip(),
+                data={"service_data": service_data},
+                error=None,
+                success=False,
+                response="",
+            )
+
+            try:
+                final_state = self.app.invoke(initial_state, {"recursion_limit": 10})
+                final_message = final_state["messages"][-1]
+                final_response_content = final_message.content
+
+                response_for_user = "I'm sorry, I seem to have gotten stuck. Could you please repeat that?"
+                conversation_status = "continue"
+
+                if final_message.type == "tool":
+                    tool_result = None
+                    if isinstance(final_response_content, dict):
+                        tool_result = final_response_content
+                    elif isinstance(final_response_content, str):
+                        try:
+                            tool_result = json.loads(final_response_content)
+                        except json.JSONDecodeError:
+                            response_for_user = final_response_content
+                            await send({"type": "agent", "text": response_for_user, "status": "completed"})
+                            return {"success": True, "response": response_for_user, "status": "completed", "error": None}
+                    else:
+                        tool_result = {"success": False, "error": "Unknown tool response format"}
+
+                    msg = tool_result.get("message", "Service created successfully!")
+                    await send({"type": "completed", "success": tool_result.get("success", True), "message": msg})
+                    return {
+                        "success": tool_result.get("success", True),
+                        "response": msg,
+                        "status": "completed" if tool_result.get("success", True) else "failed",
+                        "error": tool_result.get("error", None),
+                    }
+                else:
+                    try:
+                        parsed_json = json.loads(final_response_content)
+                        response_for_user = parsed_json.get("response", response_for_user)
+                        service_data = parsed_json.get("updated_data", service_data)
+                        if "service_features" in service_data:
+                            service_data["service_features"] = _parse_features_list(service_data.get("service_features"))
+                        conversation_status = parsed_json.get("status", "continue")
+                    except json.JSONDecodeError:
+                        parsed_json = _parse_json_loose(final_response_content)
+                        if isinstance(parsed_json, dict):
+                            response_for_user = parsed_json.get("response", response_for_user)
+                            service_data = parsed_json.get("updated_data", service_data)
+                            if "service_features" in service_data:
+                                service_data["service_features"] = _parse_features_list(service_data.get("service_features"))
+                            conversation_status = parsed_json.get("status", "continue")
+                        else:
+                            response_for_user = "I didn't quite understand that. Could you please clarify?"
+                            conversation_status = "continue"
+
+                await send({"type": "agent", "text": response_for_user, "status": conversation_status})
+                user_input = (await recv_text()).strip()
+                if user_input.lower() in ["quit", "exit", "cancel"]:
+                    user_input = "I want to cancel this process."
+                # Heuristic updates
+                try:
+                    base_price, price_unit = _parse_price_and_unit(user_input)
+                    if base_price is not None:
+                        service_data["base_price"] = base_price
+                    if price_unit:
+                        service_data["price_unit"] = price_unit
+                    if service_data.get("service_features") in (None, []) and any(kw in user_input.lower() for kw in ["warranty", "feature", "cleanup", "consultation"]):
+                        feats = _parse_features_list(user_input)
+                        if feats:
+                            service_data["service_features"] = feats
+                except Exception:
+                    pass
+
+                conversation_history += f"Agent: {response_for_user}\nUser: {user_input}\n"
+
+            except Exception as e:
+                await send({"type": "error", "message": str(e)})
+                return {"success": False, "response": f"An unexpected error occurred: {str(e)}", "error": str(e)}

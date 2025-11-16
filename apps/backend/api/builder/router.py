@@ -42,12 +42,25 @@ async def get_builder_profile_by_clerk(
 
     # 2. Find the builder profile using the internal user_id
     user_id = user["_id"]
-    profile = await db["builder_profiles"].find_one({"user_id": user_id})
+    profile = await db["builder_profiles"].find_one(
+        {"user_id": user_id}, {"embeddings": 0}
+    )
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Builder profile not found for this user.",
         )
+    # Ensure created_at and updated_at are present
+    import datetime
+    if "created_at" not in profile or not profile["created_at"]:
+        # Use ObjectId timestamp if present, else utcnow()
+        oid = profile.get("_id")
+        if hasattr(oid, "generation_time"):
+            profile["created_at"] = oid.generation_time
+        else:
+            profile["created_at"] = datetime.datetime.utcnow()
+    if "updated_at" not in profile or not profile["updated_at"]:
+        profile["updated_at"] = profile["created_at"]
     return profile
 
 
@@ -63,7 +76,9 @@ async def get_my_builder_profile(
     """
     Retrieves the builder profile associated with the currently authenticated user.
     """
-    profile = await db["builder_profiles"].find_one({"user_id": current_user.id})
+    profile = await db["builder_profiles"].find_one(
+        {"user_id": current_user.id}, {"embeddings": 0}
+    )
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -103,7 +118,9 @@ async def get_builder_services_by_clerk(
 
     # 3. Find services using the builder_id from the profile
     builder_id = profile["_id"]
-    services_cursor = db["builder_services"].find({"builder_id": builder_id})
+    services_cursor = db["builder_services"].find(
+        {"builder_id": builder_id}, {"embeddings": 0}
+    )
     services = await services_cursor.to_list(length=None)
     return services
 
@@ -182,7 +199,9 @@ async def get_my_builder_services(
     builder_id = profile["_id"]
 
     # Then, find all services associated with that builder_id
-    services_cursor = db["builder_services"].find({"builder_id": builder_id})
+    services_cursor = db["builder_services"].find(
+        {"builder_id": builder_id}, {"embeddings": 0}
+    )
     services = await services_cursor.to_list(length=None)
 
     return services
@@ -248,6 +267,32 @@ async def search_builders(
         if "_id" in r:
             r["_id"] = str(r["_id"])
     return {"count": len(results), "results": results}
+
+
+@router.get(
+    "/profiles/id/{builder_id}",
+    summary="Get a builder profile by its ObjectId",
+)
+async def get_builder_profile_by_id(
+    builder_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """Fetch a builder profile document by its ObjectId (from `builder_profiles`)."""
+    try:
+        _id = ObjectId(builder_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid builder id")
+
+    profile = await db["builder_profiles"].find_one({"_id": _id}, {"embeddings": 0})
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Builder profile not found")
+
+    # Normalize ids
+    if profile.get("_id") is not None:
+        profile["_id"] = str(profile["_id"])
+    if profile.get("user_id") is not None:
+        profile["user_id"] = str(profile["user_id"]) if isinstance(profile["user_id"], ObjectId) else profile["user_id"]
+    return profile
 
 
 @router.post("/services/search", summary="Search for builder services")

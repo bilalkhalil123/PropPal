@@ -11,6 +11,7 @@ from langgraph.prebuilt import ToolNode
 from agents.listing.agent import AgentState, ListingAgent # Re-using the graph structure
 from .tools import create_builder_profile_tool, check_builder_profile_exists
 from .tools.builder_creation import create_builder_profile_sync
+from typing import Awaitable, Callable, Dict, Any
 import re
 
 # Load .env file
@@ -347,9 +348,12 @@ ANTI-LOOP:
                         "error": final_state.get("error")
                     }
 
-                user_input = input("> You: ")
-                if user_input.lower() in ["quit", "exit", "cancel"]:
-                    user_input = "I want to cancel this process."
+                # Deprecated terminal I/O path removed for production. Use interactive API instead.
+                return {
+                    "success": True,
+                    "response": "Interactive profile creation requires websocket connection.",
+                    "status": "handoff",
+                }
 
                 # Heuristic extraction from user's latest input to reduce repeat questions
                 try:
@@ -390,4 +394,170 @@ ANTI-LOOP:
 
             except Exception as e:
                 logger.error(f"BuilderProfileCreationAgent loop failed: {e}", exc_info=True)
+                return {"success": False, "response": f"An unexpected error occurred: {str(e)}", "error": str(e)}
+
+    async def process_query_interactive(
+        self,
+        query: str,
+        clerk_id: str,
+        send: Callable[[Dict[str, Any]], Awaitable[None]],
+        recv_text: Callable[[], Awaitable[str]],
+    ) -> dict:
+        if not query or not query.strip():
+            return {"success": False, "response": "Please provide a valid query.", "error": "Empty query"}
+        if not clerk_id:
+            return {"success": False, "response": "User could not be identified. Cannot create a profile.", "error": "Missing clerk_id"}
+
+        profile_check = check_builder_profile_exists(clerk_id=clerk_id)
+        if not profile_check.get("user_exists", False):
+            # Inform user over the websocket before closing the flow
+            await send({"type": "agent", "message": "User account not found. Please ensure you are registered in the system."})
+            return {"success": False, "response": "User account not found. Please ensure you are registered in the system.", "error": "User not found"}
+        if profile_check.get("exists", True):
+            # Inform user over the websocket before closing the flow
+            await send({"type": "agent", "message": "A builder profile already exists for this user. You can only have one."})
+            return {"success": False, "response": "A builder profile already exists for this user. You can only have one.", "error": "Profile already exists"}
+
+        conversation_history = f"User: {query}\n"
+        profile_data = {
+            "company_name": None,
+            "specialization": None,
+            "experience_years": None,
+            "about": None,
+            "city": None,
+            "_normalized": False,
+        }
+
+        while True:
+            if profile_data.get("specialization") is not None and not profile_data.get("_normalized"):
+                profile_data["specialization"] = _parse_list(profile_data.get("specialization")) or []
+                profile_data["_normalized"] = True
+
+            required_complete = all([
+                bool(profile_data.get("company_name")),
+                isinstance(profile_data.get("specialization"), list) and len(profile_data.get("specialization")) > 0,
+                profile_data.get("experience_years") is not None,
+                bool(profile_data.get("about")),
+                bool(profile_data.get("city")),
+            ])
+            if required_complete:
+                tool_result = create_builder_profile_sync(
+                    clerk_id=clerk_id,
+                    company_name=profile_data["company_name"],
+                    specialization=profile_data["specialization"],
+                    experience_years=profile_data["experience_years"],
+                    about=profile_data["about"],
+                    city=profile_data["city"],
+                )
+                response_for_user = tool_result.get("message", "Profile created successfully!")
+                await send({"type": "completed", "success": tool_result.get("success", True), "message": response_for_user})
+                return {
+                    "success": tool_result.get("success", True),
+                    "response": response_for_user,
+                    "status": "completed" if tool_result.get("success", True) else "failed",
+                    "error": tool_result.get("error", None),
+                }
+
+            prompt_for_llm = f"""
+            SYSTEM: {self.system_prompt}
+
+            Conversation History:
+            {conversation_history}
+
+            Current Data State (JSON):
+            {json.dumps(profile_data)}
+
+            Missing Fields Hint (ask in one question):
+            {', '.join([f for f,v in [("company_name", profile_data.get("company_name")), ("specialization", profile_data.get("specialization")), ("experience_years", profile_data.get("experience_years")), ("about", profile_data.get("about")), ("city", profile_data.get("city"))] if (v is None or (isinstance(v, list) and not v))])}
+
+            User Context: The user's clerk_id is '{clerk_id}'. You must use this ID when calling the create_builder_profile_tool.
+            
+            NOW RESPOND - Check if all fields are complete, if YES call the tool, if NO return JSON.
+            """
+
+            initial_state = AgentState(
+                messages=[{"role": "user", "content": prompt_for_llm.strip()}],
+                query=conversation_history.strip(),
+                data={"profile_data": profile_data},
+                error=None,
+                success=False,
+                response="",
+            )
+
+            try:
+                final_state = self.app.invoke(initial_state, {"recursion_limit": 10})
+                final_message = final_state["messages"][ -1]
+                final_response_content = final_message.content
+
+                response_for_user = "I'm sorry, I seem to have gotten stuck. Could you please repeat that?"
+                conversation_status = "continue"
+
+                if final_message.type == "tool":
+                    try:
+                        tool_result = json.loads(final_response_content)
+                    except json.JSONDecodeError:
+                        response_for_user = final_response_content
+                        await send({"type": "agent", "text": response_for_user, "status": "completed"})
+                        return {"success": True, "response": response_for_user, "status": "completed", "error": None}
+                    response_for_user = tool_result.get("message", "Profile created successfully!")
+                    await send({"type": "completed", "success": tool_result.get("success", True), "message": response_for_user})
+                    return {
+                        "success": tool_result.get("success", True),
+                        "response": response_for_user,
+                        "status": "completed" if tool_result.get("success", True) else "failed",
+                        "error": tool_result.get("error", None),
+                    }
+                else:
+                    try:
+                        parsed_json = json.loads(final_response_content)
+                        response_for_user = parsed_json.get("response", response_for_user)
+                        profile_data = parsed_json.get("updated_data", profile_data)
+                        if "specialization" in profile_data:
+                            profile_data["specialization"] = _parse_list(profile_data.get("specialization")) or []
+                        conversation_status = parsed_json.get("status", "continue")
+                    except json.JSONDecodeError:
+                        parsed_json = _parse_json_loose(final_response_content)
+                        if isinstance(parsed_json, dict):
+                            response_for_user = parsed_json.get("response", response_for_user)
+                            profile_data = parsed_json.get("updated_data", profile_data)
+                            if "specialization" in profile_data:
+                                profile_data["specialization"] = _parse_list(profile_data.get("specialization")) or []
+                            conversation_status = parsed_json.get("status", "continue")
+                        else:
+                            response_for_user = "I didn't quite understand that. Could you please clarify?"
+                            conversation_status = "continue"
+
+                await send({"type": "agent", "text": response_for_user, "status": conversation_status})
+                user_input = (await recv_text()).strip()
+                if user_input.lower() in ["quit", "exit", "cancel"]:
+                    user_input = "I want to cancel this process."
+                try:
+                    text = user_input.strip()
+                    text_lower = text.lower()
+                    import re as _re
+                    if profile_data.get("experience_years") is None:
+                        m = _re.search(r"(\d{1,2})\s*years?", text_lower)
+                        if m:
+                            profile_data["experience_years"] = int(m.group(1))
+                    if not (isinstance(profile_data.get("specialization"), list) and profile_data.get("specialization")):
+                        specs = _parse_list(text)
+                        if specs:
+                            profile_data["specialization"] = specs
+                            profile_data["_normalized"] = True
+                    if not profile_data.get("city"):
+                        mcity = _re.search(r"(?:located in|based in|in)\s+([a-zA-Z ]{2,})$", text_lower)
+                        if mcity:
+                            profile_data["city"] = mcity.group(1).strip().title()
+                    if not profile_data.get("company_name"):
+                        mco = _re.search(r"(?:we are|our company is)\s+([a-zA-Z][a-zA-Z0-9 &_-]{2,})", text_lower)
+                        if mco:
+                            profile_data["company_name"] = mco.group(1).strip().title()
+                    if not profile_data.get("about") and len(text) > 20 and ("we " in text_lower or "we're" in text_lower):
+                        profile_data["about"] = text
+                except Exception:
+                    pass
+                conversation_history += f"Agent: {response_for_user}\nUser: {user_input}\n"
+            except Exception as e:
+                logger.error(f"BuilderProfileCreationAgent interactive failed: {e}")
+                await send({"type": "error", "message": str(e)})
                 return {"success": False, "response": f"An unexpected error occurred: {str(e)}", "error": str(e)}

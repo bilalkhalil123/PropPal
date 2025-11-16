@@ -54,10 +54,29 @@ async def _search_async(query: str, collection_name: str, index_name: str, proje
 
         results = await db[collection_name].aggregate(pipeline).to_list(k)
 
-
+        # Normalize ids for JSON serialization
         for r in results:
             if "_id" in r:
                 r["_id"] = str(r["_id"])
+            # Some service docs include a foreign key builder_id as ObjectId
+            if "builder_id" in r and r["builder_id"] is not None:
+                try:
+                    r["builder_id"] = str(r["builder_id"])
+                except Exception:
+                    pass
+
+        # Optional debug output to terminal for service queries
+        if collection_name == "builder_services":
+            try:
+                import json
+                print("--- [Builder Search Tool] Services payload ---")
+                print(json.dumps({
+                    "query": query,
+                    "count": len(results),
+                    "results": results
+                }, ensure_ascii=False, indent=2)[:8000])
+            except Exception:
+                pass
 
         return {
             "success": True,
@@ -72,16 +91,15 @@ async def _search_async(query: str, collection_name: str, index_name: str, proje
             client.close()
 
 def _run_async_search(search_coro):
-    """Helper to run asyncio code from a sync context."""
+    """Helper to run asyncio code from a sync context (safe in running loops)."""
     try:
-        try:
-            asyncio.get_running_loop()
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(asyncio.run, search_coro)
-                return future.result()
-        except RuntimeError:
-            return asyncio.run(search_coro)
+        asyncio.get_running_loop()
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, search_coro)
+            return future.result()
+    except RuntimeError:
+        return asyncio.run(search_coro)
     except Exception as e:
         return {"success": False, "error": str(e), "results": [], "count": 0}
 

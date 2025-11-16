@@ -461,6 +461,7 @@ class BuilderAgent:
                 },
             }
         except Exception as e:
+<<<<<<< HEAD
             logging.getLogger(__name__).error(f"BuilderAgent failed: {e}")
             return {
                 "success": False,
@@ -468,3 +469,46 @@ class BuilderAgent:
                 "classification": "error",
                 "error": str(e),
             }
+=======
+            destination = "general" # Default to general on failure
+
+        # 2. Route to the appropriate sub-agent based on the classification
+        if destination == "search":
+            result = self.search_agent.process_query(query)
+            result["classification"] = "builder_search"
+            return result
+
+        if destination == "create_service":
+            return {
+                "success": True,
+                "response": "Starting service creation. Please connect via websocket to continue.",
+                "classification": "builder_create_service",
+                "start_interactive": {
+                    "type": "service",
+                    "ws_path": "/api/chat/ws/service/create",
+                    "clerk_id_required": True,
+                },
+            }
+
+        if destination == "create_profile":
+            return {
+                "success": True,
+                "response": "Starting builder profile creation. Please connect via websocket to continue.",
+                "classification": "builder_create_profile",
+                "start_interactive": {
+                    "type": "profile",
+                    "ws_path": "/api/chat/ws/profile/create",
+                    "clerk_id_required": True,
+                },
+            }
+
+        # Default to a general response if no specific route is matched
+        return {
+            "success": True,
+            "response": "I can help with finding builders and their services. How can I assist you with that today?",
+            "classification": "builder_general",
+            "properties": [],
+            "count": 0,
+            "error": None
+        }
+>>>>>>> local-model

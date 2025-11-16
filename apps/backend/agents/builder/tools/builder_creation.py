@@ -2,6 +2,7 @@
 Tools for creating builder-related entities like profiles and services.
 """
 import asyncio
+import concurrent.futures
 from typing import Any, Dict, Optional
 from langchain_core.tools import tool
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -68,9 +69,19 @@ async def _check_builder_profile_exists_async(clerk_id: str) -> Dict[str, Any]:
         if client:
             client.close()
 
+def _run_async_safely(coro):
+    """Run an async coroutine from sync code, even if a loop is already running."""
+    try:
+        asyncio.get_running_loop()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, coro)
+            return future.result()
+    except RuntimeError:
+        return asyncio.run(coro)
+
 def check_builder_profile_exists(clerk_id: str) -> Dict[str, Any]:
     """Synchronous wrapper to check if a builder profile exists for a given clerk_id."""
-    return asyncio.run(_check_builder_profile_exists_async(clerk_id=clerk_id))
+    return _run_async_safely(_check_builder_profile_exists_async(clerk_id=clerk_id))
 
 async def _create_service_async(
     clerk_id: str,
@@ -217,11 +228,7 @@ def create_builder_profile_sync(
     city: str,
 ) -> Dict[str, Any]:
     """Synchronous entry point to create a builder profile (non-tooled)."""
-    try:
-        loop = asyncio.get_running_loop()
-        return loop.run_until_complete(_create_profile_async(clerk_id, company_name, specialization, experience_years, about, city))
-    except RuntimeError:
-        return asyncio.run(_create_profile_async(clerk_id, company_name, specialization, experience_years, about, city))
+    return _run_async_safely(_create_profile_async(clerk_id, company_name, specialization, experience_years, about, city))
 
 @tool
 def create_builder_service_tool(
@@ -263,12 +270,6 @@ def create_builder_service_sync(
     estimated_duration: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Synchronous entry point to create a builder service (non-tooled)."""
-    try:
-        loop = asyncio.get_running_loop()
-        return loop.run_until_complete(_create_service_async(
-            clerk_id, title, description, category, base_price, price_unit, service_features, estimated_duration
-        ))
-    except RuntimeError:
-        return asyncio.run(_create_service_async(
-            clerk_id, title, description, category, base_price, price_unit, service_features, estimated_duration
-        ))
+    return _run_async_safely(_create_service_async(
+        clerk_id, title, description, category, base_price, price_unit, service_features, estimated_duration
+    ))
