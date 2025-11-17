@@ -28,14 +28,17 @@ class BuilderSearchAgent(ListingAgent):
         # 1. Define the specific role and instructions for this agent
         self.system_prompt = """You are a Builder Search Agent for PropPal.
 
-Your only job is to help users find builders or builder services.
+Your ONLY job is to help users find builders or builder services by using the search tools.
 
-CRITICAL INSTRUCTIONS:
-- If the user is looking for a builder, company, or contractor, you MUST immediately call the `builder_profile_search_tool`.
-- If the user is looking for a specific service (like 'plumbing', 'remodeling', 'construction'), you MUST immediately call the `builder_service_search_tool`.
-- Do NOT ask clarifying questions. Use the tool that best matches the user's query.
-- After using a tool, present the results clearly. If nothing is found, say so politely.
-- If you don't find any relevant builders or services, inform the user that no matches were found.
+CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
+1. ALWAYS call a tool for search queries. NEVER respond without calling a tool.
+2. If the user is looking for a builder, company, or contractor, you MUST call `builder_profile_search_tool` with their exact query.
+3. If the user is looking for a specific service (like 'plumbing', 'remodeling', 'construction', 'interior design'), you MUST call `builder_service_search_tool` with their exact query.
+4. Do NOT ask clarifying questions. Do NOT explain what you're doing. Just call the appropriate tool immediately.
+5. After the tool returns results, format them clearly for the user.
+6. If no results are found, say "No matches were found for [query]. Please try different search terms."
+
+IMPORTANT: If you don't call a tool, you have FAILED. Always call a tool for search queries.
 
 For general conversation (like "hello"), respond naturally without using tools.
 """
@@ -63,11 +66,13 @@ For general conversation (like "hello"), respond naturally without using tools.
     def _tool_node(self, state: AgentState) -> Dict[str, Any]:
         """
         Override the parent's tool node to properly categorize builder vs service results.
+        Filters are now extracted automatically by the tools themselves.
         """
         try:
             logger.info(f"BuilderSearchAgent tool node called")
             
             # Call the parent's tool executor
+            # The tools will extract filters from the query automatically
             tool_result = self.tool_executor.invoke(state)
             
             # Extract messages from the result
@@ -106,7 +111,10 @@ For general conversation (like "hello"), respond naturally without using tools.
                                             item["location"] = {"city": item.pop("city")}
                                     builders.append(item)
                                 # Service results
-                                elif any(k in item for k in ["service_name", "builder_id", "category", "price_range_min", "price_range_max"]):
+                                elif any(k in item for k in ["title", "service_name", "builder_id", "category", "price_range_min", "price_range_max", "base_price"]):
+                                    # Map title to service_name for frontend compatibility
+                                    if "title" in item and "service_name" not in item:
+                                        item["service_name"] = item["title"]
                                     services.append(item)
                             
                             data_result = {
@@ -120,6 +128,33 @@ For general conversation (like "hello"), respond naturally without using tools.
                         logger.warning(f"Failed to parse tool message as JSON: {e}")
                         continue
 
+            # Generate a response message based on results
+            if success:
+                builders_count = len(data_result.get("builders", []))
+                services_count = len(data_result.get("services", []))
+                total_count = builders_count + services_count
+                
+                if total_count == 0:
+                    response_text = f"No matches were found for '{state.get('query', 'your query')}'. Please try different search terms."
+                elif builders_count > 0 and services_count > 0:
+                    response_text = f"Found {builders_count} builder{'s' if builders_count != 1 else ''} and {services_count} service{'s' if services_count != 1 else ''} matching your search."
+                elif builders_count > 0:
+                    response_text = f"Found {builders_count} builder{'s' if builders_count != 1 else ''} matching your search."
+                elif services_count > 0:
+                    response_text = f"Found {services_count} service{'s' if services_count != 1 else ''} matching your search."
+                else:
+                    response_text = "Search completed."
+                
+                # Add the response message
+                from langchain_core.messages import AIMessage
+                response_message = AIMessage(content=response_text)
+                tool_messages.append(response_message)
+            else:
+                # If no results, still generate a response
+                from langchain_core.messages import AIMessage
+                response_message = AIMessage(content=f"No matches were found for '{state.get('query', 'your query')}'. Please try different search terms.")
+                tool_messages.append(response_message)
+            
             return {
                 "messages": tool_messages,
                 "data": data_result,
@@ -159,8 +194,75 @@ For general conversation (like "hello"), respond naturally without using tools.
 
         try:
             final_state = self.app.invoke(initial_state, {"recursion_limit": 5})
-            final_response = final_state["messages"][-1].content
-            data = final_state.get("data", {})
+            
+            # Check if tools were actually called
+            messages = final_state.get("messages", [])
+            tool_was_called = False
+            for msg in messages:
+                if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                    tool_was_called = True
+                    break
+                # Also check for ToolMessage
+                from langchain_core.messages import ToolMessage
+                if isinstance(msg, ToolMessage):
+                    tool_was_called = True
+                    break
+            
+            # If no tool was called, force a search (fallback)
+            if not tool_was_called:
+                logger.warning("No tool was called by the agent, forcing a search")
+                # Try to determine which tool to use based on query
+                query_lower = query.lower()
+                if any(word in query_lower for word in ['service', 'plumbing', 'electrical', 'interior', 'renovation', 'remodeling']):
+                    # Likely a service search
+                    try:
+                        result = builder_service_search_tool.invoke(query)
+                        if result.get("success"):
+                            services = result.get("results", [])
+                            data = {"services": services, "builders": []}
+                            final_response = f"Found {len(services)} service{'s' if len(services) != 1 else ''} matching your search." if services else f"No matches were found for '{query}'. Please try different search terms."
+                        else:
+                            data = {"services": [], "builders": []}
+                            final_response = f"No matches were found for '{query}'. Please try different search terms."
+                    except Exception as e:
+                        logger.error(f"Fallback service search failed: {e}")
+                        data = {"services": [], "builders": []}
+                        final_response = f"Search completed. No results found for '{query}'."
+                else:
+                    # Likely a builder search
+                    try:
+                        result = builder_profile_search_tool.invoke(query)
+                        if result.get("success"):
+                            builders = result.get("results", [])
+                            # Transform city to location.city if needed
+                            for item in builders:
+                                if "city" in item and "location" not in item:
+                                    item["location"] = {"city": item.pop("city")}
+                            data = {"builders": builders, "services": []}
+                            final_response = f"Found {len(builders)} builder{'s' if len(builders) != 1 else ''} matching your search." if builders else f"No matches were found for '{query}'. Please try different search terms."
+                        else:
+                            data = {"builders": [], "services": []}
+                            final_response = f"No matches were found for '{query}'. Please try different search terms."
+                    except Exception as e:
+                        logger.error(f"Fallback builder search failed: {e}")
+                        data = {"builders": [], "services": []}
+                        final_response = f"Search completed. No results found for '{query}'."
+            else:
+                # Extract the final response from messages
+                final_response = "Search completed."
+                if messages:
+                    # Get the last AI message (should be the response, not a tool call)
+                    for msg in reversed(messages):
+                        if hasattr(msg, 'content') and msg.content:
+                            # Skip tool messages and messages with tool calls
+                            if not hasattr(msg, 'tool_calls') or not msg.tool_calls:
+                                final_response = msg.content
+                                break
+                    # Fallback: use the last message's content if no AI message found
+                    if final_response == "Search completed." and hasattr(messages[-1], 'content'):
+                        final_response = messages[-1].content
+                
+                data = final_state.get("data", {})
 
             # Extract builders and services from data
             builders = data.get("builders", [])

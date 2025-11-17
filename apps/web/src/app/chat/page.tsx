@@ -22,6 +22,7 @@ import {
 } from '@heroicons/react/24/outline'
 import PropertyModal from '@/components/modals/PropertyModal'
 import BuilderModal from '@/components/modals/BuilderModal'
+import ServiceModal from '@/components/modals/ServiceModal'
 import ImageLightbox from '@/components/modals/ImageLightbox'
 import { motion } from 'framer-motion'
 import QuickSuggestions from '@/components/QuickSuggestions'
@@ -55,10 +56,15 @@ interface Builder {
 interface ServiceResult {
   _id?: string
   service_name?: string
+  title?: string
   description?: string
   category?: string
+  base_price?: number
+  price_unit?: string
   price_range_min?: number
   price_range_max?: number
+  estimated_duration?: string
+  service_features?: string[]
   builder_id?: string
   score?: number
 }
@@ -113,6 +119,8 @@ export default function ChatPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [selectedBuilder, setSelectedBuilder] = useState<Builder | null>(null)
   const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false)
+  const [selectedService, setSelectedService] = useState<ServiceResult | null>(null)
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
 
   const openPropertyModal = (property: Property) => {
     setSelectedProperty(property)
@@ -132,6 +140,16 @@ export default function ChatPage() {
   const closeBuilderModal = () => {
     setIsBuilderModalOpen(false)
     setSelectedBuilder(null)
+  }
+
+  const openServiceModal = (service: ServiceResult) => {
+    setSelectedService(service)
+    setIsServiceModalOpen(true)
+  }
+
+  const closeServiceModal = () => {
+    setIsServiceModalOpen(false)
+    setSelectedService(null)
   }
 
   const fetchAndOpenBuilderModal = async (builderId: string) => {
@@ -157,7 +175,8 @@ export default function ChatPage() {
   }
 
   useEffect(() => {
-    const anyOverlayOpen = isPropertyModalOpen || isLightboxOpen || isBuilderModalOpen
+    const anyOverlayOpen =
+      isPropertyModalOpen || isLightboxOpen || isBuilderModalOpen || isServiceModalOpen
     if (!anyOverlayOpen) {
       document.body.style.overflow = ''
       return
@@ -170,6 +189,8 @@ export default function ChatPage() {
           setIsLightboxOpen(false)
         } else if (isPropertyModalOpen) {
           closePropertyModal()
+        } else if (isServiceModalOpen) {
+          closeServiceModal()
         } else if (isBuilderModalOpen) {
           setIsBuilderModalOpen(false)
         }
@@ -190,7 +211,13 @@ export default function ChatPage() {
       window.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = ''
     }
-  }, [isPropertyModalOpen, isLightboxOpen, isBuilderModalOpen, selectedProperty])
+  }, [
+    isPropertyModalOpen,
+    isLightboxOpen,
+    isBuilderModalOpen,
+    isServiceModalOpen,
+    selectedProperty,
+  ])
 
   useEffect(() => {
     if (isPropertyModalOpen || isLightboxOpen) {
@@ -869,7 +896,7 @@ export default function ChatPage() {
                                     {/* Content */}
                                     <div className="p-4 flex flex-col flex-grow">
                                       <h3 className="font-serif font-semibold text-base text-slate-900 mb-1 line-clamp-2">
-                                        {svc.service_name || 'Service'}
+                                        {svc.service_name || svc.title || 'Service'}
                                       </h3>
                                       {svc.description && (
                                         <p className="text-sm text-slate-700 mb-3 line-clamp-3">
@@ -893,18 +920,23 @@ export default function ChatPage() {
 
                                       {/* Actions */}
                                       <div className="mt-auto pt-2 flex gap-2">
+                                        <button
+                                          onClick={() => openServiceModal(svc)}
+                                          className="flex-1 bg-gradient-to-r from-teal-500 to-cyan-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:shadow-md transition-all text-center"
+                                        >
+                                          View Service
+                                        </button>
                                         {svc.builder_id ? (
                                           <button
-                                            onClick={() =>
+                                            onClick={(e) => {
+                                              e.stopPropagation()
                                               fetchAndOpenBuilderModal(svc.builder_id!)
-                                            }
+                                            }}
                                             className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:shadow-md transition-all text-center"
                                           >
                                             View Builder
                                           </button>
-                                        ) : (
-                                          <div className="flex-1" />
-                                        )}
+                                        ) : null}
                                         <button className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
                                           Contact
                                         </button>
@@ -948,6 +980,13 @@ export default function ChatPage() {
                 isOpen={isBuilderModalOpen && !!selectedBuilder}
                 builder={selectedBuilder as any}
                 onClose={closeBuilderModal}
+              />
+
+              {/* Service Details Modal */}
+              <ServiceModal
+                isOpen={isServiceModalOpen && !!selectedService}
+                service={selectedService as any}
+                onClose={closeServiceModal}
               />
 
               {/* Fullscreen Lightbox */}

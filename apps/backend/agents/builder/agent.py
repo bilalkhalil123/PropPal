@@ -81,15 +81,23 @@ def classify_builder_query_node(state: BuilderState) -> Dict[str, Any]:
     prompt = ChatPromptTemplate.from_messages([
         ("system", (
             "You are a classifier for builder-related queries. Classify the user's query into ONE of these tasks:\n"
-            "- 'search': If they want to find/search for builders, contractors, or services\n"
-            "- 'create_profile': If they want to create/register a builder profile or become a builder\n"
-            "- 'create_service': If they want to add/create a new service offering\n\n"
+            "- 'search': If they want to FIND, SEARCH, or LOOK FOR builders, contractors, or services. "
+            "Keywords: 'find', 'search', 'looking for', 'need', 'want', 'show me', 'get me', 'I want [service]', 'I need [service]'\n"
+            "- 'create_profile': If they want to CREATE, REGISTER, or ADD a builder profile. "
+            "Keywords: 'create profile', 'register as builder', 'become a builder', 'add profile', 'create account'\n"
+            "- 'create_service': If they want to CREATE, ADD, or OFFER a new service. "
+            "Keywords: 'create service', 'add service', 'I offer', 'I provide', 'create new service', 'add new service'\n\n"
+            "CRITICAL: If the query contains words like 'find', 'search', 'looking for', 'need', 'want [service]', 'show me', "
+            "it is ALWAYS 'search', NOT 'create_service'.\n\n"
             "Examples:\n"
             "- 'find plumbers in Lahore' -> search\n"
+            "- 'I want plumbing services' -> search\n"
+            "- 'I need interior design service' -> search\n"
+            "- 'looking for builders in Islamabad' -> search\n"
             "- 'I want to register as a builder' -> create_profile\n"
-            "- 'add a new service' -> create_service\n"
             "- 'create my builder account' -> create_profile\n"
-            "- 'I offer painting services' -> create_service"
+            "- 'I offer painting services and want to add it' -> create_service\n"
+            "- 'add a new service for plumbing' -> create_service"
         )),
         ("human", "{query}")
     ])

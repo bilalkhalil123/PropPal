@@ -347,7 +347,19 @@ class BuilderServiceCreationAgent:
 
                 await send({"type": "agent", "message": message, "status": "continue"})
                 user_input = (await recv_text()).strip()
-                if user_input.lower() in {"quit", "exit", "cancel", "stop"}:
+                
+                # Enhanced cancel detection
+                user_input_lower = user_input.lower()
+                cancel_keywords = [
+                    "quit", "exit", "cancel", "stop", "no", "nevermind", "never mind",
+                    "don't", "do not", "don't want", "do not want", "not interested",
+                    "i don't want", "i do not want", "i don't want to", "i do not want to",
+                    "don't create", "do not create", "don't make", "do not make",
+                    "cancel it", "stop it", "forget it", "skip it"
+                ]
+                
+                # Check if input contains any cancel keywords
+                if any(keyword in user_input_lower for keyword in cancel_keywords):
                     cancel_msg = "No problem. I've cancelled the service creation process."
                     await send({"type": "agent", "message": cancel_msg, "status": "cancelled"})
                     return {"success": False, "response": cancel_msg, "status": "cancelled"}
@@ -365,6 +377,21 @@ class BuilderServiceCreationAgent:
                 prompt = "Would you like to add an estimated duration (e.g., '2 weeks')? Reply 'skip' if not."
                 await send({"type": "agent", "message": prompt, "status": "ask_duration"})
                 user_input = (await recv_text()).strip()
+                
+                # Check for cancel
+                user_input_lower = user_input.lower()
+                cancel_keywords = [
+                    "quit", "exit", "cancel", "stop", "no", "nevermind", "never mind",
+                    "don't", "do not", "don't want", "do not want", "not interested",
+                    "i don't want", "i do not want", "i don't want to", "i do not want to",
+                    "don't create", "do not create", "don't make", "do not make",
+                    "cancel it", "stop it", "forget it", "skip it"
+                ]
+                if any(keyword in user_input_lower for keyword in cancel_keywords):
+                    cancel_msg = "No problem. I've cancelled the service creation process."
+                    await send({"type": "agent", "message": cancel_msg, "status": "cancelled"})
+                    return {"success": False, "response": cancel_msg, "status": "cancelled"}
+                
                 if user_input.lower() not in {"skip", "no", "none", ""}:
                     service_data["estimated_duration"] = user_input
                 optional_duration_done = True
@@ -375,6 +402,21 @@ class BuilderServiceCreationAgent:
                 prompt = "Would you like to list any notable features (e.g., warranty, free consultation)? Reply 'skip' if not."
                 await send({"type": "agent", "message": prompt, "status": "ask_features"})
                 user_input = (await recv_text()).strip()
+                
+                # Check for cancel
+                user_input_lower = user_input.lower()
+                cancel_keywords = [
+                    "quit", "exit", "cancel", "stop", "no", "nevermind", "never mind",
+                    "don't", "do not", "don't want", "do not want", "not interested",
+                    "i don't want", "i do not want", "i don't want to", "i do not want to",
+                    "don't create", "do not create", "don't make", "do not make",
+                    "cancel it", "stop it", "forget it", "skip it"
+                ]
+                if any(keyword in user_input_lower for keyword in cancel_keywords):
+                    cancel_msg = "No problem. I've cancelled the service creation process."
+                    await send({"type": "agent", "message": cancel_msg, "status": "cancelled"})
+                    return {"success": False, "response": cancel_msg, "status": "cancelled"}
+                
                 if user_input.lower() not in {"skip", "no", "none", ""}:
                     service_data["service_features"] = _parse_features_list(user_input) or user_input
                 optional_features_done = True
