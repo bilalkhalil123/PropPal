@@ -117,6 +117,9 @@ def builder_profile_search_tool(query: str) -> Dict[str, Any]:
         "specialization": 1,
         "experience_years": 1,
         "city": 1,
+        "location": 1,  # Include location if it exists
+        "rating": 1,
+        "about": 1,
         "contact_person": 1,
         "contact_email": 1,
         "contact_phone": 1,

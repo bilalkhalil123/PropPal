@@ -5,6 +5,7 @@ Specialized sub-agent for searching builder profiles and services.
 import logging
 import json
 import os
+from typing import Dict, Any
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langgraph.prebuilt import ToolNode
@@ -59,18 +60,90 @@ For general conversation (like "hello"), respond naturally without using tools.
         self.graph = self._create_graph()
         self.app = self.graph.compile()
 
+    def _tool_node(self, state: AgentState) -> Dict[str, Any]:
+        """
+        Override the parent's tool node to properly categorize builder vs service results.
+        """
+        try:
+            logger.info(f"BuilderSearchAgent tool node called")
+            
+            # Call the parent's tool executor
+            tool_result = self.tool_executor.invoke(state)
+            
+            # Extract messages from the result
+            if isinstance(tool_result, dict) and "messages" in tool_result:
+                tool_messages = tool_result["messages"]
+            else:
+                tool_messages = tool_result
+
+            # Process tool messages and categorize results
+            builders = []
+            services = []
+            data_result = {}
+            success = False
+            
+            from langchain_core.messages import ToolMessage
+            
+            for msg in tool_messages:
+                if isinstance(msg, ToolMessage):
+                    try:
+                        tool_data = json.loads(msg.content)
+                        logger.info(f"Parsed tool data: {tool_data}")
+                        if tool_data.get("success"):
+                            results = tool_data.get("results", [])
+                            
+                            # Categorize results based on fields present
+                            for item in results:
+                                # Transform builder results to match frontend format
+                                if "company_name" in item:
+                                    # Transform city to location.city if needed
+                                    if "city" in item:
+                                        if "location" not in item or not item.get("location"):
+                                            item["location"] = {"city": item.pop("city")}
+                                        elif isinstance(item.get("location"), dict) and "city" not in item["location"]:
+                                            item["location"]["city"] = item.pop("city")
+                                        elif not isinstance(item.get("location"), dict):
+                                            item["location"] = {"city": item.pop("city")}
+                                    builders.append(item)
+                                # Service results
+                                elif any(k in item for k in ["service_name", "builder_id", "category", "price_range_min", "price_range_max"]):
+                                    services.append(item)
+                            
+                            data_result = {
+                                "builders": builders,
+                                "services": services,
+                                "count": len(builders) + len(services)
+                            }
+                            success = True
+                            break
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"Failed to parse tool message as JSON: {e}")
+                        continue
+
+            return {
+                "messages": tool_messages,
+                "data": data_result,
+                "success": success
+            }
+        except Exception as e:
+            logger.error(f"BuilderSearchAgent tool node failed: {e}")
+            from langchain_core.messages import ToolMessage
+            error_message = ToolMessage(content=f"Tool execution failed: {e}", tool_call_id="error_000")
+            return {"messages": [error_message], "error": str(e), "success": False}
+
     def process_query(self, query: str) -> dict:
         """
         Process a builder/service search query and format the output correctly.
-        This overrides the parent ListingAgent's method to return a generic 'results' key.
+        Returns builders and services separately, similar to how properties are returned.
         """
 
-        print("query given: ", query.strip())
+        logger.info(f"BuilderSearchAgent processing query: {query.strip()}")
         if not query or not query.strip():
             return {
                 "success": False,
                 "response": "Please provide a valid search query.",
-                "results": [],
+                "builders": [],
+                "services": [],
                 "count": 0,
                 "error": "Empty query provided"
             }
@@ -89,12 +162,19 @@ For general conversation (like "hello"), respond naturally without using tools.
             final_response = final_state["messages"][-1].content
             data = final_state.get("data", {})
 
-            print("final response:", final_response)
+            # Extract builders and services from data
+            builders = data.get("builders", [])
+            services = data.get("services", [])
+            total_count = len(builders) + len(services)
+
+            logger.info(f"BuilderSearchAgent results: {len(builders)} builders, {len(services)} services")
+            
             return {
                 "success": final_state.get("success", False),
                 "response": final_response,
-                "results": data.get("results", []),
-                "count": data.get("count", 0),
+                "builders": builders,
+                "services": services,
+                "count": total_count,
                 "error": final_state.get("error")
             }
         except Exception as e:
@@ -102,7 +182,8 @@ For general conversation (like "hello"), respond naturally without using tools.
             return {
                 "success": False,
                 "response": f"An unexpected error occurred: {str(e)}",
-                "results": [],
+                "builders": [],
+                "services": [],
                 "count": 0,
                 "error": str(e)
             }

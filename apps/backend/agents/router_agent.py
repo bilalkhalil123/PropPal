@@ -39,6 +39,9 @@ class RouterState(TypedDict):
     properties: List[dict]
     builders: List[dict]
     services: List[dict]
+    
+    # Metadata for additional information (like interactive session flags)
+    metadata: Optional[dict]
 
 # --- LLM and Router Definition ---
 
@@ -218,12 +221,17 @@ def builder_agent_node(state: RouterState):
         "builders": builders,
         "services": services,
     }
+    
+    # Pass through metadata if present (for interactive session flags)
+    if result.get("metadata"):
+        response_payload["metadata"] = result["metadata"]
 
     # Debug: log normalized payload back to the main graph
     try:
         print("--- [Main Graph] BuilderAgent normalized payload:", {
             "builders_len": len(response_payload["builders"] or []),
             "services_len": len(response_payload["services"] or []),
+            "has_metadata": "metadata" in response_payload,
         })
     except Exception:
         pass
@@ -329,6 +337,7 @@ class RouterAgent:
                 properties=[],
                 builders=[],
                 services=[],
+                metadata=None,
             )
             
             # Run the router workflow
@@ -350,6 +359,10 @@ class RouterAgent:
                 "services": final_state.get("services", []),
                 "error": None
             }
+            
+            # Include metadata if present
+            if final_state.get("metadata"):
+                response_obj["metadata"] = final_state["metadata"]
 
             # Debug: log router final response summary
             try:

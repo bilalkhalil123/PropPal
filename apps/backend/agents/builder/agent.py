@@ -1,419 +1,281 @@
 """
-Builder Agent - LangGraph sub-router for builder-related tasks with cross-turn state.
+Builder Agent - LangGraph sub-router for builder-related tasks.
 
-Supports multi-task flows (e.g., create_profile -> create_service) and
-preserves per-task state across turns by accepting and returning a
-`builder_state`.
+This agent acts as a router/orchestrator for builder-related queries.
+It classifies the query and routes to specialized agents:
+- BuilderSearchAgent: For searching builders and services
+- BuilderProfileCreationAgent: For creating builder profiles (interactive)
+- BuilderServiceCreationAgent: For creating builder services (interactive)
+
+The BuilderAgent does NOT perform the specialized work itself.
+It only routes queries to the appropriate specialized agent.
 """
 import logging
 import os
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, TypedDict, Annotated
+import operator
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 
 from .search_agent import BuilderSearchAgent
 from .create_service_agent import BuilderServiceCreationAgent
 from .create_profile_agent import BuilderProfileCreationAgent
-from agents.listing.agent import AgentState  # Reuse state shape for single-step invokes
-import json
-import re
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# State Definition for BuilderAgent LangGraph
+# ============================================================
+
+class BuilderState(TypedDict):
+    """State for the BuilderAgent graph."""
+    query: str
+    clerk_id: Optional[str]
+    classification: Optional[str]
+    messages: Annotated[List[BaseMessage], operator.add]
+    
+    # Results from specialized agents
+    builders: List[Dict[str, Any]]
+    services: List[Dict[str, Any]]
+    
+    # Metadata for interactive sessions
+    metadata: Optional[Dict[str, Any]]
+    
+    # Error tracking
+    error: Optional[str]
+
+
+# ============================================================
+# Classification Model
+# ============================================================
 
 class BuilderRoutePlan(BaseModel):
-    """Structured multi-task plan for builder requests."""
-    tasks: List[Literal["search", "create_profile", "create_service"]] = Field(
-        description="Ordered list of tasks inferred from the query.", default_factory=list
+    """Structured classification for builder requests."""
+    task: Literal["search", "create_profile", "create_service"] = Field(
+        description="The primary task inferred from the query."
     )
 
 
-def _classifier_llm():
-    return ChatGroq(
+# ============================================================
+# Graph Nodes
+# ============================================================
+
+def classify_builder_query_node(state: BuilderState) -> Dict[str, Any]:
+    """
+    Classify the builder query into one of:
+    - search: Search for builders or services
+    - create_profile: Create a builder profile
+    - create_service: Create a builder service
+    """
+    logger.info("--- [BuilderAgent] Classifying Query ---")
+    query = state.get("query", "")
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", (
+            "You are a classifier for builder-related queries. Classify the user's query into ONE of these tasks:\n"
+            "- 'search': If they want to find/search for builders, contractors, or services\n"
+            "- 'create_profile': If they want to create/register a builder profile or become a builder\n"
+            "- 'create_service': If they want to add/create a new service offering\n\n"
+            "Examples:\n"
+            "- 'find plumbers in Lahore' -> search\n"
+            "- 'I want to register as a builder' -> create_profile\n"
+            "- 'add a new service' -> create_service\n"
+            "- 'create my builder account' -> create_profile\n"
+            "- 'I offer painting services' -> create_service"
+        )),
+        ("human", "{query}")
+    ])
+    
+    llm = ChatGroq(
         model="llama-3.1-8b-instant",
         api_key=os.getenv("GROQ_API_KEY"),
         temperature=0.0,
     ).with_structured_output(BuilderRoutePlan)
-
-
-def _classify_tasks_node(state: Dict[str, Any]):
-    # If we already have a current task (continuation turn), skip reclassifying
-    if state.get("current_task") or state.get("tasks"):
-        # Ensure query is propagated forward
-        return {"query": state.get("query", "")}
-    query = state.get("query", "")
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", (
-            "Classify the user's builder query into an ordered list of tasks. "
-            "Only use: 'search', 'create_profile', 'create_service'. "
-            "Example: 'I need to make builder profile then its service' -> "
-            "['create_profile','create_service']. If none, return empty list."
-        )),
-        ("human", "{query}")
-    ])
-    chain = prompt | _classifier_llm()
+    
+    chain = prompt | llm
+    
     try:
-        plan = chain.invoke({"query": query})
-        tasks = list(plan.tasks or [])
-    except Exception:
-        tasks = []
-    return {"tasks": tasks, "current_task": (tasks[0] if tasks else None), "query": query, "clerk_id": state.get("clerk_id")}
+        result = chain.invoke({"query": query})
+        classification = result.task
+        logger.info(f"--- [BuilderAgent] Classification: {classification} ---")
+        return {"classification": classification}
+    except Exception as e:
+        logger.error(f"Classification failed: {e}")
+        return {"classification": "search", "error": f"Classification error: {str(e)}"}
 
 
-def _route_next(state: Dict[str, Any]):
-    task = state.get("current_task")
-    if not task:
-        return "end"
-    if task == "search":
+def route_to_task(state: BuilderState) -> str:
+    """Conditional edge function to route to the appropriate node."""
+    classification = state.get("classification", "search")
+    
+    if classification == "search":
         return "search_node"
-    if task == "create_profile":
+    elif classification == "create_profile":
         return "create_profile_node"
-    if task == "create_service":
+    elif classification == "create_service":
         return "create_service_node"
-    return "end"
+    else:
+        return "search_node"  # Default fallback
 
 
-def _advance(state: Dict[str, Any]):
-    tasks: List[str] = state.get("tasks", [])
-    if tasks:
-        tasks.pop(0)
-    state["tasks"] = tasks
-    state["current_task"] = tasks[0] if tasks else None
-    return state
-
-
-def _parse_json_loose(text: str):
+def search_node(state: BuilderState) -> Dict[str, Any]:
+    """
+    Route to BuilderSearchAgent for searching builders/services.
+    This agent does the actual search work.
+    """
+    logger.info("--- [BuilderAgent] Routing to BuilderSearchAgent ---")
+    query = state.get("query", "")
+    
     try:
-        return json.loads(text)
-    except Exception:
-        pass
-    fenced = re.sub(r"^```[a-zA-Z]*\n|\n```$", "", text.strip())
-    if fenced != text:
-        try:
-            return json.loads(fenced)
-        except Exception:
-            pass
-    fixed = text.replace("{{", "{").replace("}}", "}")
-    if fixed != text:
-        try:
-            return json.loads(fixed)
-        except Exception:
-            pass
-    match = re.search(r"\{[\s\S]*\}", text)
-    if match:
-        candidate = match.group(0)
-        try:
-            return json.loads(candidate)
-        except Exception:
-            candidate2 = candidate.replace("{{", "{").replace("}}", "}")
-            try:
-                return json.loads(candidate2)
-            except Exception:
-                pass
-    return None
-
-
-def _profile_single_step(query: str, clerk_id: Optional[str], state: Dict[str, Any]) -> Dict[str, Any]:
-    agent = BuilderProfileCreationAgent()
-    # Persisted data/history
-    profile_data: Dict[str, Any] = state.get("profile_data") or {
-        "company_name": None,
-        "specialization": None,
-        "experience_years": None,
-        "about": None,
-        "city": None,
-    }
-    conversation_history: str = state.get("profile_history") or ""
-    conversation_history += f"User: {query}\n"
-
-    # Build the same prompt pattern the agent expects
-    missing = ", ".join([
-        f
-        for f, v in [
-            ("company_name", profile_data.get("company_name")),
-            ("specialization", profile_data.get("specialization")),
-            ("experience_years", profile_data.get("experience_years")),
-            ("about", profile_data.get("about")),
-            ("city", profile_data.get("city")),
-        ]
-        if (v is None or (isinstance(v, list) and not v))
-    ])
-
-    prompt_for_llm = f"""
-            SYSTEM: {agent.system_prompt}
-
-            Conversation History:
-            {conversation_history}
-
-            Current Data State (JSON):
-            {json.dumps(profile_data)}
-
-            Missing Fields Hint (ask in one question):
-            {missing}
-
-            User Context: The user's clerk_id is '{clerk_id}'. You must use this ID when calling the create_builder_profile_tool.
-            
-            NOW RESPOND - Check if all fields are complete, if YES call the tool, if NO return JSON.
-            """
-
-    initial_state = AgentState(
-        messages=[{"role": "user", "content": prompt_for_llm.strip()}],
-        query=conversation_history.strip(),
-        data={"profile_data": profile_data},
-        error=None,
-        success=False,
-        response="",
-    )
-
-    try:
-        final_state = agent.app.invoke(initial_state, {"recursion_limit": 10})
-        final_message = final_state["messages"][-1]
-        content = final_message.content
-
-        # Tool called => completion
-        if getattr(final_message, "type", "") == "tool":
-            try:
-                tool_result = json.loads(content)
-            except Exception:
-                tool_result = {"success": True, "message": content}
-            resp = tool_result.get("message", "Profile created successfully!")
-            conversation_history += f"Agent: {resp}\n"
-            return {
-                "response": resp,
-                "completed": True,
-                "profile_data": profile_data,
-                "profile_history": conversation_history,
-                "error": tool_result.get("error"),
-            }
-
-        # JSON to continue
-        parsed = None
-        try:
-            parsed = json.loads(content)
-        except Exception:
-            parsed = _parse_json_loose(content)
-
-        if isinstance(parsed, dict):
-            resp = parsed.get("response", "Please provide the missing details.")
-            updated = parsed.get("updated_data", profile_data)
-            conversation_history += f"Agent: {resp}\n"
-            return {
-                "response": resp,
-                "completed": parsed.get("status") == "completed",
-                "profile_data": updated,
-                "profile_history": conversation_history,
-                "error": None,
-            }
-
-        # Fallback
-        resp = content or "I didn't quite understand that. Could you please clarify?"
-        conversation_history += f"Agent: {resp}\n"
+        search_agent = BuilderSearchAgent()
+        result = search_agent.process_query(query)
+        
+        response_message = result.get("response", "Search completed.")
+        builders = result.get("builders", [])
+        services = result.get("services", [])
+        
         return {
-            "response": resp,
-            "completed": False,
-            "profile_data": profile_data,
-            "profile_history": conversation_history,
-            "error": None,
+            "messages": [AIMessage(content=response_message)],
+            "builders": builders,
+            "services": services,
         }
     except Exception as e:
-        logging.getLogger(__name__).error(f"Profile single-step failed: {e}")
+        logger.error(f"Search node failed: {e}", exc_info=True)
         return {
-            "response": f"An unexpected error occurred: {str(e)}",
-            "completed": False,
-            "profile_data": profile_data,
-            "profile_history": conversation_history,
+            "messages": [AIMessage(content=f"Search failed: {str(e)}")],
             "error": str(e),
         }
 
 
-def _service_single_step(query: str, clerk_id: Optional[str], state: Dict[str, Any]) -> Dict[str, Any]:
-    agent = BuilderServiceCreationAgent()
-    service_data: Dict[str, Any] = state.get("service_data") or {
-        "title": None,
-        "description": None,
-        "category": None,
-        "base_price": None,
-        "price_unit": None,
-        "estimated_duration": None,
-        "service_features": None,
-        "_opt_asked_duration": state.get("service_data", {}).get("_opt_asked_duration", False),
-        "_opt_asked_features": state.get("service_data", {}).get("_opt_asked_features", False),
+def create_profile_node(state: BuilderState) -> Dict[str, Any]:
+    """
+    Signal that profile creation should start in interactive mode.
+    The WebSocket handler will detect this and start the interactive session.
+    """
+    logger.info("--- [BuilderAgent] Profile Creation Requested ---")
+    
+    clerk_id = state.get("clerk_id")
+    if not clerk_id:
+        return {
+            "messages": [AIMessage(content="I need your user ID to create a profile. Please log in first.")],
+            "error": "Missing clerk_id for profile creation",
+        }
+    
+    # Return metadata to signal interactive mode should start
+    return {
+        "messages": [AIMessage(content="Great! I'll guide you through creating your builder profile. I'll ask for the necessary details one by one.")],
+        "metadata": {
+            "interactive_mode": True,
+            "agent_type": "profile",
+            "clerk_id": clerk_id,
+        }
     }
-    conversation_history: str = state.get("service_history") or ""
-    conversation_history += f"User: {query}\n"
-
-    prompt_for_llm = f"""
-            SYSTEM: {agent.system_prompt}
-
-            Conversation History:
-            {conversation_history}
-
-            Current Data State (JSON):
-            {json.dumps(service_data)}
-
-            User Context: The user's clerk_id is '{clerk_id}'. You must use this ID when calling the create_builder_service_tool.
-            
-            NOW RESPOND - Check if all required fields are complete, if YES call the tool, if NO return JSON.
-            """
-
-    initial_state = AgentState(
-        messages=[{"role": "user", "content": prompt_for_llm.strip()}],
-        query=conversation_history.strip(),
-        data={"service_data": service_data},
-        error=None,
-        success=False,
-        response="",
-    )
-
-    try:
-        final_state = agent.app.invoke(initial_state, {"recursion_limit": 10})
-        final_message = final_state["messages"][-1]
-        content = final_message.content
-
-        if getattr(final_message, "type", "") == "tool":
-            tool_result = None
-            if isinstance(content, dict):
-                tool_result = content
-            else:
-                try:
-                    tool_result = json.loads(content)
-                except Exception:
-                    tool_result = {"success": True, "message": content}
-            resp = tool_result.get("message", "Service created successfully!")
-            conversation_history += f"Agent: {resp}\n"
-            return {
-                "response": resp,
-                "completed": True,
-                "service_data": service_data,
-                "service_history": conversation_history,
-                "error": tool_result.get("error"),
-            }
-
-        parsed = None
-        try:
-            parsed = json.loads(content)
-        except Exception:
-            parsed = _parse_json_loose(content)
-
-        if isinstance(parsed, dict):
-            resp = parsed.get("response", "Please provide the missing details.")
-            updated = parsed.get("updated_data", service_data)
-            conversation_history += f"Agent: {resp}\n"
-            return {
-                "response": resp,
-                "completed": parsed.get("status") == "completed",
-                "service_data": updated,
-                "service_history": conversation_history,
-                "error": None,
-            }
-
-        resp = content or "I didn't quite understand that. Could you please clarify?"
-        conversation_history += f"Agent: {resp}\n"
-        return {
-            "response": resp,
-            "completed": False,
-            "service_data": service_data,
-            "service_history": conversation_history,
-            "error": None,
-        }
-    except Exception as e:
-        logging.getLogger(__name__).error(f"Service single-step failed: {e}")
-        return {
-            "response": f"An unexpected error occurred: {str(e)}",
-            "completed": False,
-            "service_data": service_data,
-            "service_history": conversation_history,
-            "error": str(e),
-        }
 
 
-def _search_node(state: Dict[str, Any]):
-    query = state.get("query", "")
-    agent = BuilderSearchAgent()
-    res = agent.process_query(query)
-    msg = AIMessage(content=res.get("response", ""))
-    messages: List[BaseMessage] = state.get("messages", [])
-    messages.append(msg)
-    # Always carry query forward
-    new_state = _advance({**state, "messages": messages, "query": query, "clerk_id": state.get("clerk_id")})
-    return new_state
-
-
-def _create_profile_node(state: Dict[str, Any]):
-    query = state.get("query", "")
+def create_service_node(state: BuilderState) -> Dict[str, Any]:
+    """
+    Signal that service creation should start in interactive mode.
+    The WebSocket handler will detect this and start the interactive session.
+    """
+    logger.info("--- [BuilderAgent] Service Creation Requested ---")
+    
     clerk_id = state.get("clerk_id")
-    # Delegate full flow to the specific agent and wait for completion
-    agent = BuilderProfileCreationAgent()
-    res = agent.process_query(query, clerk_id=clerk_id)
-    msg = AIMessage(content=res.get("response", ""))
-    messages: List[BaseMessage] = state.get("messages", [])
-    messages.append(msg)
-    next_state = {**state, "messages": messages, "query": query, "clerk_id": state.get("clerk_id")}
-    # Advance after specific agent completes its process
-    return _advance(next_state)
+    if not clerk_id:
+        return {
+            "messages": [AIMessage(content="I need your user ID to create a service. Please log in first.")],
+            "error": "Missing clerk_id for service creation",
+        }
+    
+    # Return metadata to signal interactive mode should start
+    return {
+        "messages": [AIMessage(content="Perfect! I'll start the interactive flow to capture your service details.")],
+        "metadata": {
+            "interactive_mode": True,
+            "agent_type": "service",
+            "clerk_id": clerk_id,
+        }
+    }
 
 
-def _create_service_node(state: Dict[str, Any]):
-    query = state.get("query", "")
-    clerk_id = state.get("clerk_id")
-    # Delegate full flow to the specific agent and wait for completion
-    agent = BuilderServiceCreationAgent()
-    res = agent.process_query(query, clerk_id=clerk_id)
-    msg = AIMessage(content=res.get("response", ""))
-    messages: List[BaseMessage] = state.get("messages", [])
-    messages.append(msg)
-    next_state = {**state, "messages": messages, "query": query, "clerk_id": state.get("clerk_id")}
-    # Advance after specific agent completes its process
-    return _advance(next_state)
+# ============================================================
+# Build the LangGraph
+# ============================================================
 
-
-# Build the graph
-workflow = StateGraph(dict)
-workflow.add_node("classifier", _classify_tasks_node)
-workflow.add_node("search_node", _search_node)
-workflow.add_node("create_profile_node", _create_profile_node)
-workflow.add_node("create_service_node", _create_service_node)
-
-workflow.set_entry_point("classifier")
-workflow.add_conditional_edges(
-    "classifier",
-    _route_next,
-    {
-        "search_node": "search_node",
-        "create_profile_node": "create_profile_node",
-        "create_service_node": "create_service_node",
-        "end": END,
-    },
-)
-
-for node in ["search_node", "create_profile_node", "create_service_node"]:
+def create_builder_graph():
+    """Create and return the compiled BuilderAgent graph."""
+    workflow = StateGraph(BuilderState)
+    
+    # Add nodes
+    workflow.add_node("classifier", classify_builder_query_node)
+    workflow.add_node("search_node", search_node)
+    workflow.add_node("create_profile_node", create_profile_node)
+    workflow.add_node("create_service_node", create_service_node)
+    
+    # Set entry point
+    workflow.set_entry_point("classifier")
+    
+    # Add conditional edges from classifier
     workflow.add_conditional_edges(
-        node,
-        _route_next,
+        "classifier",
+        route_to_task,
         {
             "search_node": "search_node",
             "create_profile_node": "create_profile_node",
             "create_service_node": "create_service_node",
-            "end": END,
-        },
+        }
     )
+    
+    # All nodes end after execution
+    workflow.add_edge("search_node", END)
+    workflow.add_edge("create_profile_node", END)
+    workflow.add_edge("create_service_node", END)
+    
+    return workflow.compile()
 
-builder_agent_app = workflow.compile()
 
+builder_agent_app = create_builder_graph()
+
+
+# ============================================================
+# Public API
+# ============================================================
 
 class BuilderAgent:
-    """LangGraph-based builder sub-router."""
-
+    """
+    Public interface for the BuilderAgent.
+    Routes builder-related queries to specialized agents.
+    """
+    
     def __init__(self):
         self.app = builder_agent_app
         self.name = "BuilderAgent"
-
-    def process_query(self, query: str, clerk_id: Optional[str] = None, state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    
+    def process_query(self, query: str, clerk_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Process a builder-related query.
+        
+        Args:
+            query: The user's query
+            clerk_id: The user's clerk_id (required for creation tasks)
+        
+        Returns:
+            Dict with:
+            - success: bool
+            - response: str (the agent's response)
+            - classification: str (the task type)
+            - builders: list (for search results)
+            - services: list (for search results)
+            - metadata: dict (for interactive mode signals)
+            - error: str (if any error occurred)
+        """
         if not query or not query.strip():
             return {
                 "success": False,
@@ -421,94 +283,65 @@ class BuilderAgent:
                 "classification": "error",
                 "error": "Empty query provided",
             }
-
+        
         try:
-            prior = state or {}
-            init_state = {
+            # Initialize state
+            initial_state: BuilderState = {
                 "query": query.strip(),
                 "clerk_id": clerk_id,
-                "tasks": prior.get("tasks", []),
-                "current_task": prior.get("current_task"),
-                "messages": prior.get("messages", []),
-                # Persisted subtask state
-                "profile_data": prior.get("profile_data"),
-                "profile_history": prior.get("profile_history"),
-                "service_data": prior.get("service_data"),
-                "service_history": prior.get("service_history"),
+                "classification": None,
+                "messages": [],
+                "builders": [],
+                "services": [],
+                "metadata": None,
+                "error": None,
             }
-            final_state = self.app.invoke(init_state)
+            
+            # Run the graph
+            final_state = self.app.invoke(initial_state)
+            
+            # Extract results
             messages: List[BaseMessage] = final_state.get("messages", [])
-            response_content = messages[-1].content if messages else (
-                "I can help with builders: search, create profile, or create service."
-            )
-            classification = (
-                ",".join(final_state.get("tasks", [])) if final_state.get("tasks") else "builder_general"
-            )
+            response_content = messages[-1].content if messages else "I can help you with builder searches, profile creation, or service creation."
+            
+            classification = final_state.get("classification", "unknown")
+            builders = final_state.get("builders", [])
+            services = final_state.get("services", [])
+            metadata = final_state.get("metadata")
+            error = final_state.get("error")
+            
             return {
-                "success": True,
+                "success": not bool(error),
                 "response": response_content,
                 "classification": classification,
-                "error": None,
-                # Return state so caller can continue multi-turn
-                "state": {
-                    "tasks": final_state.get("tasks", []),
-                    "current_task": final_state.get("current_task"),
-                    "messages": [m for m in messages],
-                    "profile_data": final_state.get("profile_data"),
-                    "profile_history": final_state.get("profile_history"),
-                    "service_data": final_state.get("service_data"),
-                    "service_history": final_state.get("service_history"),
-                },
+                "builders": builders,
+                "services": services,
+                "metadata": metadata,
+                "error": error,
             }
+            
         except Exception as e:
-<<<<<<< HEAD
-            logging.getLogger(__name__).error(f"BuilderAgent failed: {e}")
+            logger.error(f"BuilderAgent failed: {e}", exc_info=True)
             return {
                 "success": False,
-                "response": f"An error occurred while processing your builder request: {str(e)}",
+                "response": f"An error occurred: {str(e)}",
                 "classification": "error",
                 "error": str(e),
             }
-=======
-            destination = "general" # Default to general on failure
-
-        # 2. Route to the appropriate sub-agent based on the classification
-        if destination == "search":
-            result = self.search_agent.process_query(query)
-            result["classification"] = "builder_search"
-            return result
-
-        if destination == "create_service":
-            return {
-                "success": True,
-                "response": "Starting service creation. Please connect via websocket to continue.",
-                "classification": "builder_create_service",
-                "start_interactive": {
-                    "type": "service",
-                    "ws_path": "/api/chat/ws/service/create",
-                    "clerk_id_required": True,
-                },
-            }
-
-        if destination == "create_profile":
-            return {
-                "success": True,
-                "response": "Starting builder profile creation. Please connect via websocket to continue.",
-                "classification": "builder_create_profile",
-                "start_interactive": {
-                    "type": "profile",
-                    "ws_path": "/api/chat/ws/profile/create",
-                    "clerk_id_required": True,
-                },
-            }
-
-        # Default to a general response if no specific route is matched
-        return {
-            "success": True,
-            "response": "I can help with finding builders and their services. How can I assist you with that today?",
-            "classification": "builder_general",
-            "properties": [],
-            "count": 0,
-            "error": None
-        }
->>>>>>> local-model
+    
+    def get_interactive_agent(self, agent_type: str):
+        """
+        Get an instance of the specialized interactive agent.
+        
+        Args:
+            agent_type: Either 'profile' or 'service'
+        
+        Returns:
+            An instance of the specialized agent
+        """
+        if agent_type == "profile":
+            return BuilderProfileCreationAgent()
+        elif agent_type == "service":
+            return BuilderServiceCreationAgent()
+        else:
+            raise ValueError(f"Unknown agent type: {agent_type}")
