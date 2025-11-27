@@ -1,12 +1,30 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
-import { UserButton } from '@clerk/nextjs'
 import Link from 'next/link'
-import { MagnifyingGlassIcon, MapPinIcon, CurrencyDollarIcon, HomeIcon } from '@heroicons/react/24/outline'
-import RoleDropdown from '@/components/RoleDropdown'
+import { motion } from 'framer-motion'
+import {
+  MagnifyingGlassIcon,
+  MapPinIcon,
+  HomeIcon,
+  FunnelIcon,
+  SparklesIcon,
+} from '@heroicons/react/24/outline'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Sheet, SheetTrigger, SheetContent } from '@/components/ui/sheet'
 
 interface Property {
   _id: string
@@ -18,14 +36,15 @@ interface Property {
   area_sqft: number
   images?: string[]
   property_type: string
-  score?: number
 }
 
 export default function BuyerPage() {
   const { user, loading, isAuthenticated } = useCurrentUser()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
-  const [currentRole, setCurrentRole] = useState<'buyer' | 'seller' | 'builder'>('buyer')
+  const [priceRange, setPriceRange] = useState([0, 50000000])
+  const [selectedCity, setSelectedCity] = useState<string | null>(null)
+  const [selectedType, setSelectedType] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -33,23 +52,13 @@ export default function BuyerPage() {
     }
   }, [loading, isAuthenticated, router])
 
-  // Show loading while user data is being fetched
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/chat?q=${encodeURIComponent(searchQuery)}`)
+    }
   }
 
-  if (!isAuthenticated) {
-    return null
-  }
-
-  // Sample properties for display
   const sampleProperties: Property[] = [
     {
       _id: '1',
@@ -60,7 +69,7 @@ export default function BuyerPage() {
       bathrooms: 3,
       area_sqft: 2500,
       property_type: 'Villa',
-      images: ['/hero-house.svg']
+      images: ['/hero-house.svg'],
     },
     {
       _id: '2',
@@ -71,7 +80,7 @@ export default function BuyerPage() {
       bathrooms: 2,
       area_sqft: 1800,
       property_type: 'Apartment',
-      images: ['/hero-house.svg']
+      images: ['/hero-house.svg'],
     },
     {
       _id: '3',
@@ -82,7 +91,7 @@ export default function BuyerPage() {
       bathrooms: 4,
       area_sqft: 3000,
       property_type: 'House',
-      images: ['/hero-house.svg']
+      images: ['/hero-house.svg'],
     },
     {
       _id: '4',
@@ -93,149 +102,209 @@ export default function BuyerPage() {
       bathrooms: 2,
       area_sqft: 1200,
       property_type: 'House',
-      images: ['/hero-house.svg']
+      images: ['/hero-house.svg'],
     },
-    {
-      _id: '5',
-      title: 'Penthouse in Defence',
-      price: 65000000,
-      city: 'Karachi',
-      bedrooms: 6,
-      bathrooms: 5,
-      area_sqft: 4000,
-      property_type: 'Penthouse',
-      images: ['/hero-house.svg']
-    },
-    {
-      _id: '6',
-      title: 'Family Home in Blue Area',
-      price: 28000000,
-      city: 'Islamabad',
-      bedrooms: 4,
-      bathrooms: 3,
-      area_sqft: 2200,
-      property_type: 'House',
-      images: ['/hero-house.svg']
-    }
   ]
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      // Navigate to chat with search query
-      router.push(`/chat?q=${encodeURIComponent(searchQuery)}`)
-    }
-  }
+  const filteredProperties = sampleProperties.filter((property) => {
+    const matchesCity = selectedCity ? property.city === selectedCity : true
+    const matchesType = selectedType ? property.property_type === selectedType : true
+    const matchesPrice = property.price >= priceRange[0] && property.price <= priceRange[1]
+    const matchesSearch = property.title.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesCity && matchesType && matchesPrice && matchesSearch
+  })
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-PK', {
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat('en-PK', {
       style: 'currency',
       currency: 'PKR',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
     }).format(price)
-  }
+
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-[color:var(--color-primary)]"></div>
+      </div>
+    )
+
+  if (!isAuthenticated) return null
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className="min-h-screen"
+      style={{
+        background: 'linear-gradient(to bottom right, var(--background), #f8f6f3)',
+      }}
+    >
+      {/* Hero Section with AI Search */}
+      <section className="border-b border-slate-200/50 bg-white/70 backdrop-blur-md py-16 text-center">
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-[color:var(--foreground)] mb-4">
+          Discover Your Next Home
+        </h1>
+        <p className="text-slate-600 mb-6">
+          Use AI to find homes that perfectly match your preferences.
+        </p>
 
-      {/* Search Section */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Find Your Dream Property</h1>
-          <form onSubmit={handleSearch} className="flex space-x-3">
-            <div className="flex-1 relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search for properties... (e.g., 'Find houses in Lahore', '3 bedroom apartment in Karachi')"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder:text-gray-400"
-              />
-            </div>
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
-            >
-              Search with AI
-            </button>
-          </form>
-          <p className="text-sm text-gray-500 mt-2">
-            💡 Try natural language queries like "Find houses under 50 lakhs" or "Show me apartments in Islamabad"
-          </p>
-        </div>
-      </div>
-
-      {/* Featured Properties */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Featured Properties</h2>
-          <p className="text-gray-600">Discover amazing properties across Pakistan</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sampleProperties.map((property) => (
-            <div key={property._id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-              {/* Property Image */}
-              <div className="h-48 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-                <HomeIcon className="h-16 w-16 text-white opacity-80" />
-              </div>
-              
-              {/* Property Details */}
-              <div className="p-4">
-                <h3 className="font-semibold text-lg text-gray-900 mb-2">{property.title}</h3>
-                
-                {/* Price */}
-                <div className="flex items-center mb-2">
-                  <CurrencyDollarIcon className="h-4 w-4 text-green-600 mr-1" />
-                  <span className="text-lg font-bold text-green-600">{formatPrice(property.price)}</span>
-                </div>
-                
-                {/* Location */}
-                <div className="flex items-center mb-3">
-                  <MapPinIcon className="h-4 w-4 text-gray-500 mr-1" />
-                  <span className="text-sm text-gray-600">{property.city}</span>
-                </div>
-                
-                {/* Property Details */}
-                <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                  <span>{property.bedrooms} beds</span>
-                  <span>{property.bathrooms} baths</span>
-                  <span>{property.area_sqft} sqft</span>
-                </div>
-                
-                {/* Property Type */}
-                <div className="flex items-center justify-between">
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                    {property.property_type}
-                  </span>
-                  <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                    View Details
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="bg-blue-600 text-white py-12">
-        <div className="max-w-4xl mx-auto text-center px-4">
-          <h2 className="text-3xl font-bold mb-4">Can't Find What You're Looking For?</h2>
-          <p className="text-xl text-blue-100 mb-6">
-            Use our AI-powered search to find exactly what you need
-          </p>
-          <button
-            onClick={() => router.push('/chat')}
-            className="bg-white text-blue-600 px-8 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg hover:shadow-xl"
+        <form
+          onSubmit={handleSearch}
+          className="flex justify-center flex-col sm:flex-row gap-3 px-6"
+        >
+          <div className="relative w-full sm:w-96">
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <Input
+              placeholder='Try "Homes under 50 lakhs in Islamabad"...'
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-12 rounded-xl bg-white/70 border border-slate-300"
+            />
+          </div>
+          <Button
+            type="submit"
+            className="rounded-xl px-6 py-3 text-sm font-semibold bg-[linear-gradient(to_right,var(--color-primary),var(--color-accent-gold))] text-white shadow-md hover:shadow-lg transition-all"
           >
-            Try AI Search
-          </button>
+            <SparklesIcon className="h-5 w-5 mr-1" />
+            AI Search
+          </Button>
+        </form>
+      </section>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-[280px_1fr] gap-8">
+        {/* Sidebar Filters */}
+        <aside className="hidden md:block sticky top-24 h-fit bg-white/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200/70 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4 text-[color:var(--foreground)]">Filters</h3>
+
+          <div className="space-y-6">
+            {/* City Filter */}
+            <div>
+              <label className="text-sm font-medium text-slate-700">City</label>
+              <Select onValueChange={setSelectedCity}>
+                <SelectTrigger className="w-full mt-2 bg-white/60 rounded-lg">
+                  <SelectValue placeholder="Select city" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Lahore">Lahore</SelectItem>
+                  <SelectItem value="Karachi">Karachi</SelectItem>
+                  <SelectItem value="Islamabad">Islamabad</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Property Type */}
+            <div>
+              <label className="text-sm font-medium text-slate-700">Property Type</label>
+              <Select onValueChange={setSelectedType}>
+                <SelectTrigger className="w-full mt-2 bg-white/60 rounded-lg">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Villa">Villa</SelectItem>
+                  <SelectItem value="Apartment">Apartment</SelectItem>
+                  <SelectItem value="House">House</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Price Range */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">Price Range</label>
+              <Slider
+                min={0}
+                max={50000000}
+                step={5000000}
+                value={priceRange}
+                onValueChange={setPriceRange}
+              />
+              <div className="flex justify-between text-xs text-slate-500 mt-1">
+                <span>{formatPrice(priceRange[0])}</span>
+                <span>{formatPrice(priceRange[1])}</span>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => {
+                setSelectedCity(null)
+                setSelectedType(null)
+                setPriceRange([0, 50000000])
+                setSearchQuery('')
+              }}
+              className="w-full mt-4 rounded-xl bg-[color:var(--color-primary)] text-white hover:bg-[color:var(--color-accent-gold)] transition"
+            >
+              Reset Filters
+            </Button>
+          </div>
+        </aside>
+
+        {/* Mobile Filter Sheet */}
+        <div className="md:hidden flex justify-end mb-4">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2 border-slate-300">
+                <FunnelIcon className="h-5 w-5" />
+                Filters
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-6">
+              <h3 className="text-lg font-semibold mb-4 text-[color:var(--foreground)]">Filters</h3>
+              {/* ...same filter content as sidebar (reuse here if needed)... */}
+            </SheetContent>
+          </Sheet>
         </div>
+
+        {/* Property Cards */}
+        <motion.div layout className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {filteredProperties.map((property, idx) => (
+            <motion.div
+              key={property._id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              viewport={{ once: true }}
+            >
+              <Card className="group rounded-2xl bg-white/60 backdrop-blur-md border border-slate-200/70 hover:shadow-xl hover:scale-[1.02] transition-all">
+                <div className="h-48 relative bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent-gold)] flex items-center justify-center">
+                  <HomeIcon className="h-16 w-16 text-white/70" />
+                </div>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-slate-900 group-hover:text-[color:var(--color-primary)] transition-colors">
+                    {property.title}
+                  </CardTitle>
+                  <CardDescription className="flex items-center gap-1 text-slate-600 text-sm">
+                    <MapPinIcon className="h-4 w-4" /> {property.city}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-lg font-semibold text-[color:var(--color-accent-gold)]">
+                      {formatPrice(property.price)}
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className="bg-[rgba(224,164,88,0.15)] text-[color:var(--color-accent-gold)] rounded-full"
+                    >
+                      {property.property_type}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-3 text-sm text-slate-600 border-t border-slate-200 pt-3">
+                    <span>{property.bedrooms} beds</span>
+                    <span>{property.bathrooms} baths</span>
+                    <span>{property.area_sqft} sqft</span>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <Link
+                      href={`/properties/${property._id}`}
+                      className="text-sm font-semibold text-[color:var(--color-primary)] hover:text-[color:var(--color-accent-gold)] transition-all"
+                    >
+                      View →
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
     </div>
   )
 }
-

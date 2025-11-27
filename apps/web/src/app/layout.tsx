@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono, Playfair_Display } from "next/font/google";
 import ClerkWrapper from "@/components/ClerkWrapper";
 import { UserProvider } from "@/context/UserContext";
 import "./globals.css";
-import Topbar from "@/components/Topbar";
+import TopbarWrapper from "@/components/TopbarWrapper";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const playfair = Playfair_Display({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
@@ -28,13 +35,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${inter.variable} ${playfair.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning={true}
       >
         <ClerkWrapper>
           {/* UserProvider handles both context AND detailed sync logging */}
           <UserProvider>
-            <Topbar />
+            <TopbarWrapper />
             {children}
           </UserProvider>
         </ClerkWrapper>

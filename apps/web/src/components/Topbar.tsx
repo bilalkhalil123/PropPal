@@ -5,8 +5,7 @@ import { UserButton } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
 import { useMemo } from 'react'
 import { HomeIcon } from '@heroicons/react/24/outline'
-
-// Segmented control items (include home/chat and roles together)
+import { motion } from 'framer-motion'
 const segments = [
   { href: '/', label: 'Home' },
   { href: '/chat', label: 'Chat' },
@@ -25,28 +24,55 @@ export default function Topbar() {
   const segWidth = 100 / segments.length
 
   return (
-    <header className="bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-40 border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center">
-        <Link href="/" className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700">
-          <HomeIcon className="h-6 w-6" />
-          <span className="font-bold text-xl">PropPal</span>
+    <motion.header
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="sticky top-0 z-50 border-b border-slate-200/60 bg-[linear-gradient(to_right,rgba(255,255,255,0.9),rgba(250,250,250,0.7))] backdrop-blur-md shadow-card"
+    >
+      <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-24 py-3 flex items-center justify-between">
+        {/* Left Brand */}
+        <Link
+          href="/"
+          className="flex items-center gap-2 text-[color:var(--color-primary)] hover:text-[color:var(--color-accent-gold)] transition-colors"
+        >
+          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-[linear-gradient(to_right,var(--color-primary),var(--color-accent-gold))] text-white font-bold">
+            <HomeIcon className="h-5 w-5" />
+          </div>
+          <span
+            className="font-serif text-2xl font-bold tracking-tight"
+            style={{ fontFamily: 'var(--font-serif)' }}
+          >
+            PropPal
+          </span>
         </Link>
 
-        {/* Right side controls: segmented control + profile */}
-        <div className="ml-auto hidden md:flex items-center gap-4">
-          {/* Segmented control with glass effect */}
-          <div className="relative h-10 rounded-2xl border border-white/30 bg-white/10 backdrop-blur-md shadow-inner overflow-hidden" style={{ width: '420px' }}>
-            {/* moving glass */}
-            <div
-              className="absolute top-0 h-full rounded-2xl bg-white/40 backdrop-blur-xl shadow transition-all duration-300"
+        {/* Right Controls */}
+        <div className="hidden md:flex items-center gap-5">
+          {/* Segmented Control */}
+          <div
+            className="relative h-10 rounded-2xl border border-white/30 bg-white/30 backdrop-blur-lg overflow-hidden shadow-inner"
+            style={{ width: '440px' }}
+          >
+            {/* Moving indicator */}
+            <motion.div
+              layout
+              transition={{ type: 'spring', stiffness: 250, damping: 25 }}
+              className="absolute top-0 h-full rounded-2xl bg-[linear-gradient(to_right,var(--color-primary),var(--color-accent-gold))] shadow-card"
               style={{ width: `${segWidth}%`, left: `${activeIndex * segWidth}%` }}
             />
+            {/* Segment Items */}
             <div className="relative z-10 grid grid-cols-5 h-full">
               {segments.map((r, idx) => (
                 <Link
                   key={r.href}
                   href={r.href}
-                  className={`flex items-center justify-center text-sm font-medium ${idx === activeIndex ? 'text-slate-800' : 'text-slate-600 hover:text-slate-800'}`}
+                  className={`flex items-center justify-center text-sm font-medium transition-colors ${
+                    idx === activeIndex
+                      ? 'text-white'
+                      : 'text-slate-700 hover:text-[color:var(--color-primary)]'
+                  }`}
+                  style={{ fontFamily: 'var(--font-sans)' }}
                 >
                   {r.label}
                 </Link>
@@ -55,12 +81,17 @@ export default function Topbar() {
           </div>
 
           {/* Profile */}
-          <Link href="/profile" className="hidden sm:inline text-sm text-slate-600 hover:text-indigo-700">Profile</Link>
-          <UserButton afterSignOutUrl="/" />
+          <Link
+            href="/profile"
+            className="text-sm text-slate-700 hover:text-[color:var(--color-accent-gold)] transition-colors font-medium"
+          >
+            Profile
+          </Link>
+          <div className="ml-1">
+            <UserButton afterSignOutUrl="/" />
+          </div>
         </div>
       </div>
-    </header>
+    </motion.header>
   )
 }
-
-
