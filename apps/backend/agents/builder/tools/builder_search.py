@@ -21,49 +21,75 @@ def get_database_client():
 
 async def _search_async(query: str, collection_name: str, index_name: str, project_fields: Dict[str, Any], k: int = 5) -> Dict[str, Any]:
     """
-    Generic vector search function for a given collection.
+    Generic vector search function using Qdrant for builder profiles and services.
     """
     client = None
     try:
         if not query:
             return {"success": True, "query": query, "results": [], "count": 0}
 
-        client = get_database_client()
-        db = client["proppal"]
+        from bson import ObjectId
+        from services.vector_search.qdrant_service import (
+            search_builder_profiles,
+            search_builder_services,
+        )
 
         query_vec = embed_text(query)
 
+        # Determine which Qdrant collection to search
+        if collection_name == "builder_profiles":
+            qdrant_results = await search_builder_profiles(
+                query_vector=query_vec,
+                limit=k,
+                filters=None,
+            )
+        elif collection_name == "builder_services":
+            qdrant_results = await search_builder_services(
+                query_vector=query_vec,
+                limit=k,
+                filters=None,
+            )
+        else:
+            return {"success": False, "error": f"Unknown collection: {collection_name}", "query": query, "results": [], "count": 0}
 
-        pipeline: List[Dict[str, Any]] = [
-            {
-                "$vectorSearch": {
-                    "index": index_name,
-                    "path": "embeddings",
-                    "queryVector": query_vec,
-                    "numCandidates": max(100, k * 10),
-                    "limit": k,
-                }
-            },
-            {
-                "$project": {
-                    "score": {"$meta": "vectorSearchScore"},
-                    **project_fields
-                }
-            },
-        ]
+        if not qdrant_results:
+            return {"success": True, "query": query, "results": [], "count": 0}
 
-        results = await db[collection_name].aggregate(pipeline).to_list(k)
+        # Get database client and database
+        client = get_database_client()
+        db = client["proppal"]
 
-        # Normalize ids for JSON serialization
-        for r in results:
-            if "_id" in r:
-                r["_id"] = str(r["_id"])
-            # Some service docs include a foreign key builder_id as ObjectId
-            if "builder_id" in r and r["builder_id"] is not None:
-                try:
-                    r["builder_id"] = str(r["builder_id"])
-                except Exception:
-                    pass
+        # Fetch full documents from MongoDB using the IDs from Qdrant
+        doc_ids = [ObjectId(result["id"]) for result in qdrant_results]
+        
+        # Fetch documents from MongoDB
+        cursor = db[collection_name].find(
+            {"_id": {"$in": doc_ids}},
+            project_fields
+        )
+        
+        docs = await cursor.to_list(length=k)
+        
+        # Create a map of _id to score for ordering
+        score_map = {result["id"]: result["score"] for result in qdrant_results}
+        
+        # Sort results by Qdrant score and add score to results
+        results = []
+        for doc in docs:
+            doc_id_str = str(doc["_id"])
+            if doc_id_str in score_map:
+                doc["_id"] = doc_id_str
+                doc["score"] = score_map[doc_id_str]
+                # Some service docs include a foreign key builder_id as ObjectId
+                if "builder_id" in doc and doc["builder_id"] is not None:
+                    try:
+                        doc["builder_id"] = str(doc["builder_id"])
+                    except Exception:
+                        pass
+                results.append(doc)
+        
+        # Sort by score (descending)
+        results.sort(key=lambda x: x.get("score", 0), reverse=True)
 
         # Optional debug output to terminal for service queries
         if collection_name == "builder_services":

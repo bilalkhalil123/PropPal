@@ -11,6 +11,7 @@ from common.config import get_settings
 from common.db import DatabaseClient
 from services.embeddings.compose import compose_property_text
 from services.embeddings.service import embed_batch
+from services.vector_search.qdrant_service import upsert_property_embedding
 
 
 async def backfill(batch_size: int, limit: int | None) -> None:
@@ -57,9 +58,24 @@ async def _process_batch(db, docs: List[dict]) -> None:
     vectors = embed_batch(texts)
     ops: List[UpdateOne] = []
     for doc, vec in zip(docs, vectors):
+        # Update MongoDB (keep embedding for backward compatibility, but it's optional now)
         ops.append(
             UpdateOne({"_id": doc["_id"]}, {"$set": {"embedding": vec}})
         )
+        
+        # Store embedding in Qdrant
+        property_id = str(doc["_id"])
+        metadata = {
+            "city": doc.get("city", ""),
+            "price": doc.get("price", 0),
+            "property_type": doc.get("property_type", ""),
+        }
+        await upsert_property_embedding(
+            property_id=property_id,
+            embedding=vec,
+            metadata=metadata,
+        )
+    
     if ops:
         await db["properties"].bulk_write(ops)
 

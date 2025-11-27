@@ -1,13 +1,15 @@
 """
-Property search API with vector similarity search
+Property search API with vector similarity search using Qdrant
 """
 from typing import Any, Dict, List
+from bson import ObjectId
 
 from fastapi import APIRouter, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from common.db import get_database
 from services.embeddings.service import embed_text
+from services.vector_search.qdrant_service import search_properties as qdrant_search_properties
 
 
 router = APIRouter(prefix="/api/search", tags=["search"])
@@ -19,7 +21,7 @@ async def search_properties(
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     """
-    Search properties using vector similarity search
+    Search properties using vector similarity search with Qdrant
 
     Body:
         query: Search query text
@@ -37,57 +39,74 @@ async def search_properties(
     # Generate query embedding
     query_vec = embed_text(query_text)
 
-    # Build vector search pipeline
-    pipeline: List[Dict[str, Any]] = [
-        {
-            "$vectorSearch": {
-                "index": "properties_embedding_index",
-                "path": "embedding",
-                "queryVector": query_vec,
-                "numCandidates": max(500, k * 10),
-                "limit": k,
-            }
-        },
-        {
-            "$project": {
-                "score": {"$meta": "vectorSearchScore"},
-                "title": 1,
-                "price": 1,
-                "city": 1,
-                "area": 1,
-                "property_type": 1,
-                "bedrooms": 1,
-                "bathrooms": 1,
-                "area_sqft": 1,
-                "images": 1,
-            }
-        },
-    ]
-
-    # Optional filters
+    # Prepare filters for Qdrant
+    filters: Dict[str, Any] = {}
     city = body.get("city")
     price_min = body.get("price_min")
     price_max = body.get("price_max")
+    
+    if city:
+        filters["city"] = city
+    if price_min is not None:
+        filters["price_min"] = float(price_min)
+    if price_max is not None:
+        filters["price_max"] = float(price_max)
 
-    if city or price_min is not None or price_max is not None:
-        match: Dict[str, Any] = {}
-        if city:
-            match["city"] = city
-        price_cond: Dict[str, Any] = {}
-        if price_min is not None:
-            price_cond["$gte"] = float(price_min)
-        if price_max is not None:
-            price_cond["$lte"] = float(price_max)
-        if price_cond:
-            match["price"] = price_cond
-        pipeline.insert(1, {"$match": match})
+    # Search in Qdrant
+    qdrant_results = await qdrant_search_properties(
+        query_vector=query_vec,
+        limit=k,
+        filters=filters if filters else None,
+    )
 
-    # Execute search
-    results = await db["properties"].aggregate(pipeline).to_list(k)
+    if not qdrant_results:
+        return {"count": 0, "results": []}
 
-    # Normalize _id for JSON serialization
-    for r in results:
-        if "_id" in r:
-            r["_id"] = str(r["_id"])
+    # Fetch full documents from MongoDB using the IDs from Qdrant
+    property_ids = []
+    for result in qdrant_results:
+        prop_id = result.get("id")
+        if prop_id:
+            try:
+                property_ids.append(ObjectId(prop_id))
+            except Exception:
+                # Skip invalid ObjectIds
+                continue
+    
+    if not property_ids:
+        return {"count": 0, "results": []}
+
+    # Fetch properties from MongoDB
+    properties_cursor = db["properties"].find(
+        {"_id": {"$in": property_ids}},
+        {
+            "title": 1,
+            "price": 1,
+            "city": 1,
+            "area": 1,
+            "property_type": 1,
+            "bedrooms": 1,
+            "bathrooms": 1,
+            "area_sqft": 1,
+            "images": 1,
+        }
+    )
+    
+    properties = await properties_cursor.to_list(length=k)
+    
+    # Create a map of _id to score for ordering
+    score_map = {result["id"]: result["score"] for result in qdrant_results}
+    
+    # Sort results by Qdrant score and add score to results
+    results = []
+    for prop in properties:
+        prop_id_str = str(prop["_id"])
+        if prop_id_str in score_map:
+            prop["_id"] = prop_id_str
+            prop["score"] = score_map[prop_id_str]
+            results.append(prop)
+    
+    # Sort by score (descending)
+    results.sort(key=lambda x: x.get("score", 0), reverse=True)
 
     return {"count": len(results), "results": results}

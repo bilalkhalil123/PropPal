@@ -21,7 +21,7 @@ def get_database_client():
 
 async def _search_properties_async(query: str, k: int = 5) -> Dict[str, Any]:
     """
-    Search properties using vector similarity search directly.
+    Search properties using vector similarity search with Qdrant.
     
     Args:
         query: Search query text
@@ -30,52 +30,102 @@ async def _search_properties_async(query: str, k: int = 5) -> Dict[str, Any]:
     Returns:
         Dictionary containing search results
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     client = None
     try:
         if not query:
             return {"success": True, "query": query, "results": [], "count": 0}
         
+        from bson import ObjectId
+        from services.vector_search.qdrant_service import search_properties as qdrant_search_properties
+        
+        logger.info(f"[PROPERTY_SEARCH] Searching for: {query}")
+        
+        # Generate query embedding
+        query_vec = embed_text(query)
+        logger.info(f"[PROPERTY_SEARCH] Generated embedding, dimension: {len(query_vec)}")
+        
+        # Search in Qdrant
+        qdrant_results = await qdrant_search_properties(
+            query_vector=query_vec,
+            limit=k,
+            filters=None,
+        )
+        
+        logger.info(f"[PROPERTY_SEARCH] Qdrant returned {len(qdrant_results)} results")
+        
+        if not qdrant_results:
+            logger.warning(f"[PROPERTY_SEARCH] No results from Qdrant for query: {query}")
+            return {
+                "success": True,
+                "query": query,
+                "results": [],
+                "count": 0
+            }
+        
         # Get database client and database
         client = get_database_client()
         db = client["proppal"]
         
-        # Generate query embedding
-        query_vec = embed_text(query)
+        # Extract property IDs from Qdrant results
+        property_ids = []
+        for result in qdrant_results:
+            prop_id = result.get("id")
+            if prop_id:
+                try:
+                    property_ids.append(ObjectId(prop_id))
+                except Exception as e:
+                    logger.error(f"[PROPERTY_SEARCH] Invalid ObjectId: {prop_id}, error: {e}")
+                    continue
         
-        # Build vector search pipeline
-        pipeline: List[Dict[str, Any]] = [
+        logger.info(f"[PROPERTY_SEARCH] Extracted {len(property_ids)} valid property IDs")
+        
+        if not property_ids:
+            logger.warning(f"[PROPERTY_SEARCH] No valid property IDs extracted from Qdrant results")
+            return {
+                "success": True,
+                "query": query,
+                "results": [],
+                "count": 0
+            }
+        
+        # Fetch properties from MongoDB
+        properties_cursor = db["properties"].find(
+            {"_id": {"$in": property_ids}},
             {
-                "$vectorSearch": {
-                    "index": "properties_embedding_index",
-                    "path": "embedding",
-                    "queryVector": query_vec,
-                    "numCandidates": max(500, k * 10),
-                    "limit": k,
-                }
-            },
-            {
-                "$project": {
-                    "score": {"$meta": "vectorSearchScore"},
-                    "title": 1,
-                    "price": 1,
-                    "city": 1,
-                    "area": 1,
-                    "property_type": 1,
-                    "bedrooms": 1,
-                    "bathrooms": 1,
-                    "area_sqft": 1,
-                    "images": 1,
-                }
-            },
-        ]
+                "title": 1,
+                "price": 1,
+                "city": 1,
+                "area": 1,
+                "property_type": 1,
+                "bedrooms": 1,
+                "bathrooms": 1,
+                "area_sqft": 1,
+                "images": 1,
+            }
+        )
         
-        # Execute search
-        results = await db["properties"].aggregate(pipeline).to_list(k)
+        properties = await properties_cursor.to_list(length=k)
+        logger.info(f"[PROPERTY_SEARCH] Fetched {len(properties)} properties from MongoDB")
         
-        # Normalize _id for JSON serialization
-        for r in results:
-            if "_id" in r:
-                r["_id"] = str(r["_id"])
+        # Create a map of _id to score for ordering
+        score_map = {result["id"]: result["score"] for result in qdrant_results}
+        
+        # Sort results by Qdrant score and add score to results
+        results = []
+        for prop in properties:
+            prop_id_str = str(prop["_id"])
+            if prop_id_str in score_map:
+                prop["_id"] = prop_id_str
+                prop["score"] = score_map[prop_id_str]
+                results.append(prop)
+        
+        # Sort by score (descending)
+        results.sort(key=lambda x: x.get("score", 0), reverse=True)
+        
+        logger.info(f"[PROPERTY_SEARCH] Returning {len(results)} results")
         
         return {
             "success": True,
@@ -85,6 +135,9 @@ async def _search_properties_async(query: str, k: int = 5) -> Dict[str, Any]:
         }
         
     except Exception as e:
+        import traceback
+        logger.error(f"[PROPERTY_SEARCH] Error: {str(e)}")
+        logger.error(f"[PROPERTY_SEARCH] Traceback: {traceback.format_exc()}")
         return {
             "success": False,
             "error": str(e),

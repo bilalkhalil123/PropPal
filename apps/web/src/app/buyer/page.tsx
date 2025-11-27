@@ -154,19 +154,19 @@ export default function BuyerPage() {
             <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
             <Input
               placeholder='Try "Homes under 50 lakhs in Islamabad"...'
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-12 rounded-xl bg-white/70 border border-slate-300"
-            />
-          </div>
+              />
+            </div>
           <Button
-            type="submit"
+              type="submit"
             className="rounded-xl px-6 py-3 text-sm font-semibold bg-[linear-gradient(to_right,var(--color-primary),var(--color-accent-gold))] text-white shadow-md hover:shadow-lg transition-all"
-          >
+            >
             <SparklesIcon className="h-5 w-5 mr-1" />
             AI Search
           </Button>
-        </form>
+          </form>
       </section>
 
       {/* Main Content */}
@@ -189,7 +189,7 @@ export default function BuyerPage() {
                   <SelectItem value="Islamabad">Islamabad</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+      </div>
 
             {/* Property Type */}
             <div>
@@ -204,7 +204,7 @@ export default function BuyerPage() {
                   <SelectItem value="House">House</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+        </div>
 
             {/* Price Range */}
             <div>
@@ -220,8 +220,8 @@ export default function BuyerPage() {
                 <span>{formatPrice(priceRange[0])}</span>
                 <span>{formatPrice(priceRange[1])}</span>
               </div>
-            </div>
-
+              </div>
+              
             <Button
               onClick={() => {
                 setSelectedCity(null)
@@ -235,7 +235,7 @@ export default function BuyerPage() {
             </Button>
           </div>
         </aside>
-
+                
         {/* Mobile Filter Sheet */}
         <div className="md:hidden flex justify-end mb-4">
           <Sheet>
@@ -250,8 +250,8 @@ export default function BuyerPage() {
               {/* ...same filter content as sidebar (reuse here if needed)... */}
             </SheetContent>
           </Sheet>
-        </div>
-
+                </div>
+                
         {/* Property Cards */}
         <motion.div layout className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredProperties.map((property, idx) => (
@@ -287,10 +287,10 @@ export default function BuyerPage() {
                     </Badge>
                   </div>
                   <div className="grid grid-cols-3 text-sm text-slate-600 border-t border-slate-200 pt-3">
-                    <span>{property.bedrooms} beds</span>
-                    <span>{property.bathrooms} baths</span>
-                    <span>{property.area_sqft} sqft</span>
-                  </div>
+                  <span>{property.bedrooms} beds</span>
+                  <span>{property.bathrooms} baths</span>
+                  <span>{property.area_sqft} sqft</span>
+                </div>
                   <div className="mt-4 flex justify-end">
                     <Link
                       href={`/properties/${property._id}`}
@@ -298,7 +298,7 @@ export default function BuyerPage() {
                     >
                       View →
                     </Link>
-                  </div>
+            </div>
                 </CardContent>
               </Card>
             </motion.div>
