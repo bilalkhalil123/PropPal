@@ -1,20 +1,21 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { api } from '@/lib/api-client'
 import {
   MagnifyingGlassIcon,
   MapPinIcon,
   HomeIcon,
   FunnelIcon,
   SparklesIcon,
+  HomeModernIcon,
+  BanknotesIcon,
 } from '@heroicons/react/24/outline'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import {
@@ -39,12 +40,17 @@ interface Property {
 }
 
 export default function BuyerPage() {
-  const { user, loading, isAuthenticated } = useCurrentUser()
+  const { user, loading, isAuthenticated, userId } = useCurrentUser()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [priceRange, setPriceRange] = useState([0, 50000000])
   const [selectedCity, setSelectedCity] = useState<string | null>(null)
   const [selectedType, setSelectedType] = useState<string | null>(null)
+  const [properties, setProperties] = useState<Property[]>([])
+  const [loadingProperties, setLoadingProperties] = useState(false)
+  const dbUserId = (user as any)?._id || userId || null
+  const propertiesContainerRef = useRef<HTMLDivElement>(null)
+  const hasLoadedRef = useRef(false)
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -59,54 +65,86 @@ export default function BuyerPage() {
     }
   }
 
-  const sampleProperties: Property[] = [
-    {
-      _id: '1',
-      title: 'Modern Villa in DHA Phase 5',
-      price: 45000000,
-      city: 'Lahore',
-      bedrooms: 4,
-      bathrooms: 3,
-      area_sqft: 2500,
-      property_type: 'Villa',
-      images: ['/hero-house.svg'],
-    },
-    {
-      _id: '2',
-      title: 'Luxury Apartment in Clifton',
-      price: 25000000,
-      city: 'Karachi',
-      bedrooms: 3,
-      bathrooms: 2,
-      area_sqft: 1800,
-      property_type: 'Apartment',
-      images: ['/hero-house.svg'],
-    },
-    {
-      _id: '3',
-      title: 'Spacious House in F-8',
-      price: 35000000,
-      city: 'Islamabad',
-      bedrooms: 5,
-      bathrooms: 4,
-      area_sqft: 3000,
-      property_type: 'House',
-      images: ['/hero-house.svg'],
-    },
-    {
-      _id: '4',
-      title: 'Cozy Home in Gulberg',
-      price: 18000000,
-      city: 'Lahore',
-      bedrooms: 2,
-      bathrooms: 2,
-      area_sqft: 1200,
-      property_type: 'House',
-      images: ['/hero-house.svg'],
-    },
-  ]
+  // Lazy load recommended properties when component is visible
+  useEffect(() => {
+    if (!isAuthenticated || loading || hasLoadedRef.current) {
+      return
+    }
 
-  const filteredProperties = sampleProperties.filter((property) => {
+    const loadRecommendations = async () => {
+      if (loadingProperties || hasLoadedRef.current) {
+        return // Already loading or loaded
+      }
+
+      hasLoadedRef.current = true
+      setLoadingProperties(true)
+      
+      try {
+        // Load popular properties first (fast)
+        const popularResponse = (await api.recommendations.properties('', 12)) as any
+        if (popularResponse?.properties) {
+          setProperties(popularResponse.properties)
+          setLoadingProperties(false)
+        }
+
+        // Then, if user is logged in, load personalized recommendations in background
+        if (dbUserId) {
+          try {
+            const response = (await api.recommendations.properties(dbUserId, 12)) as any
+            if (response?.properties && response.source === 'recent_searches') {
+              // Update with personalized recommendations
+              setProperties(response.properties)
+            }
+          } catch (error: any) {
+            console.error('Error loading personalized recommendations:', error)
+            // Keep popular properties on error
+          }
+        }
+      } catch (error: any) {
+        console.error('Error loading recommendations:', error)
+        setLoadingProperties(false)
+        hasLoadedRef.current = false // Allow retry on error
+      }
+    }
+
+    // Use Intersection Observer for lazy loading
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !hasLoadedRef.current) {
+            // Start loading when the properties section becomes visible
+            loadRecommendations()
+          }
+        })
+      },
+      {
+        rootMargin: '200px', // Start loading 200px before the section is visible
+        threshold: 0.1,
+      }
+    )
+
+    // Observe the properties container element using ref
+    const container = propertiesContainerRef.current
+    if (container) {
+      observer.observe(container)
+    }
+
+    // Fallback: Load after a short delay if Intersection Observer is not supported
+    const fallbackTimer = setTimeout(() => {
+      if (!hasLoadedRef.current) {
+        loadRecommendations()
+      }
+    }, 1000)
+
+    return () => {
+      if (container) {
+        observer.unobserve(container)
+      }
+      clearTimeout(fallbackTimer)
+    }
+  }, [dbUserId, isAuthenticated, loading])
+
+  const filteredProperties = properties.filter((property) => {
     const matchesCity = selectedCity ? property.city === selectedCity : true
     const matchesType = selectedType ? property.property_type === selectedType : true
     const matchesPrice = property.price >= priceRange[0] && property.price <= priceRange[1]
@@ -120,6 +158,11 @@ export default function BuyerPage() {
       currency: 'PKR',
       minimumFractionDigits: 0,
     }).format(price)
+
+  const openPropertyModal = (property: Property) => {
+    // Navigate to property details page
+    router.push(`/properties/${property._id}`)
+  }
 
   if (loading)
     return (
@@ -253,57 +296,170 @@ export default function BuyerPage() {
                 </div>
                 
         {/* Property Cards */}
-        <motion.div layout className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredProperties.map((property, idx) => (
-            <motion.div
-              key={property._id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              viewport={{ once: true }}
-            >
-              <Card className="group rounded-2xl bg-white/60 backdrop-blur-md border border-slate-200/70 hover:shadow-xl hover:scale-[1.02] transition-all">
-                <div className="h-48 relative bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent-gold)] flex items-center justify-center">
-                  <HomeIcon className="h-16 w-16 text-white/70" />
-                </div>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-slate-900 group-hover:text-[color:var(--color-primary)] transition-colors">
-                    {property.title}
-                  </CardTitle>
-                  <CardDescription className="flex items-center gap-1 text-slate-600 text-sm">
-                    <MapPinIcon className="h-4 w-4" /> {property.city}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-lg font-semibold text-[color:var(--color-accent-gold)]">
-                      {formatPrice(property.price)}
-                    </span>
-                    <Badge
-                      variant="secondary"
-                      className="bg-[rgba(224,164,88,0.15)] text-[color:var(--color-accent-gold)] rounded-full"
-                    >
-                      {property.property_type}
-                    </Badge>
+        <div ref={propertiesContainerRef}>
+        {loadingProperties ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, idx) => (
+              <div
+                key={idx}
+                className="bg-white rounded-xl shadow-sm border border-slate-200/50 overflow-hidden animate-pulse"
+              >
+                {/* Image Skeleton */}
+                <div className="h-40 bg-gradient-to-br from-slate-200 to-slate-300"></div>
+                
+                {/* Content Skeleton */}
+                <div className="p-4 space-y-3">
+                  {/* Title Skeleton */}
+                  <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+                  
+                  {/* Price Skeleton */}
+                  <div className="h-6 bg-slate-200 rounded w-1/3"></div>
+                  
+                  {/* Location Skeleton */}
+                  <div className="h-4 bg-slate-200 rounded w-1/4"></div>
+                  
+                  {/* Stats Skeleton */}
+                  <div className="flex items-center justify-between bg-slate-50 rounded-lg p-2">
+                    <div className="h-3 bg-slate-200 rounded w-16"></div>
+                    <div className="h-3 bg-slate-200 rounded w-16"></div>
+                    <div className="h-3 bg-slate-200 rounded w-16"></div>
                   </div>
-                  <div className="grid grid-cols-3 text-sm text-slate-600 border-t border-slate-200 pt-3">
-                  <span>{property.bedrooms} beds</span>
-                  <span>{property.bathrooms} baths</span>
-                  <span>{property.area_sqft} sqft</span>
+                  
+                  {/* Buttons Skeleton */}
+                  <div className="flex space-x-2 pt-3">
+                    <div className="h-9 bg-slate-200 rounded flex-1"></div>
+                    <div className="h-9 bg-slate-200 rounded flex-1"></div>
+                  </div>
                 </div>
-                  <div className="mt-4 flex justify-end">
-                    <Link
-                      href={`/properties/${property._id}`}
-                      className="text-sm font-semibold text-[color:var(--color-primary)] hover:text-[color:var(--color-accent-gold)] transition-all"
+              </div>
+            ))}
+          </div>
+        ) : filteredProperties.length === 0 ? (
+          <div className="text-center py-12">
+            <HomeIcon className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-slate-700 mb-2">No properties found</h3>
+            <p className="text-slate-500 mb-4">
+              {searchQuery || selectedCity || selectedType
+                ? 'Try adjusting your filters or search query.'
+                : dbUserId
+                ? "We couldn't find any recommendations. Start searching to get personalized recommendations!"
+                : 'Sign in to see personalized property recommendations based on your search history.'}
+            </p>
+            {!searchQuery && !selectedCity && !selectedType && (
+              <Button
+                onClick={() => router.push('/chat')}
+                className="rounded-xl px-6 py-3 text-sm font-semibold bg-[linear-gradient(to_right,var(--color-primary),var(--color-accent-gold))] text-white"
+              >
+                <SparklesIcon className="h-5 w-5 mr-1" />
+                Start Searching
+              </Button>
+            )}
+          </div>
+        ) : (
+          <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredProperties.map((property, idx) => (
+              <motion.div
+                key={property._id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                viewport={{ once: true }}
+              >
+                <div
+                  className="bg-white rounded-xl shadow-sm border border-slate-200/50 overflow-hidden hover:shadow-lg hover:border-slate-300 transition-all duration-300 cursor-pointer flex flex-col h-full group"
+                  onClick={() => openPropertyModal(property)}
+                >
+                  {/* Property Image */}
+                  <div className="h-40 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                    {property.images && property.images.length > 0 ? (
+                      <img
+                        src={property.images[0] || '/placeholder.svg'}
+                        alt={property.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLElement
+                          target.style.display = 'none'
+                          const nextSibling = target.nextElementSibling as HTMLElement
+                          if (nextSibling) {
+                            nextSibling.style.display = 'flex'
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={`h-full w-full flex items-center justify-center ${property.images && property.images.length > 0 ? 'hidden' : 'flex'}`}
                     >
-                      View →
-                    </Link>
-            </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
+                      <HomeModernIcon className="h-12 w-12 text-slate-400" />
+                    </div>
+                  </div>
+
+                  {/* Property Details */}
+                  <div className="p-4 flex flex-col flex-grow">
+                    <h3 className="font-semibold font-serif text-base text-slate-900 mb-2 line-clamp-2">
+                      {property.title}
+                    </h3>
+
+                    {/* Price */}
+                    <div className="flex items-center mb-3">
+                      <BanknotesIcon className="h-4 w-4 text-teal-600 mr-2" />
+                      <span className="text-lg font-bold text-teal-600">
+                        Rs {property.price.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Location */}
+                    <div className="flex items-center mb-3">
+                      <MapPinIcon className="h-4 w-4 text-slate-500 mr-2" />
+                      <span className="text-sm text-slate-600">
+                        {property.city}
+                      </span>
+                    </div>
+
+                    {/* Property Stats */}
+                    <div className="flex items-center justify-between mb-3 text-xs text-slate-600 bg-slate-50 rounded-lg p-2">
+                      <span>{property.bedrooms} bed</span>
+                      <span className="text-slate-300">•</span>
+                      <span>{property.bathrooms} bath</span>
+                      <span className="text-slate-300">•</span>
+                      <span>{property.area_sqft} sqft</span>
+                    </div>
+
+                    {/* Property Type */}
+                    <div className="flex items-center justify-between mb-3 text-xs">
+                      <span className="text-slate-500">
+                        {property.property_type}
+                      </span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex space-x-2 mt-auto pt-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openPropertyModal(property)
+                        }}
+                        className="flex-1 bg-gradient-to-r from-teal-500 to-cyan-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:shadow-md transition-all"
+                      >
+                        View Details
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          router.push(`/chat?q=${encodeURIComponent(`Tell me more about property ${property.title} in ${property.city}`)}`)
+                        }}
+                        className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+                      >
+                        Ask AI
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+        </div>
       </div>
     </div>
   )

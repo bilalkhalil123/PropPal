@@ -30,16 +30,30 @@ class ApiClient {
       ...options.headers,
     }
 
-    // Clerk middleware automatically adds the Authorization header
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: 'include', // Include cookies if needed
-    })
+    let response: Response
+    try {
+      // Clerk middleware automatically adds the Authorization header
+      response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include', // Include cookies if needed
+      })
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`)
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`)
+      }
+    } catch (error: any) {
+      // Enhanced error logging for debugging
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        console.error(`[API Client] Network error - Could not reach ${url}`)
+        console.error('This usually means:', {
+          'Backend server not running': 'Check if the backend is running on the expected port',
+          'CORS issue': 'Check backend CORS settings',
+          'Wrong URL': `Current API URL: ${this.baseUrl}`,
+        })
+      }
+      throw error
     }
 
     // Handle empty responses
@@ -167,6 +181,14 @@ export const api = {
    */
   properties: {
     getById: (id: string) => apiClient.get(`/api/properties/${id}`),
+  },
+
+  /**
+   * Recommendations endpoints
+   */
+  recommendations: {
+    properties: (userId: string, limit: number = 12) =>
+      apiClient.get(`/api/recommendations/properties?user_id=${encodeURIComponent(userId)}&limit=${limit}`),
   },
 }
 
