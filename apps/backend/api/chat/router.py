@@ -401,13 +401,26 @@ async def get_chat_history(
     elif ObjectId.is_valid(user_id):
         query_id = ObjectId(user_id)
 
-    doc = await db["chat_histories"].find_one({"user_id": query_id})
-    if not doc:
-        return {"count": 0, "messages": []}
-
-    messages: List[Dict[str, Any]] = doc.get("messages", [])
+    # If session_id is provided, query that specific session document
     if session_id:
-        messages = [m for m in messages if m.get("_payload", {}).get("session_id") == session_id]
+        doc = await db["chat_histories"].find_one({"user_id": query_id, "session_id": session_id})
+        if not doc:
+            return {"count": 0, "messages": []}
+        messages: List[Dict[str, Any]] = doc.get("messages", [])
+    else:
+        # Query all documents for this user and aggregate messages
+        cursor = db["chat_histories"].find({"user_id": query_id})
+        docs = await cursor.to_list(length=None)
+        if not docs:
+            return {"count": 0, "messages": []}
+        
+        # Aggregate messages from all documents
+        messages: List[Dict[str, Any]] = []
+        for doc in docs:
+            messages.extend(doc.get("messages", []))
+        
+        # Use the first doc for metadata
+        doc = docs[0] if docs else None
 
     # sort by timestamp ascending
     def _get_ts(m: Dict[str, Any]) -> float:
@@ -423,11 +436,26 @@ async def get_chat_history(
     if len(messages) > limit:
         messages = messages[-limit:]
 
+    # Get the most recent updated_at from all documents
+    if session_id and doc:
+        updated_at = doc.get("updated_at")
+        doc_id = doc.get("_id")
+    else:
+        # Find the most recent document
+        cursor = db["chat_histories"].find({"user_id": query_id}).sort("updated_at", -1).limit(1)
+        latest_doc = await cursor.to_list(length=1)
+        if latest_doc:
+            updated_at = latest_doc[0].get("updated_at")
+            doc_id = latest_doc[0].get("_id")
+        else:
+            updated_at = None
+            doc_id = None
+
     return {
         "count": len(messages),
         "messages": _normalize_messages(messages),
-        "updated_at": (doc.get("updated_at").isoformat() if isinstance(doc.get("updated_at"), datetime) else doc.get("updated_at")),
-        "_id": _str_oid(doc.get("_id")),
+        "updated_at": (updated_at.isoformat() if isinstance(updated_at, datetime) else str(updated_at) if updated_at else ""),
+        "_id": _str_oid(doc_id) if doc_id else None,
     }
 
 
@@ -489,7 +517,7 @@ async def list_chat_sessions(
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     """Return a condensed list of prior sessions (by session_id) with last message and updated time.
-    This derives sessions from the _payload.session_id embedded in messages.
+    Queries all chat history documents for the user and extracts unique sessions.
     """
     query_id: Any = user_id
     if user_id.startswith("session:"):
@@ -497,26 +525,66 @@ async def list_chat_sessions(
     elif ObjectId.is_valid(user_id):
         query_id = ObjectId(user_id)
 
-    doc = await db["chat_histories"].find_one({"user_id": query_id})
-    if not doc:
+    # Query all chat history documents for this user
+    cursor = db["chat_histories"].find({"user_id": query_id})
+    docs = await cursor.to_list(length=None)
+    
+    if not docs:
         return {"count": 0, "sessions": []}
 
+    # Aggregate sessions from all documents
     sessions: Dict[str, Dict[str, Any]] = {}
-    for m in doc.get("messages", []):
-        payload = m.get("_payload") or {}
-        sid = payload.get("session_id") or "default"
-        ts = m.get("timestamp")
-        ts_val = ts.isoformat() if isinstance(ts, datetime) else ts
-        entry = sessions.get(sid) or {"session_id": sid, "last_message": "", "updated_at": ts_val}
-        # prefer assistant text or user text as preview
-        preview = m.get("content") or ""
-        entry["last_message"] = preview[:120]
-        entry["updated_at"] = ts_val
-        sessions[sid] = entry
+    for doc in docs:
+        session_id_from_doc = doc.get("session_id")
+        messages = doc.get("messages", [])
+        updated_at = doc.get("updated_at")
+        
+        # Use session_id from document if available, otherwise extract from messages
+        if session_id_from_doc:
+            sid = session_id_from_doc
+        elif messages:
+            # Fallback: try to get session_id from first message payload
+            first_msg = messages[0] if messages else {}
+            payload = first_msg.get("_payload") or {}
+            sid = payload.get("session_id") or "default"
+        else:
+            continue  # Skip documents without messages or session_id
+        
+        # Get the last message for preview
+        last_message = ""
+        last_timestamp = updated_at
+        if messages:
+            # Find the most recent message
+            sorted_messages = sorted(
+                messages,
+                key=lambda m: m.get("timestamp", datetime.min) if isinstance(m.get("timestamp"), datetime) else datetime.min,
+                reverse=True
+            )
+            if sorted_messages:
+                last_msg = sorted_messages[0]
+                last_message = last_msg.get("content", "")[:120]
+                last_timestamp = last_msg.get("timestamp", updated_at)
+        
+        # Update session info if this is newer or if it doesn't exist
+        if sid not in sessions:
+            sessions[sid] = {
+                "session_id": sid,
+                "last_message": last_message,
+                "updated_at": last_timestamp.isoformat() if isinstance(last_timestamp, datetime) else str(last_timestamp),
+            }
+        else:
+            # Keep the most recent update
+            existing_ts = sessions[sid].get("updated_at", "")
+            new_ts = last_timestamp.isoformat() if isinstance(last_timestamp, datetime) else str(last_timestamp)
+            if new_ts > existing_ts:
+                sessions[sid]["last_message"] = last_message
+                sessions[sid]["updated_at"] = new_ts
 
     # sort by updated_at desc
     def _ts_iso(v: str) -> float:
         try:
+            if isinstance(v, datetime):
+                return v.timestamp()
             return datetime.fromisoformat(v).timestamp()
         except Exception:
             return 0.0

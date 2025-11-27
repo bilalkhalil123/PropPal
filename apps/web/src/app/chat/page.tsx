@@ -376,11 +376,24 @@ export default function ChatPage() {
 
   useEffect(() => {
     const loadHistory = async () => {
-      if (!dbUserId) return
+      if (!dbUserId || !sessionId) return
       try {
-        const res = (await api.chat.history(dbUserId, undefined, 50)) as any
+        // Load history for the current session only
+        const res = (await api.chat.history(dbUserId, sessionId, 50)) as any
         const serverMessages = (res?.messages || []) as Array<any>
-        if (serverMessages.length === 0) return
+        if (serverMessages.length === 0) {
+          // If no messages for this session, keep the welcome message
+          setMessages([
+            {
+              id: '1',
+              content:
+                "Welcome to PropPal AI! I'm here to help you find your perfect property or connect with builders. Ask me to find houses in specific cities, search by price range, or discover construction companies.",
+              sender: 'ai',
+              timestamp: new Date(),
+            },
+          ])
+          return
+        }
         const mapped: Message[] = serverMessages.map((m: any, idx: number) => ({
           id: `${m.timestamp || 'ts'}-${idx}`,
           content: String(m.content || ''),
@@ -390,13 +403,13 @@ export default function ChatPage() {
           builders: m._payload?.builders as Builder[] | undefined,
           services: m._payload?.services as ServiceResult[] | undefined,
         }))
-        setMessages((prev) => (prev.length <= 1 ? mapped : prev))
+        setMessages(mapped)
       } catch (e) {
         // ignore history load errors
       }
     }
     loadHistory()
-  }, [dbUserId])
+  }, [dbUserId, sessionId])
 
   useEffect(() => {
     const query = searchParams.get('q')
