@@ -23,6 +23,7 @@ from common.config import get_settings  # noqa: E402
 from common.db import DatabaseClient, get_db_client  # noqa: E402
 from common.errors import register_exception_handlers, DatabaseConnectionException  # noqa: E402
 from api.users.router import router as users_router  # noqa: E402
+from api.auth.router import router as auth_router  # noqa: E402
 from api.search.router import router as search_router  # noqa: E402
 from api.chat.router import router as chat_router  # noqa: E402
 from api.builder.router import router as builder_router
@@ -88,6 +89,7 @@ app = FastAPI(
 register_exception_handlers(app)
 
 # Include API routers
+app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(search_router)
 app.include_router(chat_router)

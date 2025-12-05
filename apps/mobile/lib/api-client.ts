@@ -6,6 +6,7 @@
  */
 
 import Constants from 'expo-constants';
+import { getToken } from './auth';
 
 // Get API URL from environment variables or use default
 const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl || 
@@ -36,10 +37,18 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     
+    // Get auth token if available
+    const token = await getToken();
+    
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
     };
+    
+    // Add authorization header if token exists
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     try {
       const response = await fetch(url, {
@@ -115,6 +124,23 @@ class ApiClient {
     return this.get<{ status: string; service: string; version: string }>('/');
   }
 
+  // Authentication API
+  auth = {
+    signup: (data: {
+      name: string;
+      email: string;
+      password: string;
+      phone?: string;
+      role?: string;
+    }) => this.post<any>('/api/auth/signup', data),
+    
+    login: (email: string, password: string) => {
+      return this.post<any>('/api/auth/login', { email, password });
+    },
+    
+    getMe: () => this.get<any>('/api/auth/me'),
+  };
+
   // Properties API
   properties = {
     getAll: () => this.get<any[]>('/api/properties'),
@@ -127,7 +153,7 @@ class ApiClient {
       const params = new URLSearchParams();
       if (userId) params.append('user_id', userId);
       params.append('limit', limit.toString());
-      return this.get<any[]>(`/api/recommendations/properties?${params.toString()}`);
+      return this.get<any>(`/api/recommendations/properties?${params.toString()}`);
     },
   };
 
