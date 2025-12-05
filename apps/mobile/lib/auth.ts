@@ -97,3 +97,10 @@ export async function isAuthenticated(): Promise<boolean> {
   return token !== null;
 }
 
+/**
+ * Sign out user by removing token and user data
+ */
+export async function signOut(): Promise<void> {
+  await removeToken();
+}
+

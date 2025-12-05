@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TextInput,
   TouchableOpacity,
@@ -14,25 +13,26 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
-  FadeIn,
   FadeInDown,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/api-client';
 import { getUser, isAuthenticated } from '@/lib/auth';
+import Constants from 'expo-constants';
+import Navbar from '@/components/Navbar';
 
-const COLORS = {
-  primary: '#0a7ea4',
-  accentGold: '#f59e0b',
-  white: '#ffffff',
-  slate700: '#334155',
-  slate300: '#cbd5e1',
-  slate400: '#94a3b8',
-  slate500: '#64748b',
-  slate900: '#0f172a',
-  slate50: '#f8fafc',
-  slate200: '#e2e8f0',
-  teal600: '#0d9488',
+// Helper function to get full image URL
+const getImageUrl = (imageUrl: string | undefined): string | null => {
+  if (!imageUrl) return null;
+  
+  // If already absolute URL, return as is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // If relative URL, prepend API base URL
+  const apiUrl = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000';
+  return `${apiUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
 };
 
 interface Property {
@@ -176,56 +176,74 @@ export default function BuyerPage() {
 
   if (authLoading) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+      <View className="flex-1 bg-[#f8f6f3] justify-center items-center">
+        <ActivityIndicator size="large" color="#0a7ea4" />
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View className="flex-1 bg-[#f8f6f3]">
+      <Navbar />
       <ScrollView
         ref={propertiesContainerRef}
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 0 }}
       >
         {/* Hero Section with AI Search */}
-        <View style={styles.heroSection}>
-          <Text style={styles.heroTitle}>Discover Your Next Home</Text>
-          <Text style={styles.heroSubtitle}>
+        <View className="bg-white px-6 py-8 border-b border-slate-200">
+          <Text className="text-3xl font-bold text-slate-900 text-center mb-2">
+            Discover Your Next Home
+          </Text>
+          <Text className="text-base text-slate-700 text-center mb-6">
             Use AI to find homes that perfectly match your preferences.
           </Text>
 
-          <View style={styles.searchContainer}>
-            <View style={styles.searchInputWrapper}>
-              <Ionicons name="search" size={20} color={COLORS.slate400} style={styles.searchIcon} />
+          <View className="flex-row gap-3">
+            <View className="flex-1 flex-row items-center bg-white rounded-xl border border-slate-300 px-4" style={{ minHeight: 48 }}>
+              <Ionicons name="search" size={20} color="#94a3b8" style={{ marginRight: 12 }} />
               <TextInput
-                style={styles.searchInput}
+                className="flex-1 text-base text-slate-900 py-0"
                 placeholder='Try "Homes under 50 lakhs in Islamabad"...'
-                placeholderTextColor={COLORS.slate400}
+                placeholderTextColor="#94a3b8"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 onSubmitEditing={handleSearch}
               />
             </View>
-            <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-              <Ionicons name="sparkles" size={20} color={COLORS.white} />
-              <Text style={styles.searchButtonText}>AI Search</Text>
+            <TouchableOpacity 
+              className="flex-row items-center justify-center bg-primary rounded-xl px-5 py-3 gap-2"
+              style={{ 
+                shadowColor: '#f59e0b', 
+                shadowOffset: { width: 0, height: 2 }, 
+                shadowOpacity: 0.2, 
+                shadowRadius: 4, 
+                elevation: 3 
+              }}
+              onPress={handleSearch}
+            >
+              <Ionicons name="sparkles" size={20} color="#ffffff" />
+              <Text className="text-white text-base font-semibold">AI Search</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Filters Section */}
-        <View style={styles.filtersSection}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
-            <View style={styles.filtersContainer}>
+        <View className="bg-white py-4 border-b border-slate-200">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-grow-0">
+            <View className="flex-row px-6 gap-3">
               {/* City Filter */}
               <TouchableOpacity
-                style={[styles.filterChip, selectedCity && styles.filterChipActive]}
+                className={`flex-row items-center gap-1.5 px-4 py-2 rounded-full border ${
+                  selectedCity 
+                    ? 'bg-primary border-primary' 
+                    : 'bg-slate-50 border-slate-300'
+                }`}
                 onPress={() => {
                   const cities = ['Lahore', 'Karachi', 'Islamabad'];
                   const currentIndex = selectedCity ? cities.indexOf(selectedCity) : -1;
@@ -236,16 +254,22 @@ export default function BuyerPage() {
                 <Ionicons
                   name="location"
                   size={16}
-                  color={selectedCity ? COLORS.white : COLORS.slate700}
+                  color={selectedCity ? '#ffffff' : '#334155'}
                 />
-                <Text style={[styles.filterChipText, selectedCity && styles.filterChipTextActive]}>
+                <Text className={`text-sm font-medium ${
+                  selectedCity ? 'text-white' : 'text-slate-700'
+                }`}>
                   {selectedCity || 'City'}
                 </Text>
               </TouchableOpacity>
 
               {/* Property Type Filter */}
               <TouchableOpacity
-                style={[styles.filterChip, selectedType && styles.filterChipActive]}
+                className={`flex-row items-center gap-1.5 px-4 py-2 rounded-full border ${
+                  selectedType 
+                    ? 'bg-primary border-primary' 
+                    : 'bg-slate-50 border-slate-300'
+                }`}
                 onPress={() => {
                   const types = ['Villa', 'Apartment', 'House'];
                   const currentIndex = selectedType ? types.indexOf(selectedType) : -1;
@@ -256,18 +280,23 @@ export default function BuyerPage() {
                 <Ionicons
                   name="home"
                   size={16}
-                  color={selectedType ? COLORS.white : COLORS.slate700}
+                  color={selectedType ? '#ffffff' : '#334155'}
                 />
-                <Text style={[styles.filterChipText, selectedType && styles.filterChipTextActive]}>
+                <Text className={`text-sm font-medium ${
+                  selectedType ? 'text-white' : 'text-slate-700'
+                }`}>
                   {selectedType || 'Type'}
                 </Text>
               </TouchableOpacity>
 
               {/* Reset Button */}
               {(selectedCity || selectedType || priceRange[0] > 0 || priceRange[1] < 50000000) && (
-                <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
-                  <Ionicons name="close-circle" size={16} color={COLORS.primary} />
-                  <Text style={styles.resetButtonText}>Reset</Text>
+                <TouchableOpacity 
+                  className="flex-row items-center gap-1.5 px-4 py-2 rounded-full bg-slate-50 border border-primary"
+                  onPress={resetFilters}
+                >
+                  <Ionicons name="close-circle" size={16} color="#0a7ea4" />
+                  <Text className="text-sm font-medium text-primary">Reset</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -275,26 +304,35 @@ export default function BuyerPage() {
         </View>
 
         {/* Properties Section */}
-        <View style={styles.propertiesSection}>
+        <View className="p-4">
           {loadingProperties ? (
-            <View style={styles.propertiesGrid}>
+            <View className="gap-4">
               {[...Array(6)].map((_, idx) => (
-                <View key={idx} style={styles.propertyCardSkeleton}>
-                  <View style={styles.skeletonImage} />
-                  <View style={styles.skeletonContent}>
-                    <View style={styles.skeletonLine} />
-                    <View style={[styles.skeletonLine, { width: '60%' }]} />
-                    <View style={[styles.skeletonLine, { width: '40%', marginTop: 12 }]} />
-                    <View style={[styles.skeletonLine, { width: '30%', marginTop: 8 }]} />
+                <View key={idx} className="w-full bg-white rounded-2xl overflow-hidden" style={{ minHeight: 480 }}>
+                  <View className="w-full h-[200px] bg-slate-200" />
+                  <View className="p-4 flex-1 justify-between" style={{ minHeight: 280 }}>
+                    <View>
+                      <View className="h-6 bg-slate-200 rounded mb-2" style={{ minHeight: 48 }} />
+                      <View className="h-5 bg-slate-200 rounded w-2/5 mb-2" />
+                      <View className="h-4 bg-slate-200 rounded w-1/3 mb-3" />
+                      <View className="h-12 bg-slate-200 rounded mb-3" />
+                      <View className="h-4 bg-slate-200 rounded w-1/4" />
+                    </View>
+                    <View className="flex-row gap-3 mt-auto">
+                      <View className="flex-1 h-11 bg-slate-200 rounded" />
+                      <View className="flex-1 h-11 bg-slate-200 rounded" />
+                    </View>
                   </View>
                 </View>
               ))}
             </View>
           ) : filteredProperties.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="home-outline" size={64} color={COLORS.slate300} />
-              <Text style={styles.emptyStateTitle}>No properties found</Text>
-              <Text style={styles.emptyStateText}>
+            <View className="items-center justify-center py-16 px-8">
+              <Ionicons name="home-outline" size={64} color="#cbd5e1" />
+              <Text className="text-xl font-semibold text-slate-700 mt-4 mb-2">
+                No properties found
+              </Text>
+              <Text className="text-sm text-slate-500 text-center mb-6 leading-5">
                 {searchQuery || selectedCity || selectedType
                   ? 'Try adjusting your filters or search query.'
                   : user
@@ -303,97 +341,120 @@ export default function BuyerPage() {
               </Text>
               {!searchQuery && !selectedCity && !selectedType && (
                 <TouchableOpacity
-                  style={styles.startSearchButton}
+                  className="flex-row items-center gap-2 bg-primary rounded-xl px-6 py-3"
                   onPress={() => {
                     // TODO: Create chat page
                     Alert.alert('Start Searching', 'Chat feature coming soon!');
                   }}
                 >
-                  <Ionicons name="sparkles" size={20} color={COLORS.white} />
-                  <Text style={styles.startSearchButtonText}>Start Searching</Text>
+                  <Ionicons name="sparkles" size={20} color="#ffffff" />
+                  <Text className="text-white text-base font-semibold">Start Searching</Text>
                 </TouchableOpacity>
               )}
             </View>
           ) : (
-            <View style={styles.propertiesGrid}>
+            <View className="gap-4">
               {filteredProperties.map((property, idx) => (
                 <Animated.View
                   key={property._id}
                   entering={FadeInDown.duration(400).delay(idx * 50)}
+                  className="w-full"
                 >
                   <TouchableOpacity
-                    style={styles.propertyCard}
+                    className="w-full bg-white rounded-2xl overflow-hidden"
+                    style={{ 
+                      shadowColor: '#000', 
+                      shadowOffset: { width: 0, height: 2 }, 
+                      shadowOpacity: 0.1, 
+                      shadowRadius: 8, 
+                      elevation: 3,
+                      minHeight: 480,
+                    }}
                     onPress={() => openPropertyDetails(property)}
                     activeOpacity={0.9}
                   >
                     {/* Property Image */}
-                    <View style={styles.propertyImageContainer}>
-                      {property.images && property.images.length > 0 ? (
-                        <Image
-                          source={{ uri: property.images[0] }}
-                          style={styles.propertyImage}
-                          contentFit="cover"
-                          transition={200}
-                        />
-                      ) : (
-                        <View style={styles.propertyImagePlaceholder}>
-                          <Ionicons name="home" size={48} color={COLORS.slate400} />
-                        </View>
-                      )}
+                    <View style={{ width: '100%', height: 200, backgroundColor: '#e2e8f0', overflow: 'hidden' }}>
+                      {(() => {
+                        const imageUrl = getImageUrl(property.images?.[0]);
+                        return imageUrl ? (
+                          <Image
+                            source={{ uri: imageUrl }}
+                            style={{ width: '100%', height: '100%' }}
+                            contentFit="cover"
+                            transition={200}
+                            cachePolicy="memory-disk"
+                            onError={(error) => {
+                              console.log('Image failed to load:', imageUrl, error);
+                            }}
+                            onLoad={() => {
+                              console.log('Image loaded successfully:', imageUrl);
+                            }}
+                          />
+                        ) : (
+                          <View style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e2e8f0' }}>
+                            <Ionicons name="home" size={48} color="#94a3b8" />
+                          </View>
+                        );
+                      })()}
                     </View>
 
                     {/* Property Details */}
-                    <View style={styles.propertyDetails}>
-                      <Text style={styles.propertyTitle} numberOfLines={2}>
-                        {property.title}
-                      </Text>
-
-                      {/* Price */}
-                      <View style={styles.propertyPriceRow}>
-                        <Ionicons name="cash" size={16} color={COLORS.teal600} />
-                        <Text style={styles.propertyPrice}>
-                          Rs {property.price.toLocaleString()}
+                    <View className="p-4 flex-1 justify-between" style={{ minHeight: 280 }}>
+                      <View>
+                        <Text className="text-lg font-semibold text-slate-900 mb-3 leading-6" numberOfLines={2} style={{ minHeight: 48 }}>
+                          {property.title}
                         </Text>
-                      </View>
 
-                      {/* Location */}
-                      <View style={styles.propertyLocationRow}>
-                        <Ionicons name="location" size={14} color={COLORS.slate400} />
-                        <Text style={styles.propertyLocation}>{property.city}</Text>
-                      </View>
+                        {/* Price */}
+                        <View className="flex-row items-center gap-2 mb-2">
+                          <Ionicons name="cash" size={16} color="#0d9488" />
+                          <Text className="text-xl font-bold text-teal-600">
+                            Rs {property.price.toLocaleString()}
+                          </Text>
+                        </View>
 
-                      {/* Property Stats */}
-                      <View style={styles.propertyStats}>
-                        <Text style={styles.propertyStat}>{property.bedrooms} bed</Text>
-                        <Text style={styles.propertyStatDivider}>•</Text>
-                        <Text style={styles.propertyStat}>{property.bathrooms} bath</Text>
-                        <Text style={styles.propertyStatDivider}>•</Text>
-                        <Text style={styles.propertyStat}>{property.area_sqft} sqft</Text>
-                      </View>
+                        {/* Location */}
+                        <View className="flex-row items-center gap-1.5 mb-3">
+                          <Ionicons name="location" size={14} color="#94a3b8" />
+                          <Text className="text-sm text-slate-700" numberOfLines={1}>{property.city}</Text>
+                        </View>
 
-                      {/* Property Type */}
-                      <Text style={styles.propertyType}>{property.property_type}</Text>
+                        {/* Property Stats */}
+                        <View className="flex-row items-center justify-between bg-slate-50 rounded-lg p-3 mb-3">
+                          <Text className="text-xs text-slate-700">{property.bedrooms} bed</Text>
+                          <Text className="text-xs text-slate-300">•</Text>
+                          <Text className="text-xs text-slate-700">{property.bathrooms} bath</Text>
+                          <Text className="text-xs text-slate-300">•</Text>
+                          <Text className="text-xs text-slate-700">{property.area_sqft} sqft</Text>
+                        </View>
+
+                        {/* Property Type */}
+                        <Text className="text-xs text-slate-500 mb-3">{property.property_type}</Text>
+                      </View>
 
                       {/* Action Buttons */}
-                      <View style={styles.propertyActions}>
+                      <View className="flex-row gap-3 mt-auto">
                         <TouchableOpacity
-                          style={styles.viewDetailsButton}
+                          className="flex-1 bg-primary rounded-lg py-3 items-center justify-center"
+                          style={{ minHeight: 44 }}
                           onPress={(e) => {
                             e.stopPropagation();
                             openPropertyDetails(property);
                           }}
                         >
-                          <Text style={styles.viewDetailsButtonText}>View Details</Text>
+                          <Text className="text-white text-sm font-semibold">View Details</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={styles.askAIButton}
+                          className="flex-1 flex-row items-center justify-center gap-1.5 border border-slate-300 rounded-lg py-3"
+                          style={{ minHeight: 44 }}
                           onPress={(e) => {
                             e.stopPropagation();
                             openChat(property);
                           }}
                         >
-                          <Ionicons name="chatbubble" size={16} color={COLORS.slate700} />
-                          <Text style={styles.askAIButtonText}>Ask AI</Text>
+                          <Ionicons name="chatbubble" size={16} color="#334155" />
+                          <Text className="text-slate-700 text-sm font-medium">Ask AI</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -407,318 +468,3 @@ export default function BuyerPage() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f6f3',
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  heroSection: {
-    backgroundColor: COLORS.white,
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate200,
-  },
-  heroTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: COLORS.slate900,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  heroSubtitle: {
-    fontSize: 16,
-    color: COLORS.slate700,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  searchInputWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.slate300,
-    paddingHorizontal: 16,
-    minHeight: 48,
-  },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.slate900,
-    paddingVertical: 0,
-  },
-  searchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8,
-    shadowColor: COLORS.accentGold,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  searchButtonText: {
-    color: COLORS.white,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  filtersSection: {
-    backgroundColor: COLORS.white,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate200,
-  },
-  filtersScroll: {
-    flexGrow: 0,
-  },
-  filtersContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: COLORS.slate50,
-    borderWidth: 1,
-    borderColor: COLORS.slate300,
-  },
-  filterChipActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.slate700,
-  },
-  filterChipTextActive: {
-    color: COLORS.white,
-  },
-  resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: COLORS.slate50,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-  resetButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.primary,
-  },
-  propertiesSection: {
-    padding: 16,
-  },
-  propertiesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  propertyCard: {
-    width: '100%',
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    marginBottom: 16,
-  },
-  propertyImageContainer: {
-    width: '100%',
-    height: 200,
-    backgroundColor: COLORS.slate200,
-  },
-  propertyImage: {
-    width: '100%',
-    height: '100%',
-  },
-  propertyImagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.slate200,
-  },
-  propertyDetails: {
-    padding: 16,
-  },
-  propertyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.slate900,
-    marginBottom: 12,
-    lineHeight: 24,
-  },
-  propertyPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  propertyPrice: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.teal600,
-  },
-  propertyLocationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  propertyLocation: {
-    fontSize: 14,
-    color: COLORS.slate700,
-  },
-  propertyStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.slate50,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-  },
-  propertyStat: {
-    fontSize: 12,
-    color: COLORS.slate700,
-  },
-  propertyStatDivider: {
-    fontSize: 12,
-    color: COLORS.slate300,
-  },
-  propertyType: {
-    fontSize: 12,
-    color: COLORS.slate500,
-    marginBottom: 12,
-  },
-  propertyActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  viewDetailsButton: {
-    flex: 1,
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewDetailsButtonText: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  askAIButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: COLORS.slate300,
-    borderRadius: 10,
-    paddingVertical: 12,
-  },
-  askAIButtonText: {
-    color: COLORS.slate700,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  // Skeleton styles
-  propertyCardSkeleton: {
-    width: '100%',
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  skeletonImage: {
-    width: '100%',
-    height: 200,
-    backgroundColor: COLORS.slate200,
-  },
-  skeletonContent: {
-    padding: 16,
-  },
-  skeletonLine: {
-    height: 16,
-    backgroundColor: COLORS.slate200,
-    borderRadius: 4,
-    marginBottom: 8,
-  },
-  // Empty state
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 64,
-    paddingHorizontal: 32,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: COLORS.slate700,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: COLORS.slate500,
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 20,
-  },
-  startSearchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-  },
-  startSearchButtonText: {
-    color: COLORS.white,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-});
-
