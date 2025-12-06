@@ -18,7 +18,6 @@ const NAV_ITEMS = [
   { href: '/chat', label: 'Chat', icon: 'chatbubbles' as const },
   { href: '/seller', label: 'Seller', icon: 'storefront' as const },
   { href: '/builder', label: 'Builder', icon: 'business' as const },
-  { href: '/profile', label: 'Profile', icon: 'person' as const },
 ];
 
 export default function Navbar() {
@@ -184,9 +183,16 @@ export default function Navbar() {
                 );
               })}
 
-              {/* User Info */}
+              {/* User Info - Clickable to Profile */}
               {user && (
-                <View style={styles.userInfo}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setMenuVisible(false);
+                    router.push('/profile' as any);
+                  }}
+                  style={styles.userInfo}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.userAvatar}>
                     <Ionicons name="person" size={24} color="#0a7ea4" />
                   </View>
@@ -194,7 +200,8 @@ export default function Navbar() {
                     <Text style={styles.userName}>{user.name || user.email}</Text>
                     <Text style={styles.userEmail}>{user.email}</Text>
                   </View>
-                </View>
+                  <Ionicons name="chevron-forward" size={20} color="#64748b" />
+                </TouchableOpacity>
               )}
 
               {/* Sign Out */}

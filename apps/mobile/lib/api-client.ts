@@ -144,7 +144,9 @@ class ApiClient {
   // Properties API
   properties = {
     getAll: () => this.get<any[]>('/api/properties'),
-    getById: (id: string) => this.get<any>(`/api/properties/${id}`),
+    getById: (id: string) => {
+      return this.get<any>(`/api/properties/${id}`);
+    },
   };
 
   // Recommendations API
@@ -188,10 +190,19 @@ class ApiClient {
     },
   };
 
-  // Properties API
-  properties = {
-    getById: (id: string) => {
-      return this.get<any>(`/api/properties/${id}`);
+  // Builder API
+  builders = {
+    getProfile: (userId: string) => {
+      return this.get<any>(`/api/builder/profile/${userId}`).catch(() => null);
+    },
+    getMyProfile: () => {
+      return this.get<any>('/api/builder/profile/me/').catch(() => null);
+    },
+    getServices: (userId: string) => {
+      return this.get<any[]>(`/api/builder/services/${userId}`).catch(() => []);
+    },
+    getMyServices: () => {
+      return this.get<any[]>('/api/builder/services/me/').catch(() => []);
     },
   };
 }

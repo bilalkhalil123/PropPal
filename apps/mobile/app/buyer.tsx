@@ -57,7 +57,7 @@ export default function BuyerPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const propertiesContainerRef = useRef<View>(null);
+  const propertiesContainerRef = useRef<ScrollView>(null);
   const hasLoadedRef = useRef(false);
 
   // Check authentication
@@ -191,12 +191,11 @@ export default function BuyerPage() {
       <ScrollView
         ref={propertiesContainerRef}
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingTop: 0, paddingBottom: 40 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 0 }}
       >
         {/* Hero Section with AI Search */}
         <View className="bg-white px-6 pt-4 border-b border-slate-200">
