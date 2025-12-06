@@ -15,6 +15,7 @@ type Service = {
   price_range_max?: number
   estimated_duration?: string
   service_features?: string[]
+  service_images?: string[]
   builder_id?: string
   score?: number
 }
@@ -133,6 +134,26 @@ export default function ServiceModal({ isOpen, service, onClose }: ServiceModalP
                   </span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {service.service_images && service.service_images.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Service Images</h4>
+              <div className="grid grid-cols-3 gap-2">
+                {service.service_images.slice(0, 6).map((url, idx) => (
+                  <div key={idx} className="relative aspect-square overflow-hidden rounded-lg">
+                    <img
+                      src={url}
+                      alt={`Service ${idx + 1}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform"
+                    />
+                  </div>
+                ))}
+              </div>
+              {service.service_images.length > 6 && (
+                <p className="text-xs text-gray-500 mt-2">+{service.service_images.length - 6} more images</p>
+              )}
             </div>
           )}
         </div>

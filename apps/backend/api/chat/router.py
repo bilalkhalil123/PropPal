@@ -279,6 +279,287 @@ async def unified_chat_websocket(
                 })
                 continue
             
+            # Check if this is a property creation request
+            message_type = data.get("type", "message")
+            if message_type == "property_create":
+                try:
+                    if not msg_clerk_id:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "clerk_id is required for property listing creation.",
+                            "success": False
+                        })
+                        continue
+                    
+                    # Import the property creation agent
+                    from agents.listing.create_listing_agent import PropertyListingCreationAgent
+                    property_agent = PropertyListingCreationAgent()
+                    
+                    # Define send/receive functions for the interactive agent
+                    async def send(payload: Dict[str, Any]):
+                        logger.info(f"[WebSocket] Property creation - Sending to client: {payload}")
+                        await websocket.send_json(payload)
+                    
+                    async def recv_text() -> str:
+                        try:
+                            data = await websocket.receive_json()
+                            logger.info(f"[WebSocket] Property creation - Received from client: {data}")
+                            if isinstance(data, dict) and data.get("type") == "message":
+                                return str(data.get("text", "")).strip()
+                            if isinstance(data, dict) and "text" in data:
+                                return str(data.get("text", "")).strip()
+                            if isinstance(data, str):
+                                return data
+                            return ""
+                        except WebSocketDisconnect:
+                            logger.info("[WebSocket] Client disconnected during property creation")
+                            return "cancel"
+                        except Exception as e:
+                            logger.error(f"Error receiving text: {e}")
+                            return ""
+                    
+                    # Run the interactive agent
+                    await property_agent.process_query_interactive(
+                        query=message_text,
+                        clerk_id=msg_clerk_id,
+                        send=send,
+                        recv_text=recv_text
+                    )
+                    logger.info("[WebSocket] Property creation session completed")
+                    continue
+                except Exception as e:
+                    logger.error(f"Error in property creation: {e}", exc_info=True)
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"An error occurred during property creation: {str(e)}",
+                        "success": False
+                    })
+                    continue
+            
+            # Check if this is a builder profile creation request
+            if message_type == "builder_profile_create":
+                try:
+                    if not msg_clerk_id:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "clerk_id is required for builder profile creation.",
+                            "success": False
+                        })
+                        continue
+                    
+                    # Import the profile creation agent
+                    from agents.builder.create_profile_agent import BuilderProfileCreationAgent
+                    profile_agent = BuilderProfileCreationAgent()
+                    
+                    # Define send/receive functions for the interactive agent
+                    async def send_profile(payload: Dict[str, Any]):
+                        logger.info(f"[WebSocket] Profile creation - Sending to client: {payload}")
+                        await websocket.send_json(payload)
+                    
+                    async def recv_text_profile() -> str:
+                        try:
+                            data = await websocket.receive_json()
+                            logger.info(f"[WebSocket] Profile creation - Received from client: {data}")
+                            if isinstance(data, dict) and data.get("type") == "message":
+                                return str(data.get("text", "")).strip()
+                            if isinstance(data, dict) and "text" in data:
+                                return str(data.get("text", "")).strip()
+                            if isinstance(data, str):
+                                return data
+                            return ""
+                        except WebSocketDisconnect:
+                            logger.info("[WebSocket] Client disconnected during profile creation")
+                            return "cancel"
+                        except Exception as e:
+                            logger.error(f"Error receiving text: {e}")
+                            return ""
+                    
+                    # Run the interactive agent
+                    await profile_agent.process_query_interactive(
+                        query=message_text,
+                        clerk_id=msg_clerk_id,
+                        send=send_profile,
+                        recv_text=recv_text_profile
+                    )
+                    logger.info("[WebSocket] Profile creation session completed")
+                    continue
+                except Exception as e:
+                    logger.error(f"Error in profile creation: {e}", exc_info=True)
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"An error occurred during profile creation: {str(e)}",
+                        "success": False
+                    })
+                    continue
+            
+            # Check if this is a builder service creation request
+            if message_type == "builder_service_create":
+                try:
+                    if not msg_clerk_id:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "clerk_id is required for builder service creation.",
+                            "success": False
+                        })
+                        continue
+                    
+                    # Import the service creation agent
+                    from agents.builder.create_service_agent import BuilderServiceCreationAgent
+                    service_agent = BuilderServiceCreationAgent()
+                    
+                    # Define send/receive functions for the interactive agent
+                    async def send_service(payload: Dict[str, Any]):
+                        logger.info(f"[WebSocket] Service creation - Sending to client: {payload}")
+                        await websocket.send_json(payload)
+                    
+                    async def recv_text_service() -> str:
+                        try:
+                            data = await websocket.receive_json()
+                            logger.info(f"[WebSocket] Service creation - Received from client: {data}")
+                            if isinstance(data, dict) and data.get("type") == "message":
+                                return str(data.get("text", "")).strip()
+                            if isinstance(data, dict) and "text" in data:
+                                return str(data.get("text", "")).strip()
+                            if isinstance(data, str):
+                                return data
+                            return ""
+                        except WebSocketDisconnect:
+                            logger.info("[WebSocket] Client disconnected during service creation")
+                            return "cancel"
+                        except Exception as e:
+                            logger.error(f"Error receiving text: {e}")
+                            return ""
+                    
+                    # Run the interactive agent
+                    await service_agent.process_query_interactive(
+                        query=message_text,
+                        clerk_id=msg_clerk_id,
+                        send=send_service,
+                        recv_text=recv_text_service
+                    )
+                    logger.info("[WebSocket] Service creation session completed")
+                    continue
+                except Exception as e:
+                    logger.error(f"Error in service creation: {e}", exc_info=True)
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"An error occurred during service creation: {str(e)}",
+                        "success": False
+                    })
+                    continue
+            
+            # Check if this is a builder profile form extraction request (for form filling)
+            if message_type == "builder_profile_form_extract":
+                try:
+                    if not msg_clerk_id:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "clerk_id is required for builder profile form extraction.",
+                            "success": False
+                        })
+                        continue
+                    
+                    # Import the profile form extraction agent
+                    from agents.builder.profile_form_extraction_agent import BuilderProfileFormExtractionAgent
+                    profile_form_agent = BuilderProfileFormExtractionAgent()
+                    
+                    # Define send/receive functions for the interactive agent
+                    async def send_profile_form(payload: Dict[str, Any]):
+                        logger.info(f"[WebSocket] Profile form extraction - Sending to client: {payload}")
+                        await websocket.send_json(payload)
+                    
+                    async def recv_text_profile_form() -> str:
+                        try:
+                            data = await websocket.receive_json()
+                            logger.info(f"[WebSocket] Profile form extraction - Received from client: {data}")
+                            if isinstance(data, dict) and data.get("type") == "message":
+                                return str(data.get("text", "")).strip()
+                            if isinstance(data, dict) and "text" in data:
+                                return str(data.get("text", "")).strip()
+                            if isinstance(data, str):
+                                return data
+                            return ""
+                        except WebSocketDisconnect:
+                            logger.info("[WebSocket] Client disconnected during profile form extraction")
+                            return "cancel"
+                        except Exception as e:
+                            logger.error(f"Error receiving text: {e}")
+                            return ""
+                    
+                    # Run the interactive agent
+                    await profile_form_agent.process_query_interactive(
+                        query=message_text,
+                        clerk_id=msg_clerk_id,
+                        send=send_profile_form,
+                        recv_text=recv_text_profile_form
+                    )
+                    logger.info("[WebSocket] Profile form extraction session completed")
+                    continue
+                except Exception as e:
+                    logger.error(f"Error in profile form extraction: {e}", exc_info=True)
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"An error occurred during profile form extraction: {str(e)}",
+                        "success": False
+                    })
+                    continue
+            
+            # Check if this is a builder service form extraction request (for form filling)
+            if message_type == "builder_service_form_extract":
+                try:
+                    if not msg_clerk_id:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "clerk_id is required for builder service form extraction.",
+                            "success": False
+                        })
+                        continue
+                    
+                    # Import the service form extraction agent
+                    from agents.builder.service_form_extraction_agent import BuilderServiceFormExtractionAgent
+                    service_form_agent = BuilderServiceFormExtractionAgent()
+                    
+                    # Define send/receive functions for the interactive agent
+                    async def send_service_form(payload: Dict[str, Any]):
+                        logger.info(f"[WebSocket] Service form extraction - Sending to client: {payload}")
+                        await websocket.send_json(payload)
+                    
+                    async def recv_text_service_form() -> str:
+                        try:
+                            data = await websocket.receive_json()
+                            logger.info(f"[WebSocket] Service form extraction - Received from client: {data}")
+                            if isinstance(data, dict) and data.get("type") == "message":
+                                return str(data.get("text", "")).strip()
+                            if isinstance(data, dict) and "text" in data:
+                                return str(data.get("text", "")).strip()
+                            if isinstance(data, str):
+                                return data
+                            return ""
+                        except WebSocketDisconnect:
+                            logger.info("[WebSocket] Client disconnected during service form extraction")
+                            return "cancel"
+                        except Exception as e:
+                            logger.error(f"Error receiving text: {e}")
+                            return ""
+                    
+                    # Run the interactive agent
+                    await service_form_agent.process_query_interactive(
+                        query=message_text,
+                        clerk_id=msg_clerk_id,
+                        send=send_service_form,
+                        recv_text=recv_text_service_form
+                    )
+                    logger.info("[WebSocket] Service form extraction session completed")
+                    continue
+                except Exception as e:
+                    logger.error(f"Error in service form extraction: {e}", exc_info=True)
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"An error occurred during service form extraction: {str(e)}",
+                        "success": False
+                    })
+                    continue
+            
             # If we're in an active creation session, route to that agent
             if active_creation_agent is not None:
                 try:

@@ -20,8 +20,8 @@ class PropertyBase(BaseModel):
     floors: int = Field(default=1, ge=1)
     city: str
     area: str
-    lng: float = Field(..., description="Longitude")
-    lat: float = Field(..., description="Latitude")
+    lng: Optional[float] = Field(default=None, description="Longitude")
+    lat: Optional[float] = Field(default=None, description="Latitude")
 
 
 class Property(PropertyBase):
@@ -49,8 +49,40 @@ class Property(PropertyBase):
     )
 
 
+class PropertyCreateRequest(PropertyBase):
+    """Schema for creating a new property listing via API (seller_id derived from clerk_id)"""
+
+    images: Optional[List[str]] = Field(default=[], description="Array of image URLs")
+    metadata: Optional[dict] = Field(default={}, description="Additional metadata")
+    # Optional provenance inputs on create (useful for imports)
+    external_id: Optional[str] = None
+    source: Optional[str] = None
+    source_url: Optional[str] = None
+    date_added: Optional[datetime] = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "title": "Beautiful 3-Bedroom House in F-10",
+                "description": "Spacious house with modern amenities",
+                "price": 15000000,
+                "property_type": "house",
+                "area_sqft": 2500,
+                "bedrooms": 3,
+                "bathrooms": 3,
+                "floors": 2,
+                "city": "Islamabad",
+                "area": "F-10/3",
+                "lng": 73.0479,
+                "lat": 33.6844,
+                "images": ["https://example.com/img1.jpg"],
+            }
+        }
+    )
+
+
 class PropertyCreate(PropertyBase):
-    """Schema for creating a new property listing"""
+    """Schema for creating a new property listing (internal use, includes seller_id)"""
 
     seller_id: PyObjectId
     images: Optional[List[str]] = Field(default=[], description="Array of image URLs")

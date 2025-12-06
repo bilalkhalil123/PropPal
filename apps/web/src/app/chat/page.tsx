@@ -51,6 +51,7 @@ interface Builder {
   }
   about?: string
   score?: number
+  portfolio_images?: string[]
 }
 
 interface ServiceResult {
@@ -65,6 +66,7 @@ interface ServiceResult {
   price_range_max?: number
   estimated_duration?: string
   service_features?: string[]
+  service_images?: string[]
   builder_id?: string
   score?: number
 }
