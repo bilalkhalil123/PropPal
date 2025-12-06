@@ -61,13 +61,20 @@ export default function SignInPage() {
       
       // Handle different response structures
       const token = response.access_token || response.token;
-      const user = response.user || response;
+      let user = response.user || response;
       
       if (!token) {
         Alert.alert('Error', 'No access token received');
         setLoading(false);
         return;
       }
+      
+      // Ensure user object has 'id' field (might be '_id' from backend)
+      if (user && !user.id && user._id) {
+        user = { ...user, id: user._id };
+      }
+      
+      console.log('Storing user:', user);
       
       // Store token and user data
       await storeToken(token);

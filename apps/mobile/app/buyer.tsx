@@ -52,8 +52,6 @@ export default function BuyerPage() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [priceRange, setPriceRange] = useState([0, 50000000]);
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -87,29 +85,28 @@ export default function BuyerPage() {
     setLoadingProperties(true);
 
     try {
-      // Load popular properties first
-      const popularResponse: any = await api.recommendations.properties('', 12);
-      if (popularResponse?.properties) {
-        setProperties(popularResponse.properties);
-        setLoadingProperties(false);
-      } else if (Array.isArray(popularResponse)) {
-        setProperties(popularResponse);
-        setLoadingProperties(false);
-      }
+      // Get user ID - check both user.id and user._id for compatibility
+      const userId = user?.id || user?._id || '';
+      console.log('Loading recommendations for user:', userId);
+      console.log('User object:', user);
 
-      // Then load personalized recommendations if user is logged in
-      if (user?.id) {
-        try {
-          const response: any = await api.recommendations.properties(user.id, 12);
-          if (response?.properties && response.source === 'recent_searches') {
-            setProperties(response.properties);
-          } else if (Array.isArray(response)) {
-            setProperties(response);
-          }
-        } catch (error: any) {
-          console.error('Error loading personalized recommendations:', error);
-        }
+      // Load personalized recommendations if user is logged in, otherwise load popular
+      const response: any = await api.recommendations.properties(userId, 12);
+      
+      if (response?.properties) {
+        // Response has properties array
+        setProperties(response.properties);
+        console.log('Loaded properties:', response.properties.length, 'source:', response.source);
+      } else if (Array.isArray(response)) {
+        // Response is directly an array
+        setProperties(response);
+        console.log('Loaded properties (array):', response.length);
+      } else {
+        console.warn('Unexpected response format:', response);
+        setProperties([]);
       }
+      
+      setLoadingProperties(false);
     } catch (error: any) {
       console.error('Error loading recommendations:', error);
       setLoadingProperties(false);
@@ -117,20 +114,26 @@ export default function BuyerPage() {
     }
   };
 
-  // Lazy load when component is visible
+  // Load recommendations when user is available
   useEffect(() => {
-    if (authLoading || !user) {
+    if (authLoading) {
       return;
     }
 
-    // Load immediately for mobile (no intersection observer needed)
+    // Reset the loaded flag when user changes
+    hasLoadedRef.current = false;
+
+    // Load recommendations (will use user.id if available, otherwise popular)
     loadRecommendations();
-  }, [user, authLoading]);
+  }, [user?.id, authLoading]);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
-      // TODO: Create chat page
-      Alert.alert('AI Search', `Searching for: ${searchQuery}`);
+      // Navigate to chat with the search query as a parameter
+      router.push({
+        pathname: '/chat',
+        params: { query: searchQuery.trim() },
+      } as any);
     }
   };
 
@@ -142,11 +145,9 @@ export default function BuyerPage() {
   };
 
   const filteredProperties = properties.filter((property) => {
-    const matchesCity = selectedCity ? property.city === selectedCity : true;
-    const matchesType = selectedType ? property.property_type === selectedType : true;
     const matchesPrice = property.price >= priceRange[0] && property.price <= priceRange[1];
     const matchesSearch = property.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCity && matchesType && matchesPrice && matchesSearch;
+    return matchesPrice && matchesSearch;
   });
 
   const formatPrice = (price: number) => {
@@ -158,18 +159,20 @@ export default function BuyerPage() {
   };
 
   const openPropertyDetails = (property: Property) => {
-    // TODO: Create property details page
-    Alert.alert('Property Details', `Viewing details for: ${property.title}`);
+    console.log('Opening property details for:', property._id);
+    const propertyId = typeof property._id === 'string' ? property._id : String(property._id);
+    console.log('Property ID (string):', propertyId);
+    console.log('Navigation path:', `/properties/${propertyId}`);
+    
+    // Use href format for Expo Router
+    router.push(`/properties/${propertyId}` as any);
   };
 
   const openChat = (property: Property) => {
-    // TODO: Create chat page
-    Alert.alert('Chat', `Opening chat for: ${property.title}`);
+    router.push('/chat' as any);
   };
 
   const resetFilters = () => {
-    setSelectedCity(null);
-    setSelectedType(null);
     setPriceRange([0, 50000000]);
     setSearchQuery('');
   };
@@ -196,7 +199,7 @@ export default function BuyerPage() {
         contentContainerStyle={{ paddingTop: 0 }}
       >
         {/* Hero Section with AI Search */}
-        <View className="bg-white px-6 py-8 border-b border-slate-200">
+        <View className="bg-white px-6 pt-4 border-b border-slate-200">
           <Text className="text-3xl font-bold text-slate-900 text-center mb-2">
             Discover Your Next Home
           </Text>
@@ -233,75 +236,6 @@ export default function BuyerPage() {
           </View>
         </View>
 
-        {/* Filters Section */}
-        <View className="bg-white py-4 border-b border-slate-200">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-grow-0">
-            <View className="flex-row px-6 gap-3">
-              {/* City Filter */}
-              <TouchableOpacity
-                className={`flex-row items-center gap-1.5 px-4 py-2 rounded-full border ${
-                  selectedCity 
-                    ? 'bg-primary border-primary' 
-                    : 'bg-slate-50 border-slate-300'
-                }`}
-                onPress={() => {
-                  const cities = ['Lahore', 'Karachi', 'Islamabad'];
-                  const currentIndex = selectedCity ? cities.indexOf(selectedCity) : -1;
-                  const nextIndex = (currentIndex + 1) % (cities.length + 1);
-                  setSelectedCity(nextIndex === 0 ? null : cities[nextIndex - 1]);
-                }}
-              >
-                <Ionicons
-                  name="location"
-                  size={16}
-                  color={selectedCity ? '#ffffff' : '#334155'}
-                />
-                <Text className={`text-sm font-medium ${
-                  selectedCity ? 'text-white' : 'text-slate-700'
-                }`}>
-                  {selectedCity || 'City'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Property Type Filter */}
-              <TouchableOpacity
-                className={`flex-row items-center gap-1.5 px-4 py-2 rounded-full border ${
-                  selectedType 
-                    ? 'bg-primary border-primary' 
-                    : 'bg-slate-50 border-slate-300'
-                }`}
-                onPress={() => {
-                  const types = ['Villa', 'Apartment', 'House'];
-                  const currentIndex = selectedType ? types.indexOf(selectedType) : -1;
-                  const nextIndex = (currentIndex + 1) % (types.length + 1);
-                  setSelectedType(nextIndex === 0 ? null : types[nextIndex - 1]);
-                }}
-              >
-                <Ionicons
-                  name="home"
-                  size={16}
-                  color={selectedType ? '#ffffff' : '#334155'}
-                />
-                <Text className={`text-sm font-medium ${
-                  selectedType ? 'text-white' : 'text-slate-700'
-                }`}>
-                  {selectedType || 'Type'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Reset Button */}
-              {(selectedCity || selectedType || priceRange[0] > 0 || priceRange[1] < 50000000) && (
-                <TouchableOpacity 
-                  className="flex-row items-center gap-1.5 px-4 py-2 rounded-full bg-slate-50 border border-primary"
-                  onPress={resetFilters}
-                >
-                  <Ionicons name="close-circle" size={16} color="#0a7ea4" />
-                  <Text className="text-sm font-medium text-primary">Reset</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </ScrollView>
-        </View>
 
         {/* Properties Section */}
         <View className="p-4">
@@ -333,18 +267,17 @@ export default function BuyerPage() {
                 No properties found
               </Text>
               <Text className="text-sm text-slate-500 text-center mb-6 leading-5">
-                {searchQuery || selectedCity || selectedType
-                  ? 'Try adjusting your filters or search query.'
+                {searchQuery
+                  ? 'Try adjusting your search query.'
                   : user
                   ? "We couldn't find any recommendations. Start searching to get personalized recommendations!"
                   : 'Sign in to see personalized property recommendations based on your search history.'}
               </Text>
-              {!searchQuery && !selectedCity && !selectedType && (
+              {!searchQuery && (
                 <TouchableOpacity
                   className="flex-row items-center gap-2 bg-primary rounded-xl px-6 py-3"
                   onPress={() => {
-                    // TODO: Create chat page
-                    Alert.alert('Start Searching', 'Chat feature coming soon!');
+                    router.push('/chat' as any);
                   }}
                 >
                   <Ionicons name="sparkles" size={20} color="#ffffff" />

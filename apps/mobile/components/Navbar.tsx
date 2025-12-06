@@ -65,8 +65,8 @@ export default function Navbar() {
         style={[
           styles.navbar,
           {
-            paddingTop: insets.top + 8,
-            paddingBottom: 12,
+            paddingTop: insets.top + 6,
+            paddingBottom: 8,
           },
         ]}
       >
@@ -74,9 +74,10 @@ export default function Navbar() {
         <TouchableOpacity
           onPress={() => router.push('/buyer' as any)}
           style={styles.logoContainer}
+          activeOpacity={0.7}
         >
           <View style={styles.logoIcon}>
-            <Ionicons name="home" size={24} color="#0a7ea4" />
+            <Ionicons name="home" size={20} color="#0a7ea4" />
           </View>
           <Text style={styles.logoText}>PropPal</Text>
         </TouchableOpacity>
@@ -86,8 +87,11 @@ export default function Navbar() {
           <TouchableOpacity
             onPress={() => setMenuVisible(true)}
             style={styles.menuButton}
+            activeOpacity={0.7}
           >
-            <Ionicons name="menu" size={24} color="#334155" />
+            <View style={styles.menuButtonInner}>
+              <Ionicons name="menu" size={22} color="#334155" />
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -97,7 +101,8 @@ export default function Navbar() {
         style={[
           styles.bottomNav,
           {
-            paddingBottom: insets.bottom + 8,
+            paddingBottom: Math.max(insets.bottom, 4),
+            paddingTop: 4,
           },
         ]}
       >
@@ -107,13 +112,16 @@ export default function Navbar() {
             <TouchableOpacity
               key={item.href}
               onPress={() => handleNavigation(item.href)}
-              style={styles.bottomNavItem}
+              style={[styles.bottomNavItem, isActive && styles.bottomNavItemActive]}
+              activeOpacity={0.7}
             >
-              <Ionicons
-                name={isActive ? item.icon : (`${item.icon}-outline` as any)}
-                size={24}
-                color={isActive ? '#0a7ea4' : '#64748b'}
-              />
+              <View style={[styles.iconContainer, isActive && styles.iconContainerActive]}>
+                <Ionicons
+                  name={isActive ? item.icon : (`${item.icon}-outline` as any)}
+                  size={22}
+                  color={isActive ? '#0a7ea4' : '#64748b'}
+                />
+              </View>
               <Text
                 style={[
                   styles.bottomNavLabel,
@@ -207,18 +215,18 @@ export default function Navbar() {
 
 const styles = StyleSheet.create({
   navbar: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 4,
   },
   logoContainer: {
     flexDirection: 'row',
@@ -226,25 +234,31 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logoIcon: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     borderRadius: 8,
-    backgroundColor: 'rgba(10, 126, 164, 0.1)',
+    backgroundColor: 'rgba(10, 126, 164, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoText: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#0a7ea4',
+    letterSpacing: -0.3,
   },
   rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   menuButton: {
-    padding: 4,
+    padding: 2,
+  },
+  menuButtonInner: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
   },
   bottomNav: {
     backgroundColor: '#ffffff',
@@ -253,24 +267,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingTop: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 6,
   },
   bottomNavItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 4,
+    gap: 1,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  bottomNavItemActive: {
+    backgroundColor: 'rgba(10, 126, 164, 0.05)',
+  },
+  iconContainer: {
+    padding: 4,
+    borderRadius: 8,
+  },
+  iconContainerActive: {
+    backgroundColor: 'rgba(10, 126, 164, 0.1)',
   },
   bottomNavLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#64748b',
     fontWeight: '500',
+    marginTop: -2,
+    lineHeight: 12,
   },
   bottomNavLabelActive: {
     color: '#0a7ea4',

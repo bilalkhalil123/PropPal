@@ -70,9 +70,17 @@ export default function SignUpPage() {
         role: 'buyer',
       });
       
+      // Ensure user object has 'id' field (might be '_id' from backend)
+      let user = response.user;
+      if (user && !user.id && user._id) {
+        user = { ...user, id: user._id };
+      }
+      
+      console.log('Storing user (signup):', user);
+      
       // Store token and user data
       await storeToken(response.access_token);
-      await storeUser(response.user);
+      await storeUser(user);
       
       // Navigate to buyer page
       router.replace('/buyer');

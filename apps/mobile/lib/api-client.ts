@@ -187,6 +187,13 @@ class ApiClient {
       });
     },
   };
+
+  // Properties API
+  properties = {
+    getById: (id: string) => {
+      return this.get<any>(`/api/properties/${id}`);
+    },
+  };
 }
 
 // Export singleton instance
