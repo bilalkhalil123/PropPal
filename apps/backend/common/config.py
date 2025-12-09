@@ -34,6 +34,17 @@ class Settings(BaseSettings):
         description="MongoDB database name"
     )
     
+    # Qdrant Vector Database Configuration
+    QDRANT_URL: str = Field(
+        default="http://localhost:6333",
+        description="Qdrant server URL"
+    )
+    
+    QDRANT_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Qdrant API key (optional, for cloud instances)"
+    )
+    
     # Clerk Authentication Configuration
     CLERK_SECRET_KEY: str = Field(
         default="",

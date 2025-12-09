@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { MapPinIcon, CheckCircleIcon } from "@heroicons/react/24/outline"
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid"
 import ImageLightbox from "./modals/ImageLightbox"
+import PropertyMap from "./PropertyMap"
 
 type Property = {
   _id: string
@@ -19,6 +20,8 @@ type Property = {
   images?: string[]
   property_type: string
   description?: string
+  lat?: number
+  lng?: number
 }
 
 export default function PropertyDetailPage({ property }: { property: Property }) {
@@ -204,6 +207,22 @@ export default function PropertyDetailPage({ property }: { property: Property })
           </div>
         </div>
       </section>
+
+      {/* Map Section */}
+      {property.lat && property.lng && (
+        <section className="relative py-20">
+          <div className="absolute inset-x-0 top-0 mx-auto h-48 w-[80%] rounded-3xl bg-gradient-to-r from-cyan-50 to-teal-50 blur-3xl opacity-60 -z-10" />
+          <div className="max-w-6xl mx-auto px-6 md:px-12 lg:px-20">
+            <PropertyMap
+              lat={property.lat}
+              lng={property.lng}
+              title={property.title}
+              city={property.city}
+              area={property.area}
+            />
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section

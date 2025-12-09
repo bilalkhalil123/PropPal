@@ -20,6 +20,7 @@ from common.db import DatabaseClient
 from models.builder_services import BuilderService
 from services.embeddings.service import embed_batch
 from services.embeddings.compose import compose_builder_services_text
+from services.vector_search.qdrant_service import upsert_builder_service_embedding
 
 
 async def populate_builder_services(file_path: str) -> None:
@@ -93,11 +94,28 @@ async def populate_builder_services(file_path: str) -> None:
         # Overwrite the stringified builder_id from model_dump with the original ObjectId
         service_dict["builder_id"] = builder_id_obj
         
-        services_to_insert.append(service_dict)
+        services_to_insert.append((service_dict, embedding_vector, clean_data))
 
     if services_to_insert:
-        result = await builder_services_collection.insert_many(services_to_insert)
+        # Separate service dicts and embeddings for insertion
+        service_dicts = [item[0] for item in services_to_insert]
+        result = await builder_services_collection.insert_many(service_dicts)
         print(f"[POPULATE] Inserted {len(result.inserted_ids)} new builder services.")
+        
+        # Store embeddings in Qdrant
+        for idx, (service_dict, embedding_vector, clean_data) in enumerate(services_to_insert):
+            service_id = str(result.inserted_ids[idx])
+            metadata = {
+                "service_name": clean_data.get("service_name", ""),
+                "category": clean_data.get("category", ""),
+                "builder_id": str(clean_data.get("builder_id", builder_id_obj)),
+            }
+            await upsert_builder_service_embedding(
+                service_id=service_id,
+                embedding=embedding_vector,
+                metadata=metadata,
+            )
+        print(f"[POPULATE] Stored {len(services_to_insert)} builder service embeddings in Qdrant.")
     else:
         print("[POPULATE] No new builder services to insert.")
 

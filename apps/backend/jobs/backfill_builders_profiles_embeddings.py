@@ -22,6 +22,7 @@ from common.db import DatabaseClient
 from models.builder_profiles import BuilderProfile, Location
 from services.embeddings.compose import compose_builder_profile_text
 from services.embeddings.service import embed_batch
+from services.vector_search.qdrant_service import upsert_builder_profile_embedding
 
 
 async def populate_builder_profiles(
@@ -104,13 +105,29 @@ async def populate_builder_profiles(
             # Overwrite the stringified user_id from model_dump with the original ObjectId
             profile_dict["user_id"] = user_id
             
-            profiles_to_insert.append(profile_dict)
+            profiles_to_insert.append((profile_dict, embedding_vector, clean_data))
         else:
             print(f"Builder profile for user_id {user_id} already exists. Skipping.")
 
     if profiles_to_insert:
-        result = await builder_profiles_collection.insert_many(profiles_to_insert)
+        # Separate profile dicts and embeddings for insertion
+        profile_dicts = [item[0] for item in profiles_to_insert]
+        result = await builder_profiles_collection.insert_many(profile_dicts)
         print(f"[POPULATE] Inserted {len(result.inserted_ids)} new builder profiles.")
+        
+        # Store embeddings in Qdrant
+        for idx, (profile_dict, embedding_vector, clean_data) in enumerate(profiles_to_insert):
+            profile_id = str(result.inserted_ids[idx])
+            metadata = {
+                "company_name": clean_data.get("company_name", ""),
+                "city": clean_data.get("location", {}).get("city", "") if isinstance(clean_data.get("location"), dict) else "",
+            }
+            await upsert_builder_profile_embedding(
+                profile_id=profile_id,
+                embedding=embedding_vector,
+                metadata=metadata,
+            )
+        print(f"[POPULATE] Stored {len(profiles_to_insert)} builder profile embeddings in Qdrant.")
     else:
         print("[POPULATE] No new builder profiles to insert.")
 

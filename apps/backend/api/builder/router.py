@@ -215,8 +215,11 @@ async def search_builders(
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     """
-    Searches for builder profiles using a query string and optional filters.
+    Searches for builder profiles using Qdrant vector search with optional filters.
     """
+    from bson import ObjectId
+    from services.vector_search.qdrant_service import search_builder_profiles
+    
     query_text: str = body.get("query", "")
     k: int = int(body.get("k", 10))
     if not query_text:
@@ -224,48 +227,56 @@ async def search_builders(
 
     query_vec = embed_text(query_text)
 
-    # --- Start of Changes ---
-
-    # Build the vector search stage
-    search_stage = {
-        "$vectorSearch": {
-            "index": "builder_profile_index",
-            "path": "embeddings",
-            "queryVector": query_vec,
-            "numCandidates": max(50, k * 5),
-            "limit": k,
-        }
-    }
-
-    # Build the filter query using MQL
+    # Prepare filters for Qdrant
+    filters: Dict[str, Any] = {}
     city = body.get("city")
     if city:
-        # Correctly add the MQL filter to the $vectorSearch stage
-        search_stage["$vectorSearch"]["filter"] = {
-            "location.city": city
-        }
+        filters["city"] = city
 
-    pipeline: List[Dict[str, Any]] = [
-        search_stage,
+    # Search in Qdrant
+    qdrant_results = await search_builder_profiles(
+        query_vector=query_vec,
+        limit=k,
+        filters=filters if filters else None,
+    )
+
+    if not qdrant_results:
+        return {"count": 0, "results": []}
+
+    # Fetch full documents from MongoDB using the IDs from Qdrant
+    profile_ids = [ObjectId(result["id"]) for result in qdrant_results]
+    
+    # Fetch profiles from MongoDB
+    profiles_cursor = db["builder_profiles"].find(
+        {"_id": {"$in": profile_ids}},
         {
-            "$project": {
-                "score": {"$meta": "vectorSearchScore"},
-                "_id": 1,
-                "company_name": 1,
-                "specialization": 1,
-                "experience_years": 1,
-                "rating": 1,
-                "location": 1,
-                "about": 1
-            }
-        },
-    ]
-    # --- End of Changes ---
-
-    results = await db["builder_profiles"].aggregate(pipeline).to_list(k)
-    for r in results:
-        if "_id" in r:
-            r["_id"] = str(r["_id"])
+            "_id": 1,
+            "company_name": 1,
+            "specialization": 1,
+            "experience_years": 1,
+            "rating": 1,
+            "location": 1,
+            "about": 1
+        }
+    )
+    
+    profiles = await profiles_cursor.to_list(length=k)
+    
+    # Create a map of _id to score for ordering
+    score_map = {result["id"]: result["score"] for result in qdrant_results}
+    
+    # Sort results by Qdrant score and add score to results
+    results = []
+    for profile in profiles:
+        profile_id_str = str(profile["_id"])
+        if profile_id_str in score_map:
+            profile["_id"] = profile_id_str
+            profile["score"] = score_map[profile_id_str]
+            results.append(profile)
+    
+    # Sort by score (descending)
+    results.sort(key=lambda x: x.get("score", 0), reverse=True)
+    
     return {"count": len(results), "results": results}
 
 
