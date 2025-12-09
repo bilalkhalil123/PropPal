@@ -1,0 +1,1513 @@
+[
+  {
+    "builder_id": "000000000000000000000009",
+    "company_name": "Shahid Builders",
+    "title": "Custom Residential Home Construction",
+    "description": "Complete turnkey solution for building custom residential homes from foundation to finishing. We handle all architectural, structural, and finishing work with high-quality materials and craftsmanship.",
+    "category": "construction",
+    "base_price": 4500.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "9-15 months",
+    "service_features": [
+      "Architectural Design & Approval",
+      "Grey Structure Construction",
+      "Electrical & Plumbing Works",
+      "Premium Finishing",
+      "Project Management"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000009",
+    "company_name": "Shahid Builders",
+    "title": "Commercial Plaza Development",
+    "description": "End-to-end development of multi-story commercial plazas, including structural design, construction, and facade engineering. Ideal for retail outlets, offices, and mixed-use purposes.",
+    "category": "construction",
+    "base_price": 50000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "24-36 months",
+    "service_features": [
+      "Feasibility Study",
+      "Structural Engineering",
+      "High-Quality Construction",
+      "HVAC & Fire Safety Systems",
+      "Exterior Glass & Facade Work"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000022",
+    "company_name": "Habib Construction Services (HCS)",
+    "title": "Motorway and Highway Construction",
+    "description": "Large-scale infrastructure project for building national motorways and highways, including earthwork, pavement, and bridge construction, adhering to international standards.",
+    "category": "infrastructure",
+    "base_price": 250000000.0,
+    "price_unit": "per km",
+    "estimated_duration": "Project dependent",
+    "service_features": [
+      "Topographic Survey & Design",
+      "Asphalt & Concrete Paving",
+      "Bridge & Culvert Construction",
+      "Traffic Management Systems",
+      "Quality Assurance & Control"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000022",
+    "company_name": "Habib Construction Services (HCS)",
+    "title": "High-Rise Residential Tower Construction",
+    "description": "Specialized construction of high-rise apartment buildings and residential towers, focusing on structural integrity, modern amenities, and timely project delivery.",
+    "category": "construction",
+    "base_price": 500000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "3-5 years",
+    "service_features": [
+      "Deep Foundation & Piling",
+      "Advanced Formwork Systems",
+      "High-Speed Elevators",
+      "Centralized HVAC",
+      "Modern Fire Suppression Systems"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000047",
+    "company_name": "Kings Group Builders, Developers & Contractors",
+    "title": "Luxury Apartment Complex Development",
+    "description": "Development of high-end, luxury apartment complexes with modern design and premium amenities. We focus on creating a lavish living experience in prime urban locations.",
+    "category": "development",
+    "base_price": 12000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "2-3 years",
+    "service_features": [
+      "Contemporary Architectural Design",
+      "Imported Fittings & Fixtures",
+      "Rooftop Gardens & Pools",
+      "Gated Community with 24/7 Security",
+      "Dedicated Parking"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000047",
+    "company_name": "Kings Group Builders, Developers & Contractors",
+    "title": "High-End Custom Villa Construction",
+    "description": "Bespoke design and construction of luxury villas and bungalows. Our service covers everything from land acquisition advisory to final interior finishes, tailored to client specifications.",
+    "category": "construction",
+    "base_price": 8000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "18-24 months",
+    "service_features": [
+      "Personalized Architectural Design",
+      "Premium Construction Materials",
+      "Smart Home Automation",
+      "Landscaping and Private Pools",
+      "Interior Design Services"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000010",
+    "company_name": "RSM Home and Developers",
+    "title": "Architectural Design & Approval Service",
+    "description": "Innovative architectural design services for residential and commercial properties. We provide 2D floor plans, 3D visualizations, and handle the complete process of getting approvals from local authorities.",
+    "category": "architecture",
+    "base_price": 150.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "2-4 months",
+    "service_features": [
+      "Custom Floor Plan Design",
+      "3D Exterior & Interior Renders",
+      "Structural Drawings",
+      "Submission to Development Authorities"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000010",
+    "company_name": "RSM Home and Developers",
+    "title": "End-to-End Home Construction",
+    "description": "A comprehensive A-Z construction service for homeowners. We manage the entire project from initial design to handing over the keys, ensuring quality, transparency, and timely completion.",
+    "category": "construction",
+    "base_price": 4200.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "10-14 months",
+    "service_features": [
+      "Architectural and Structural Design",
+      "Complete Grey Structure",
+      "Electrical, Plumbing & HVAC",
+      "Interior & Exterior Finishes"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000032",
+    "company_name": "Bahria Town Pvt Ltd",
+    "title": "Master-Planned Community Development",
+    "description": "Comprehensive development of large-scale, master-planned gated communities. This service includes town planning, infrastructure development, and construction of residential and commercial units.",
+    "category": "development",
+    "base_price": 5000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "5-10 years",
+    "service_features": [
+      "Urban Planning & Design",
+      "Road Networks & Utilities",
+      "Residential Plots, Villas, & Apartments",
+      "Commercial Hubs & Malls",
+      "Parks, Hospitals, & Schools"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000032",
+    "company_name": "Bahria Town Pvt Ltd",
+    "title": "Luxury Villa Construction in Gated Community",
+    "description": "Construction of luxury villas within our established gated communities, offering state-of-the-art design, premium finishes, and access to all community amenities.",
+    "category": "construction",
+    "base_price": 7500.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "12-18 months",
+    "service_features": [
+      "Standardized & Custom Designs",
+      "High-Quality Construction",
+      "Access to Parks & Golf Courses",
+      "24/7 Security & Maintenance"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000046",
+    "company_name": "Glorious Builders",
+    "title": "Innovative Residential Home Building",
+    "description": "Specializing in the construction of trendsetting and innovative homes, focusing on modern aesthetics, quality craftsmanship, and luxury finishes.",
+    "category": "construction",
+    "base_price": 6000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "12-16 months",
+    "service_features": [
+      "R&D Based Designs",
+      "Luxury Interior Finishes",
+      "High-Quality Materials",
+      "Turnkey Project Delivery"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000046",
+    "company_name": "Glorious Builders",
+    "title": "Complete Home Renovation",
+    "description": "Comprehensive renovation and remodeling services to transform existing homes into modern, luxurious living spaces with updated designs and features.",
+    "category": "renovation",
+    "base_price": 3000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "4-8 months",
+    "service_features": [
+      "Interior & Exterior Redesign",
+      "Structural Modifications",
+      "Modern Kitchen & Bath Remodeling",
+      "High-End Finishing"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000003",
+    "company_name": "Dynasty Engineering Pvt Limited",
+    "title": "Commercial HVAC & Plumbing System Installation",
+    "description": "Specialized design and installation of large-scale HVAC, plumbing, and chiller systems for commercial and industrial buildings, ensuring efficiency and compliance with engineering standards.",
+    "category": "MEP",
+    "base_price": 8000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "4-6 months",
+    "service_features": [
+      "HVAC System Design & Load Calculation",
+      "Chiller Plant Installation",
+      "Firefighting System Installation",
+      "Plumbing & Water Supply Networks"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000003",
+    "company_name": "Dynasty Engineering Pvt Limited",
+    "title": "Turnkey Industrial Building Construction",
+    "description": "Complete construction solutions for industrial facilities like factories and warehouses, including specialized MEP (Mechanical, Electrical, and Plumbing) services.",
+    "category": "construction",
+    "base_price": 3500.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "12-24 months",
+    "service_features": [
+      "Civil & Structural Works",
+      "Industrial Grade MEP Systems",
+      "PEB Structure Erection",
+      "Safety & Compliance Management"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000004",
+    "company_name": "Dream Homes Marketing",
+    "title": "Real Estate Project Marketing & Sales",
+    "description": "A comprehensive marketing and sales service for real estate developers, creating strategic campaigns to drive sales and maximize project visibility.",
+    "category": "marketing",
+    "base_price": 500000.0,
+    "price_unit": "fixed retainer + commission",
+    "estimated_duration": "Ongoing",
+    "service_features": [
+      "Strategic Marketing Plan",
+      "Digital & Print Campaigns",
+      "Sales Team Management",
+      "Client Relationship Management"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000004",
+    "company_name": "Dream Homes Marketing",
+    "title": "Real Estate Investment Advisory",
+    "description": "Providing expert advice and strategic plans for individuals and companies looking to invest in residential or commercial real estate in Punjab.",
+    "category": "consulting",
+    "base_price": 25000.0,
+    "price_unit": "per hour",
+    "estimated_duration": "Consultation based",
+    "service_features": [
+      "Market Analysis",
+      "Investment Feasibility",
+      "Portfolio Strategy",
+      "Property Acquisition Support"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000005",
+    "company_name": "Zameen Developments",
+    "title": "Proptech-Enabled Real Estate Development",
+    "description": "Development of modern residential and commercial projects utilizing data-driven insights and technology for efficient design, construction, and sales.",
+    "category": "development",
+    "base_price": 200000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "24-36 months",
+    "service_features": [
+      "Data-Driven Site Selection",
+      "Technology-Enabled Construction Management",
+      "Smart Building Features",
+      "Virtual Property Tours"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000005",
+    "company_name": "Zameen Developments",
+    "title": "Value-Driven Commercial Project Construction",
+    "description": "Construction of high-value commercial properties that meet modern urban standards, focusing on innovative design and quality.",
+    "category": "construction",
+    "base_price": 6000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "18-30 months",
+    "service_features": [
+      "Modern Architectural Design",
+      "Quality Construction Materials",
+      "Strategic Location Analysis",
+      "High ROI Potential"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000006",
+    "company_name": "Al-Jalil Developers",
+    "title": "Sustainable Community Housing Scheme",
+    "description": "Development of large-scale, sustainable housing schemes with a focus on green spaces, community-oriented planning, and modern amenities.",
+    "category": "development",
+    "base_price": 1000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "4-7 years",
+    "service_features": [
+      "Master Urban Planning",
+      "Eco-Friendly Infrastructure",
+      "Community Parks & Mosques",
+      "Gated & Secure Environment"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000006",
+    "company_name": "Al-Jalil Developers",
+    "title": "Mixed-Use Commercial & Residential Development",
+    "description": "Creating integrated mixed-use projects that combine residential apartments with retail and commercial spaces for a vibrant community lifestyle.",
+    "category": "development",
+    "base_price": 500000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "3-5 years",
+    "service_features": [
+      "Integrated Design",
+      "Residential Apartments",
+      "Retail Shops & Outlets",
+      "Ample Parking Space"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000007",
+    "company_name": "Blue Group of Companies",
+    "title": "Mega Real Estate Project Development",
+    "description": "Conceptualization and execution of mega real estate projects like Blue World City, involving comprehensive planning, infrastructure, and diverse property offerings.",
+    "category": "development",
+    "base_price": 10000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "8-12 years",
+    "service_features": [
+      "International Standard Master Planning",
+      "Global & Local Partnerships",
+      "Diverse Investment Options",
+      "World-Class Amenities"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000007",
+    "company_name": "Blue Group of Companies",
+    "title": "Architectural Design for Commercial Ventures",
+    "description": "Providing innovative architectural and construction services for retail and commercial ventures, leveraging our diverse portfolio experience.",
+    "category": "architecture",
+    "base_price": 200.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "3-6 months",
+    "service_features": [
+      "Concept Design",
+      "3D Visualization",
+      "Construction Drawings",
+      "Project Supervision"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000008",
+    "company_name": "ZEM Builders",
+    "title": "Residential Development in Faisal Town",
+    "description": "Specialized development of high-quality housing projects and apartment towers within the Faisal Town area of Lahore.",
+    "category": "development",
+    "base_price": 9000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "24-36 months",
+    "service_features": [
+      "Prime Location Projects",
+      "Quality Construction",
+      "Modern Amenities",
+      "Comprehensive Marketing"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000008",
+    "company_name": "ZEM Builders",
+    "title": "Ethical Real Estate Investment Services",
+    "description": "Providing trustworthy and ethical real estate investment platforms and advisory services for clients interested in Lahore's property market.",
+    "category": "consulting",
+    "base_price": 50000.0,
+    "price_unit": "fixed",
+    "estimated_duration": "Consultation based",
+    "service_features": [
+      "Transparent Dealings",
+      "Market Insights",
+      "Project Vetting",
+      "Client-focused Service"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000011",
+    "company_name": "Paragon Constructors",
+    "title": "Eco-Friendly Commercial Tower Construction",
+    "description": "Construction of modern commercial towers with an emphasis on sustainable, eco-friendly building practices and environmental responsibility.",
+    "category": "construction",
+    "base_price": 150000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "30-40 months",
+    "service_features": [
+      "Green Building Materials",
+      "Energy-Efficient Design",
+      "Rainwater Harvesting Systems",
+      "Modern Facade"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000011",
+    "company_name": "Paragon Constructors",
+    "title": "Large-Scale Urban Infrastructure Development",
+    "description": "Expertise in developing large urban infrastructure projects, including road networks, utilities, and public spaces for planned communities.",
+    "category": "infrastructure",
+    "base_price": 800000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "4-6 years",
+    "service_features": [
+      "Master Planning",
+      "Road & Utility Networks",
+      "Landscaping",
+      "Sustainable Design"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000012",
+    "company_name": "Tameer Construction",
+    "title": "Affordable Housing Apartment Projects",
+    "description": "Developing cost-effective and modern apartment projects for middle-income families, without compromising on quality and design.",
+    "category": "construction",
+    "base_price": 5500.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "24-30 months",
+    "service_features": [
+      "Cost-Effective Design",
+      "Quality Construction",
+      "Modern Amenities",
+      "Timely Delivery"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000012",
+    "company_name": "Tameer Construction",
+    "title": "Innovative Commercial Building Construction",
+    "description": "Constructing innovative and modern commercial buildings in prime locations, ideal for businesses and retail.",
+    "category": "construction",
+    "base_price": 7000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "18-24 months",
+    "service_features": [
+      "Modern Architectural Design",
+      "Strategic Locations",
+      "High-Quality Finishes",
+      "Ample Parking"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000013",
+    "company_name": "Shelters Engineering",
+    "title": "Comprehensive Civil Construction Service",
+    "description": "Providing end-to-end civil construction services for residential, commercial, and industrial sectors across Lahore and Islamabad.",
+    "category": "construction",
+    "base_price": 4800.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "12-24 months",
+    "service_features": [
+      "Structural Engineering",
+      "High-Quality Execution",
+      "Project Management",
+      "Client-Oriented Approach"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000013",
+    "company_name": "Shelters Engineering",
+    "title": "Architectural Design & Consultancy",
+    "description": "Multi-talented team of engineers and designers providing creative and functional architectural designs for diverse projects.",
+    "category": "architecture",
+    "base_price": 175.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "2-5 months",
+    "service_features": [
+      "Concept Development",
+      "3D Modeling",
+      "Construction Documentation",
+      "Supervision Services"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000014",
+    "company_name": "Majestic Builders Pvt Ltd",
+    "title": "Town Planning and Urban Development",
+    "description": "Specialized services in town planning and urban development, creating well-structured and functional communities from the ground up.",
+    "category": "planning",
+    "base_price": 10000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "6-12 months",
+    "service_features": [
+      "Master Plan Design",
+      "Infrastructure Planning",
+      "Zoning Regulations",
+      "Feasibility Studies"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000014",
+    "company_name": "Majestic Builders Pvt Ltd",
+    "title": "Pre-Engineered Building (PEB) Solutions",
+    "description": "Design, fabrication, and erection of pre-engineered steel buildings for industrial warehouses, factories, and commercial sheds.",
+    "category": "construction",
+    "base_price": 2500.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "4-7 months",
+    "service_features": [
+      "Custom Design",
+      "Steel Structure Fabrication",
+      "Fast Erection & Installation",
+      "Cost-Effective Solution"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000015",
+    "company_name": "MGC Developments",
+    "title": "Iconic Luxury Real Estate Development",
+    "description": "Developing iconic and prestigious residential and commercial projects for the luxury market, focusing on high-end design and innovation.",
+    "category": "development",
+    "base_price": 500000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "3-5 years",
+    "service_features": [
+      "Signature Architecture",
+      "Prime Locations",
+      "World-Class Amenities",
+      "Premium Finishes"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000015",
+    "company_name": "MGC Developments",
+    "title": "Affluent Lifestyle Housing Schemes",
+    "description": "Creating exclusive housing schemes and leisure projects that cater to an affluent clientele seeking modern and luxurious lifestyle solutions.",
+    "category": "development",
+    "base_price": 10000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "2-4 years",
+    "service_features": [
+      "Gated Community",
+      "Landscaped Parks",
+      "Private Clubs & Facilities",
+      "High Security"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000016",
+    "company_name": "Topline Marketing Pvt Ltd",
+    "title": "Real Estate Project Sales & Marketing",
+    "description": "Comprehensive marketing and sales strategies for real estate projects, backed by detailed market research to ensure investment goals are met.",
+    "category": "marketing",
+    "base_price": 1000000.0,
+    "price_unit": "fixed + commission",
+    "estimated_duration": "Project duration",
+    "service_features": [
+      "Market Research & Analysis",
+      "Customized Marketing Strategy",
+      "Sales Force Management",
+      "Investor Relations"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000016",
+    "company_name": "Topline Marketing Pvt Ltd",
+    "title": "Investment Advisory Services",
+    "description": "Professional real estate consulting for developers and investors, providing insights to maximize project success and returns.",
+    "category": "consulting",
+    "base_price": 30000.0,
+    "price_unit": "per hour",
+    "estimated_duration": "As required",
+    "service_features": [
+      "Feasibility Reports",
+      "Financial Modeling",
+      "Risk Assessment",
+      "Market Entry Strategy"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000017",
+    "company_name": "Emarat Developers & Consultants",
+    "title": "Real Estate Asset Management",
+    "description": "Professional management of real estate assets to maximize value and returns for investors with a low-risk, efficient approach.",
+    "category": "management",
+    "base_price": 5.0,
+    "price_unit": "percentage of asset value",
+    "estimated_duration": "Annual contract",
+    "service_features": [
+      "Portfolio Management",
+      "Property Valuation",
+      "Risk Mitigation",
+      "Performance Reporting"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000017",
+    "company_name": "Emarat Developers & Consultants",
+    "title": "Property Brokerage and Trading",
+    "description": "Expert brokerage services for buying, selling, and trading residential and commercial properties with a focus on delivering high returns.",
+    "category": "brokerage",
+    "base_price": 1.0,
+    "price_unit": "commission percentage",
+    "estimated_duration": "Per transaction",
+    "service_features": [
+      "Property Sourcing",
+      "Client Matching",
+      "Negotiation & Closing",
+      "Legal Documentation Support"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000018",
+    "company_name": "Venture Group of Companies",
+    "title": "High-Rise Commercial Project Development",
+    "description": "Developing modern commercial high-rise projects in the Rawalpindi-Islamabad region, offering innovative investment opportunities.",
+    "category": "development",
+    "base_price": 250000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "3-4 years",
+    "service_features": [
+      "Modern Architecture",
+      "Prime Commercial Locations",
+      "Corporate & Retail Spaces",
+      "Investor-focused Approach"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000018",
+    "company_name": "Venture Group of Companies",
+    "title": "Upscale Residential Farmhouse Construction",
+    "description": "Design and construction of upscale, luxurious farmhouses offering a serene and premium lifestyle away from the city.",
+    "category": "construction",
+    "base_price": 15000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "18-24 months",
+    "service_features": [
+      "Custom Architectural Design",
+      "Large Landscaped Areas",
+      "Private Swimming Pools",
+      "High-End Finishes"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000019",
+    "company_name": "Nareema Developments",
+    "title": "Premium Land Development",
+    "description": "Transforming undeveloped land into premium, investment-ready residential and commercial plots through strategic development and infrastructure.",
+    "category": "development",
+    "base_price": 50000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "12-18 months",
+    "service_features": [
+      "Land Acquisition",
+      "Master Planning",
+      "Utility Infrastructure",
+      "Gated Community Setup"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000019",
+    "company_name": "Nareema Developments",
+    "title": "High-End Residential Project Construction",
+    "description": "Building modern and lucrative residential projects with an emphasis on transparency, trust, and ethical practices for homeowners and investors.",
+    "category": "construction",
+    "base_price": 8000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "24-30 months",
+    "service_features": [
+      "Transparent Process",
+      "Quality Construction",
+      "Modern Design",
+      "Lucrative Investment"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000020",
+    "company_name": "Blue Arc Design & Construction Company",
+    "title": "Contemporary Residential Design & Build",
+    "description": "A complete design and construction solution for contemporary homes, known for innovative architectural solutions and timely delivery.",
+    "category": "construction",
+    "base_price": 5500.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "10-15 months",
+    "service_features": [
+      "Innovative Architectural Design",
+      "Quality Construction",
+      "Project Management",
+      "Turnkey Solution"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000020",
+    "company_name": "Blue Arc Design & Construction Company",
+    "title": "Commercial Building Construction",
+    "description": "Offering high-quality construction services for commercial buildings, from small plazas to large complexes, with a reputation for excellence.",
+    "category": "construction",
+    "base_price": 6500.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "18-24 months",
+    "service_features": [
+      "Modern Design",
+      "Structural Integrity",
+      "Timely Project Delivery",
+      "Client Satisfaction"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000021",
+    "company_name": "Imarat Group of Companies",
+    "title": "Vertical Construction & Real Estate Development",
+    "description": "Specializing in the development of modern, vertical residential and commercial complexes designed for quality and efficiency.",
+    "category": "development",
+    "base_price": 300000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "3-5 years",
+    "service_features": [
+      "High-Rise Development",
+      "Architectural & Engineering Services",
+      "Modern Infrastructure",
+      "Landmark Projects"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000021",
+    "company_name": "Imarat Group of Companies",
+    "title": "Architectural and Engineering Services",
+    "description": "Providing comprehensive architectural and engineering consultancy for property development projects from concept to completion.",
+    "category": "consulting",
+    "base_price": 5000000.0,
+    "price_unit": "fixed",
+    "estimated_duration": "Project dependent",
+    "service_features": [
+      "Feasibility Studies",
+      "Master Planning",
+      "Structural Design",
+      "Construction Supervision"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000023",
+    "company_name": "Frontier Works Organization (FWO)",
+    "title": "Strategic Infrastructure Projects",
+    "description": "Undertaking large-scale, strategic infrastructure projects such as highways, tunnels, and dams in challenging terrains with military precision.",
+    "category": "infrastructure",
+    "base_price": 500000000.0,
+    "price_unit": "per km",
+    "estimated_duration": "Project dependent",
+    "service_features": [
+      "Combat & Peacetime Engineering",
+      "High-Quality Construction",
+      "Challenging Terrain Expertise",
+      "National Development Projects"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000023",
+    "company_name": "Frontier Works Organization (FWO)",
+    "title": "Civil Engineering Works",
+    "description": "Executing major civil engineering works with a strong track record of excellence, reliability, and on-time completion.",
+    "category": "engineering",
+    "base_price": 1000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "Project dependent",
+    "service_features": [
+      "Large-Scale Earthworks",
+      "Bridge Construction",
+      "Dam Construction",
+      "Reliable Execution"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000024",
+    "company_name": "ZKB (Pvt) Ltd.",
+    "title": "Heavy Civil Engineering Projects",
+    "description": "Specializing in heavy civil projects such as dams, roads, and bridges, with a reputation for technical skill and precision engineering.",
+    "category": "engineering",
+    "base_price": 900000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "4-8 years",
+    "service_features": [
+      "Dam Construction",
+      "Bridge Engineering",
+      "Road Infrastructure",
+      "Precision Engineering"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000024",
+    "company_name": "ZKB (Pvt) Ltd.",
+    "title": "Transportation Infrastructure Construction",
+    "description": "A key player in national development, focusing on large-scale transportation and water infrastructure construction across Pakistan.",
+    "category": "infrastructure",
+    "base_price": 200000000.0,
+    "price_unit": "per km",
+    "estimated_duration": "3-5 years",
+    "service_features": [
+      "Highway Construction",
+      "Tunneling",
+      "Water Infrastructure",
+      "Technical Expertise"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000025",
+    "company_name": "Water and Power Development Authority (WAPDA)",
+    "title": "Hydropower Dam Development",
+    "description": "A government agency responsible for the development of major hydropower projects, from feasibility and design to construction and commissioning.",
+    "category": "infrastructure",
+    "base_price": 50000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "10-20 years",
+    "service_features": [
+      "Hydropower Generation",
+      "Dam Construction",
+      "Water Storage Solutions",
+      "National Energy Development"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000025",
+    "company_name": "Water and Power Development Authority (WAPDA)",
+    "title": "Water Infrastructure and Irrigation Projects",
+    "description": "Building canals, barrages, and water storage facilities to support Pakistan's agricultural sector and manage national water resources.",
+    "category": "infrastructure",
+    "base_price": 10000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "5-15 years",
+    "service_features": [
+      "Irrigation Canals",
+      "Water Management",
+      "Agricultural Development",
+      "Flood Control"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000026",
+    "company_name": "Jaffer Group of Companies",
+    "title": "Industrial Infrastructure Construction",
+    "description": "Leveraging decades of experience to construct robust industrial infrastructure, including factories, plants, and large-scale facilities.",
+    "category": "construction",
+    "base_price": 400000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "3-5 years",
+    "service_features": [
+      "Industrial Plant Construction",
+      "Dam Civil Works",
+      "Commercial Developments",
+      "Robust Civil Engineering"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000026",
+    "company_name": "Jaffer Group of Companies",
+    "title": "Diversified Real Estate Development",
+    "description": "Developing a diverse portfolio of real estate projects, from commercial buildings to residential complexes, backed by a legacy of trust.",
+    "category": "development",
+    "base_price": 250000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "2-4 years",
+    "service_features": [
+      "Tech Diversification",
+      "Real Estate Investment",
+      "Historical Expertise",
+      "Quality Construction"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000027",
+    "company_name": "Dascon Construction Company",
+    "title": "Large-Scale Commercial Complex Construction",
+    "description": "Executing the construction of large commercial complexes and malls, such as the Mall of Islamabad, with comprehensive construction management.",
+    "category": "construction",
+    "base_price": 2000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "4-6 years",
+    "service_features": [
+      "Large-Scale Engineering",
+      "Quality Construction Management",
+      "Commercial Development",
+      "Government Infrastructure"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000027",
+    "company_name": "Dascon Construction Company",
+    "title": "Infrastructure & Residential Development",
+    "description": "A broad portfolio covering everything from government infrastructure projects to residential developments with an emphasis on quality.",
+    "category": "development",
+    "base_price": 600000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "3-5 years",
+    "service_features": [
+      "Residential Housing",
+      "Public Works",
+      "Broad Portfolio",
+      "Quality Execution"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000028",
+    "company_name": "NLC Construction Company",
+    "title": "Logistics Infrastructure Development",
+    "description": "Specializing in civil engineering projects for transportation and logistics infrastructure, including highways, dry ports, and border terminals.",
+    "category": "infrastructure",
+    "base_price": 750000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "2-4 years",
+    "service_features": [
+      "Highway Construction",
+      "Utility Projects",
+      "Integrated Logistics",
+      "National Infrastructure"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000028",
+    "company_name": "NLC Construction Company",
+    "title": "Public Works Engineering Projects",
+    "description": "Undertaking major public works and utility projects to support national commerce and development, backed by a government-owned entity.",
+    "category": "engineering",
+    "base_price": 400000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "2-3 years",
+    "service_features": [
+      "Civil Engineering",
+      "Transportation Infrastructure",
+      "Utility Services",
+      "Government Projects"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000029",
+    "company_name": "AH Group of Companies",
+    "title": "IT Park & Commercial Hub Development",
+    "description": "Developing modern real estate projects like IT Heights Islamabad, focusing on innovative commercial and housing developments.",
+    "category": "development",
+    "base_price": 150000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "2-3 years",
+    "service_features": [
+      "Innovation & Quality",
+      "Modern Properties",
+      "Customer Satisfaction",
+      "Commercial Hubs"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000029",
+    "company_name": "AH Group of Companies",
+    "title": "Housing and Commercial Infrastructure",
+    "description": "A diversified portfolio including the development of quality housing schemes and commercial infrastructure in major cities.",
+    "category": "infrastructure",
+    "base_price": 100000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "2-4 years",
+    "service_features": [
+      "Real Estate Development",
+      "Diversified Conglomerate",
+      "Quality Housing",
+      "Commercial Properties"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000030",
+    "company_name": "RBS Real Estate & Builders",
+    "title": "Platinum Sales Partner Services",
+    "description": "Acting as a platinum sales partner for major housing societies like Capital Smart City, providing professional sales and marketing services.",
+    "category": "sales",
+    "base_price": 2.0,
+    "price_unit": "commission percentage",
+    "estimated_duration": "Ongoing",
+    "service_features": [
+      "Modern Marketing Approach",
+      "Professional Sales Team",
+      "Property Development Sales",
+      "Project Collaboration"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000030",
+    "company_name": "RBS Real Estate & Builders",
+    "title": "Real Estate Development & Collaboration",
+    "description": "Collaborating on major real estate projects, providing expertise in property development, sales, and modern marketing.",
+    "category": "development",
+    "base_price": 10000000.0,
+    "price_unit": "project-based partnership",
+    "estimated_duration": "2-5 years",
+    "service_features": [
+      "Joint Ventures",
+      "Property Development",
+      "Sales & Marketing",
+      "Professionalism"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000031",
+    "company_name": "Defense Housing Authority (DHA) Builders",
+    "title": "Master-Planned Community Development",
+    "description": "Developing renowned master-planned communities with high-quality infrastructure, security, and luxury housing options.",
+    "category": "development",
+    "base_price": 8000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "5-10 years",
+    "service_features": [
+      "Planned Housing",
+      "High-Quality Infrastructure",
+      "Secure Gated Communities",
+      "Long-Term Maintenance"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000031",
+    "company_name": "Defense Housing Authority (DHA) Builders",
+    "title": "Luxury Home Construction",
+    "description": "Construction arm providing reliable and high-quality construction of luxury homes and villas within DHA projects.",
+    "category": "construction",
+    "base_price": 8500.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "12-18 months",
+    "service_features": [
+      "Reliable Construction",
+      "Modern Amenities",
+      "Adherence to DHA Standards",
+      "Premium Housing"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000033",
+    "company_name": "Fazaia Housing Scheme",
+    "title": "Secure Residential Community Development",
+    "description": "Developing secure, well-planned residential communities primarily for Pakistan Air Force personnel but also open to the public.",
+    "category": "development",
+    "base_price": 1500000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "4-6 years",
+    "service_features": [
+      "Defense Housing",
+      "Well-Planned Communities",
+      "Affordability",
+      "Community Facilities"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000033",
+    "company_name": "Fazaia Housing Scheme",
+    "title": "Affordable Home Development",
+    "description": "Offering quality and affordable home development options designed to suit military and civilian families alike within our schemes.",
+    "category": "construction",
+    "base_price": 5000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "12-16 months",
+    "service_features": [
+      "Quality Home Construction",
+      "Family-Oriented Design",
+      "Community Living",
+      "Affordable Pricing"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000034",
+    "company_name": "Park View City",
+    "title": "Luxury Residential Community Development",
+    "description": "Developing prestigious, upscale residential projects and gated communities that emphasize luxury living and lush surroundings.",
+    "category": "development",
+    "base_price": 3000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "3-5 years",
+    "service_features": [
+      "Upscale Gated Communities",
+      "Modern Amenities",
+      "Lush Landscapes",
+      "Refined Living Environments"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000034",
+    "company_name": "Park View City",
+    "title": "Resort-Style Housing Construction",
+    "description": "Constructing sophisticated, resort-style housing for discerning residents seeking a premium and serene lifestyle.",
+    "category": "construction",
+    "base_price": 9500.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "18-24 months",
+    "service_features": [
+      "Sophisticated Infrastructure",
+      "Luxury Living",
+      "Premium Design",
+      "Exclusive Amenities"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000035",
+    "company_name": "Al Ghurair Giga",
+    "title": "Mixed-Use Residential & Commercial Projects",
+    "description": "A Pakistan-UAE joint venture developing high-quality mixed-use projects like malls with residences and golf resort apartments.",
+    "category": "development",
+    "base_price": 4000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "4-6 years",
+    "service_features": [
+      "Joint Venture Expertise",
+      "High-Quality Construction",
+      "Design Excellence",
+      "Customer Satisfaction"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000035",
+    "company_name": "Al Ghurair Giga",
+    "title": "Luxury Apartment Construction",
+    "description": "Focusing on high-quality residential apartment construction in prime locations like DHA, ensuring design excellence and premium quality.",
+    "category": "construction",
+    "base_price": 11000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "30-40 months",
+    "service_features": [
+      "Premium Residential Construction",
+      "Golf Community Living",
+      "Commercial Integration",
+      "Design Excellence"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000036",
+    "company_name": "Vision Group (Park View)",
+    "title": "Affordable Master-Planned Communities",
+    "description": "Developing affordable, high-quality housing societies and commercial areas with a focus on modern, well-planned communities.",
+    "category": "development",
+    "base_price": 2000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "4-7 years",
+    "service_features": [
+      "Affordable Housing",
+      "High-Quality Development",
+      "Modern Communities",
+      "Diversified Interests"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000036",
+    "company_name": "Vision Group (Park View)",
+    "title": "Commercial Area Development",
+    "description": "Planning and developing commercial areas within our master-planned communities to support residents and create economic hubs.",
+    "category": "development",
+    "base_price": 100000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "18-24 months",
+    "service_features": [
+      "Strategic Commercial Planning",
+      "Retail & Office Spaces",
+      "Community Support",
+      "Investment Opportunities"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000037",
+    "company_name": "Zameen Solutions",
+    "title": "Boutique Housing Society Development",
+    "description": "Developing high-quality, modern, and comfortable housing societies like Hill View Garden and Aura Sky in Islamabad.",
+    "category": "development",
+    "base_price": 800000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "3-5 years",
+    "service_features": [
+      "Innovative Real Estate",
+      "Experienced Teams",
+      "Comfortable Lifestyles",
+      "Modern Developments"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000037",
+    "company_name": "Zameen Solutions",
+    "title": "Modern Residential Development",
+    "description": "Leveraging industry networks to deliver innovative and comfortable residential developments for modern living.",
+    "category": "construction",
+    "base_price": 7000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "24-30 months",
+    "service_features": [
+      "Industry Networks",
+      "High-Quality Construction",
+      "Modern Design",
+      "Comfortable Living"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000038",
+    "company_name": "GFS Builders & Developers",
+    "title": "Themed Residential City Development",
+    "description": "Specializing in unique, themed residential and mixed-use developments like 7 Wonders City, offering a distinct living experience.",
+    "category": "development",
+    "base_price": 1200000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "4-6 years",
+    "service_features": [
+      "Themed Community",
+      "Quality Construction",
+      "Modern Architectural Techniques",
+      "Urban Projects"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000038",
+    "company_name": "GFS Builders & Developers",
+    "title": "Downtown Residency and Commercial Projects",
+    "description": "Developing mixed-use projects like Downtown Residency that combine residential living with commercial and retail spaces in urban centers.",
+    "category": "development",
+    "base_price": 500000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "3-4 years",
+    "service_features": [
+      "Mixed-Use Development",
+      "Residential & Commercial",
+      "Quality Construction",
+      "Modern Architecture"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000039",
+    "company_name": "Habib Rafiq (Pvt) Ltd (HRL)",
+    "title": "Large-Scale Infrastructure & Engineering",
+    "description": "A leading infrastructure company building dams, highways, airports, and energy projects, including major contributions to CPEC.",
+    "category": "infrastructure",
+    "base_price": 5000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "5-10 years",
+    "service_features": [
+      "Technical Excellence",
+      "Professional Engineering",
+      "National Infrastructure",
+      "Energy Projects"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000039",
+    "company_name": "Habib Rafiq (Pvt) Ltd (HRL)",
+    "title": "Airport and Aviation Infrastructure",
+    "description": "One of Pakistan's leading experts in the development and construction of airport infrastructure, including terminals and runways.",
+    "category": "infrastructure",
+    "base_price": 10000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "4-7 years",
+    "service_features": [
+      "Airport Construction",
+      "Highway Development",
+      "Dam Engineering",
+      "CPEC Projects"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000040",
+    "company_name": "Gemcon Engineering",
+    "title": "Turnkey Civil Construction",
+    "description": "A premier firm providing comprehensive turnkey services from planning to execution for civil, commercial, and residential projects.",
+    "category": "construction",
+    "base_price": 5200.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "12-24 months",
+    "service_features": [
+      "Sustainable Practices",
+      "Modern Construction Technology",
+      "Cost-Effective Structures",
+      "Skilled Engineering Team"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000040",
+    "company_name": "Gemcon Engineering",
+    "title": "Architectural and Interior Design",
+    "description": "Offering integrated architectural and interior design services that result in durable, aesthetically pleasing, and functional spaces.",
+    "category": "design",
+    "base_price": 250.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "3-6 months",
+    "service_features": [
+      "Architectural Design",
+      "Interior Design",
+      "Planning to Execution",
+      "Aesthetic & Durable"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000041",
+    "company_name": "Sardar Group of Companies",
+    "title": "Iconic Skyscraper Development",
+    "description": "Developing iconic, large-scale residential and commercial skyscrapers like The Centaurus Mall, leveraging decades of industry experience.",
+    "category": "development",
+    "base_price": 25000000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "5-8 years",
+    "service_features": [
+      "Iconic Buildings",
+      "Mixed-Use Development",
+      "Large-Scale Projects",
+      "Diversified Development"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000041",
+    "company_name": "Sardar Group of Companies",
+    "title": "Large-Scale Residential Development",
+    "description": "Focusing on large-scale residential and commercial developments with over 25 years of experience in the real estate industry.",
+    "category": "development",
+    "base_price": 1500000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "4-6 years",
+    "service_features": [
+      "Residential Development",
+      "Commercial Development",
+      "Experienced Team",
+      "Quality Projects"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000042",
+    "company_name": "My4Walls",
+    "title": "Turnkey Project General Contracting",
+    "description": "Providing comprehensive general contracting and project management from design through completion for residential and commercial buildings.",
+    "category": "contracting",
+    "base_price": 10000000.0,
+    "price_unit": "cost-plus",
+    "estimated_duration": "12-18 months",
+    "service_features": [
+      "General Contracting",
+      "Project Management",
+      "High Standards",
+      "Timely Delivery"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000042",
+    "company_name": "My4Walls",
+    "title": "Architectural and Engineering Solutions",
+    "description": "A team of engineers and contractors providing complete architectural and engineering solutions with a focus on quality and client satisfaction.",
+    "category": "architecture",
+    "base_price": 200.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "3-6 months",
+    "service_features": [
+      "Architectural Design",
+      "Engineering Solutions",
+      "Design to Completion",
+      "Client Satisfaction"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000043",
+    "company_name": "Astral Constructors (Pvt) Ltd",
+    "title": "Turnkey Design-Build Services",
+    "description": "A design-build firm providing structured turnkey engineering and construction services with high integrity and international standards.",
+    "category": "construction",
+    "base_price": 200000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "24-36 months",
+    "service_features": [
+      "Design-Build Model",
+      "Project Management",
+      "International Standards",
+      "ISO Certified"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000043",
+    "company_name": "Astral Constructors (Pvt) Ltd",
+    "title": "High-Integrity Civil Engineering Projects",
+    "description": "Executing civil engineering projects with stringent requirements, known for high-integrity, timely delivery, and safety compliance (e.g., USACE projects).",
+    "category": "engineering",
+    "base_price": 150000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "18-30 months",
+    "service_features": [
+      "Civil Engineering",
+      "High-Integrity",
+      "Safety Compliance",
+      "Stringent Requirements"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000044",
+    "company_name": "Legacy Builders & Developers",
+    "title": "Community Housing and Real Estate Projects",
+    "description": "Developing quality housing and community projects, focusing on creating outstanding living and working environments.",
+    "category": "development",
+    "base_price": 75000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "24-36 months",
+    "service_features": [
+      "Infrastructure Development",
+      "Real Estate Projects",
+      "Community Housing",
+      "High-Standard Communities"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000044",
+    "company_name": "Legacy Builders & Developers",
+    "title": "Residential and Commercial Development",
+    "description": "Leveraging expertise to build high-standard residential and commercial communities in the Karachi region.",
+    "category": "construction",
+    "base_price": 6000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "18-24 months",
+    "service_features": [
+      "Residential Development",
+      "Commercial Development",
+      "Quality Housing",
+      "Community Projects"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000045",
+    "company_name": "H&S Real Estate Pakistan",
+    "title": "Luxury Development & Property Marketing",
+    "description": "Drawing on decades of experience to design and market upscale housing projects that blend international standards with local opportunities.",
+    "category": "development",
+    "base_price": 400000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "3-5 years",
+    "service_features": [
+      "Luxury Developments",
+      "Property Marketing",
+      "International Standards",
+      "Premium Communities"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000045",
+    "company_name": "H&S Real Estate Pakistan",
+    "title": "Premium Residential Community Development",
+    "description": "Specializing in premium residential communities and commercial spaces with innovative and high-quality development.",
+    "category": "development",
+    "base_price": 12000.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "2-4 years",
+    "service_features": [
+      "Innovative Design",
+      "Quality Development",
+      "Upscale Housing",
+      "Commercial Spaces"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000048",
+    "company_name": "Areva Interior and Build Contractors",
+    "title": "Large-Scale Remodeling and Expansion",
+    "description": "Handling large-scale development, remodeling, and expansion projects for commercial centers, schools, and mosques with efficiency.",
+    "category": "remodeling",
+    "base_price": 50000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "8-15 months",
+    "service_features": [
+      "Interior Design",
+      "Remodeling",
+      "Expansion Projects",
+      "Comprehensive Project Management"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000048",
+    "company_name": "Areva Interior and Build Contractors",
+    "title": "Full Construction and Interior Design",
+    "description": "A complete service covering all property construction needs, from architectural development to building execution and interior design.",
+    "category": "construction",
+    "base_price": 6500.0,
+    "price_unit": "per sqft",
+    "estimated_duration": "12-20 months",
+    "service_features": [
+      "Architectural Development",
+      "Building Execution",
+      "Interior Design",
+      "Efficient Management"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000049",
+    "company_name": "Majestic Builders Pvt Ltd",
+    "title": "Urban Planning and Construction",
+    "description": "Focusing on large-scale urban planning and construction projects, utilizing modern technology and client-focused services.",
+    "category": "planning",
+    "base_price": 12000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "8-12 months",
+    "service_features": [
+      "Urban Planning",
+      "Modern Technology",
+      "Client-Focused Services",
+      "Efficient Project Execution"
+    ]
+  },
+  {
+    "builder_id": "000000000000000000000049",
+    "company_name": "Majestic Builders Pvt Ltd",
+    "title": "Large-Scale Building Projects",
+    "description": "Experience in large-scale building projects with a focus on strong client relationships and efficient execution in the construction industry.",
+    "category": "construction",
+    "base_price": 100000000.0,
+    "price_unit": "project-based",
+    "estimated_duration": "24-36 months",
+    "service_features": [
+      "Civil Construction",
+      "Pre-Engineered Buildings",
+      "Strong Client Relationships",
+      "Efficient Execution"
+    ]
+  }
+]

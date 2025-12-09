@@ -2,7 +2,7 @@
 Builder services models
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 from pydantic import BaseModel, Field, ConfigDict
 from .base import PyObjectId
 
@@ -16,8 +16,11 @@ class BuilderServiceBase(BaseModel):
     base_price: float = Field(..., gt=0)
     price_unit: str = Field(..., description="per sqft, fixed, per hour, etc.")
     estimated_duration: Optional[str] = None
-    service_features: List[str] = Field(
+    service_features: Optional[List[str]] = Field(
         default=[], description="List of features: 3D design, material sourcing, etc."
+    )
+    service_images: Optional[List[str]] = Field(
+        default=[], description="List of image URLs for the service"
     )
 
 
@@ -28,6 +31,9 @@ class BuilderService(BuilderServiceBase):
     builder_id: PyObjectId
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    embeddings: Optional[List[float]] = Field(
+        default=None, description="Vector embeddings for the builder service"
+    )
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -46,8 +52,8 @@ class BuilderServiceResponse(BuilderServiceBase):
 
     id: PyObjectId = Field(alias="_id")
     builder_id: PyObjectId
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(
         populate_by_name=True,

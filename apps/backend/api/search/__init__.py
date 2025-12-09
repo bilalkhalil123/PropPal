@@ -1,0 +1,2 @@
+"""Search API package."""
+

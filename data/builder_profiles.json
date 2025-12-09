@@ -1,0 +1,861 @@
+[
+  {
+    "_id": "000000000000000000000009",
+    "user_id": "000000000000000000000000",
+    "company_name": "Shahid Builders",
+    "specialization": [
+      "residential construction",
+      "commercial construction",
+      "industrial construction"
+    ],
+    "experience_years": 40,
+    "portfolio_images": null,
+    "rating": 4.4,
+    "about": "Shahid Builders (Pvt) Ltd is a leading construction company based in Lahore with over 39 years of experience (est. 1985)shahidbuilders.com.pk. It specializes in residential, commercial, and industrial construction projects. Known for high-quality engineering and craftsmanship, Shahid Builders handles projects ranging from apartments to large infrastructure works, maintaining close client collaboration and timely deliveryshahidbuilders.com.pk. The firm operates in Gulberg III, Lahore, and has a track record of excellence in the Punjab region.",
+    "created_at": "1985-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Lahore",
+      "latitude": 31.5546,
+      "longitude": 74.3572
+    }
+  },
+  {
+    "_id": "000000000000000000000022",
+    "user_id": "000000000000000000000000",
+    "company_name": "Habib Construction Services (HCS)",
+    "specialization": [
+      "infrastructure",
+      "residential construction",
+      "commercial construction"
+    ],
+    "experience_years": 50,
+    "portfolio_images": null,
+    "rating": 4.4,
+    "about": "Habib Construction Services (HCS) is a leading infrastructure development company in Pakistan. Renowned for engineering large-scale projects, HCS’s portfolio spans motorways, bridges, airports, and high-rise buildingsfliphtml5.com. The firm emphasizes technical excellence and has a strong reputation for completing major transportation and civil infrastructure projects on time, having served nationwide projects since the 1960sfliphtml5.com.",
+    "created_at": "1973-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000047",
+    "user_id": "000000000000000000000000",
+    "company_name": "Kings Group Builders, Developers & Contractors",
+    "specialization": [
+      "residential projects",
+      "apartment development",
+      "luxury housing"
+    ],
+    "experience_years": 48,
+    "portfolio_images": null,
+    "rating": 4.2,
+    "about": "Kings Group is a Karachi-based construction and development firm, established since 1977buildings.pk. It is known for luxury residential projects and apartment complexes (e.g., Kings Paradise, Kings Regency) in Karachi. The company emphasizes modern design and affordability in its luxury offerings, making it a prominent name among Karachi buildersbuildings.pk.",
+    "created_at": "1977-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Karachi",
+      "latitude": 24.8607,
+      "longitude": 67.0011
+    }
+  },
+  {
+    "_id": "000000000000000000000010",
+    "user_id": "000000000000000000000000",
+    "company_name": "RSM Home and Developers",
+    "specialization": [
+      "residential construction",
+      "commercial construction",
+      "architectural design"
+    ],
+    "experience_years": 18,
+    "portfolio_images": null,
+    "rating": 4.5,
+    "about": "RSM Home and Developers is a Lahore-based construction firm providing residential and commercial building services. With over 17 years of experience, the company offers end-to-end construction solutions and innovative architectural designrsmdevelopers.com. They focus on quality, sustainability, and customer satisfaction, delivering projects ranging from homes to commercial complexes. RSM emphasizes transparent planning and has completed a wide portfolio of building projects in Lahore.",
+    "created_at": "2007-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Lahore",
+      "latitude": 31.5546,
+      "longitude": 74.3572
+    }
+  },
+  {
+    "_id": "000000000000000000000032",
+    "user_id": "000000000000000000000000",
+    "company_name": "Bahria Town Pvt Ltd",
+    "specialization": ["large-scale communities", "urban development"],
+    "experience_years": 30,
+    "portfolio_images": null,
+    "rating": 4.4,
+    "about": "Bahria Town is one of Pakistan’s largest private real estate developers, founded by Malik Riaz. Headquartered in Rawalpindi, it has transformed the housing landscape with massive projects across Pakistan. The company has developed gated communities with comprehensive amenities and infrastructure, such as residential plots, houses, commercial areas, hospitals, and golf coursesrbsland.com. Bahria Town’s projects are known for luxury design and large-scale urban planning.",
+    "created_at": "1995-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Rawalpindi",
+      "latitude": 33.5651,
+      "longitude": 73.0169
+    }
+  },
+  {
+    "_id": "000000000000000000000046",
+    "user_id": "000000000000000000000000",
+    "company_name": "Glorious Builders",
+    "specialization": ["residential construction", "homebuilding"],
+    "experience_years": 21,
+    "portfolio_images": null,
+    "rating": 4.1,
+    "about": "Glorious Builders is a Karachi construction firm established in 2004abdullahgroup.com.pk. It focuses on residential projects and home construction, pioneering innovative designs and luxury homes. Known for its research and development efforts, Glorious Builders has built a reputation for quality craftsmanship and trendsetting in Pakistan’s residential building industryabdullahgroup.com.pk.",
+    "created_at": "2004-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Karachi",
+      "latitude": 24.8607,
+      "longitude": 67.0011
+    }
+  },
+  {
+    "_id": "000000000000000000000003",
+    "user_id": "000000000000000000000000",
+    "company_name": "Dynasty Engineering Pvt Limited",
+    "specialization": ["construction", "HVAC", "plumbing/chiller systems"],
+    "experience_years": 11,
+    "portfolio_images": null,
+    "rating": 4.7,
+    "about": "Dynasty Engineering is a Lahore-based construction firm (est. 2014) specializing in construction and HVAC/plumbing systems. It has delivered high-quality infrastructure and mechanical projects across Pakistanshahidbuilders.com.pk. The firm emphasizes innovative design, engineering precision, and client satisfaction in its developments. (Source: company materials)",
+    "created_at": "2014-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Lahore",
+      "latitude": 31.5546,
+      "longitude": 74.3572
+    }
+  },
+  {
+    "_id": "000000000000000000000004",
+    "user_id": "000000000000000000000000",
+    "company_name": "Dream Homes Marketing",
+    "specialization": ["real estate development", "marketing"],
+    "experience_years": 7,
+    "portfolio_images": null,
+    "rating": 4.2,
+    "about": "Dream Homes Marketing is a Lahore-based real estate development and marketing firm founded in 2018. The company offers comprehensive property acquisition and marketing services and focuses on trust and client care throughout each projectensun.io. It specializes in creating strategic real estate investment plans for residential and commercial developments in Punjab.",
+    "created_at": "2018-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Lahore",
+      "latitude": 31.5546,
+      "longitude": 74.3572
+    }
+  },
+  {
+    "_id": "000000000000000000000005",
+    "user_id": "000000000000000000000000",
+    "company_name": "Zameen Developments",
+    "specialization": ["real estate development", "proptech"],
+    "experience_years": 19,
+    "portfolio_images": null,
+    "rating": 4.5,
+    "about": "Zameen Developments is the construction and development arm of Zameen.com, Pakistan’s largest proptech real estate company. Based in Lahore, it focuses on innovative residential and commercial projects using technology-enabled strategies. The company is dedicated to delivering quality, value-driven developments that meet modern urban living standardsensun.io. Zameen Developments leverages its tech background to create data-driven designs and efficient construction processes.",
+    "created_at": "2006-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Lahore",
+      "latitude": 31.5546,
+      "longitude": 74.3572
+    }
+  },
+  {
+    "_id": "000000000000000000000006",
+    "user_id": "000000000000000000000000",
+    "company_name": "Al-Jalil Developers",
+    "specialization": ["residential development", "sustainable communities"],
+    "experience_years": 26,
+    "portfolio_images": null,
+    "rating": 4.3,
+    "about": "Al-Jalil Developers is a Lahore-based real estate developer established in 1999. It is known for creating large-scale housing schemes and mixed-use projects, emphasizing sustainable and community-oriented development (e.g., Al-Jalil Garden and Lahore Entertainment City)ensun.io. The firm focuses on responsible urban planning and innovative residential solutions that enhance the quality of life for its clients.",
+    "created_at": "1999-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Lahore",
+      "latitude": 31.5546,
+      "longitude": 74.3572
+    }
+  },
+  {
+    "_id": "000000000000000000000007",
+    "user_id": "000000000000000000000000",
+    "company_name": "Blue Group of Companies",
+    "specialization": ["real estate development", "architectural design"],
+    "experience_years": 27,
+    "portfolio_images": null,
+    "rating": 4.6,
+    "about": "Blue Group of Companies (BGC) is a diversified developer headquartered in Lahore, founded in 1998zameensolutions.net. It offers real estate and construction services across Pakistan, including the notable Blue World City project in Islamabad. With over 18 years of experience, BGC has a broad portfolio that began with architectural and construction services and expanded into major real estate and retail ventureszameensolutions.net. The company prides itself on innovation and has built a loyal client base in multiple sectors.",
+    "created_at": "1998-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Lahore",
+      "latitude": 31.5546,
+      "longitude": 74.3572
+    }
+  },
+  {
+    "_id": "000000000000000000000008",
+    "user_id": "000000000000000000000000",
+    "company_name": "ZEM Builders",
+    "specialization": ["residential development", "marketing"],
+    "experience_years": 23,
+    "portfolio_images": null,
+    "rating": 4.1,
+    "about": "ZEM Builders (Zeeshan Estate Management) is a Lahore-based real estate development company focusing on high-quality housing projects in Faisal Town, Lahore. It has completed developments such as Faisal Residence and Faisal Tower. The company emphasizes comprehensive marketing and ethical client services in its projectsabdullahgroup.com.pk, providing trustworthy platforms for property investments and real estate transactions in the region.",
+    "created_at": "2002-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Lahore",
+      "latitude": 31.5546,
+      "longitude": 74.3572
+    }
+  },
+  {
+    "_id": "000000000000000000000011",
+    "user_id": "000000000000000000000000",
+    "company_name": "Paragon Constructors",
+    "specialization": ["infrastructure development", "commercial projects"],
+    "experience_years": 20,
+    "portfolio_images": null,
+    "rating": 4.3,
+    "about": "Paragon Constructors is a Pakistani construction company noted for its expertise in infrastructure and commercial projects. It has gained acclaim for sustainable, eco-friendly building practices, completing major developments like Paragon City (Lahore) and Paragon Towers (Karachi)rbsland.com. The company emphasizes modern design and environmental responsibility in its construction, providing contemporary living and business spaces across Pakistan.",
+    "created_at": "2005-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Lahore",
+      "latitude": 31.5546,
+      "longitude": 74.3572
+    }
+  },
+  {
+    "_id": "000000000000000000000012",
+    "user_id": "000000000000000000000000",
+    "company_name": "Tameer Construction",
+    "specialization": [
+      "residential construction",
+      "commercial construction",
+      "affordable housing"
+    ],
+    "experience_years": 15,
+    "portfolio_images": null,
+    "rating": 4.2,
+    "about": "Tameer Construction is a Lahore-based real estate construction firm known for innovative and affordable housing projects. It has significantly impacted Pakistan’s housing sector with modern designs and cost-effective developmentsrbsland.com. Notable projects include Tameer Towers in Lahore and commercial developments in Karachi. The company prioritizes quality, modern design, and timely delivery, reshaping the living standards in major cities like Lahore and Islamabadrbsland.com.",
+    "created_at": "2010-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Lahore",
+      "latitude": 31.5546,
+      "longitude": 74.3572
+    }
+  },
+  {
+    "_id": "000000000000000000000013",
+    "user_id": "000000000000000000000000",
+    "company_name": "Shelters Engineering",
+    "specialization": ["civil construction", "architectural design"],
+    "experience_years": 15,
+    "portfolio_images": null,
+    "rating": 4.4,
+    "about": "Shelters Engineering is a multi-talented construction firm with operations in Lahore and Islamabad. It has been active for about 15 years and is known for comprehensive construction and design services across Pakistansheltersengineering.com. The company’s team of engineers and designers handles projects in residential, commercial, and industrial sectors. Shelters Engineering emphasizes high-quality execution and client-oriented service, making it one of the notable construction companies in Lahore and Islamabad.",
+    "created_at": "2010-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Lahore",
+      "latitude": 31.5546,
+      "longitude": 74.3572
+    }
+  },
+  {
+    "_id": "000000000000000000000014",
+    "user_id": "000000000000000000000000",
+    "company_name": "Majestic Builders Pvt Ltd",
+    "specialization": [
+      "town planning",
+      "civil construction",
+      "pre-engineered buildings"
+    ],
+    "experience_years": 20,
+    "portfolio_images": null,
+    "rating": 4.0,
+    "about": "Majestic Builders is a Karachi-based construction company with a strong emphasis on trust and client relations. It specializes in town planning, general building construction, and pre-engineered building solutionsbuildings.pk. The company aims to provide reliable construction services and integrates modern construction techniques to meet clients’ diverse infrastructure needs in urban developments.",
+    "created_at": "2005-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Karachi",
+      "latitude": 24.8607,
+      "longitude": 67.0011
+    }
+  },
+  {
+    "_id": "000000000000000000000015",
+    "user_id": "000000000000000000000000",
+    "company_name": "MGC Developments",
+    "specialization": [
+      "luxury real estate",
+      "residential development",
+      "commercial development"
+    ],
+    "experience_years": 40,
+    "portfolio_images": null,
+    "rating": 4.3,
+    "about": "MGC Developments is a premier Islamabad-based luxury real estate developer founded in 1985. It focuses on iconic residential, commercial, and leisure projects and has significantly influenced the luxury property market around Islamabadensun.io. The firm is known for innovative high-end designs and has delivered prestigious housing and commercial schemes that cater to affluent clients seeking modern lifestyle solutions.",
+    "created_at": "1985-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000016",
+    "user_id": "000000000000000000000000",
+    "company_name": "Topline Marketing Pvt Ltd",
+    "specialization": ["real estate marketing", "sales", "investment advisory"],
+    "experience_years": 15,
+    "portfolio_images": null,
+    "rating": 4.2,
+    "about": "Topline Marketing Pvt Ltd is an Islamabad-based real estate consulting firm (est. ~2010) specializing in property sales and investment marketing. The company advises developers and investors with detailed market research and customized strategiesensun.io. It focuses on maximizing the success of real estate projects through effective marketing and high professional standards, ensuring each development meets its investment goalsensun.io.",
+    "created_at": "2010-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000017",
+    "user_id": "000000000000000000000000",
+    "company_name": "Emarat Developers & Consultants",
+    "specialization": [
+      "real estate development",
+      "asset management",
+      "brokerage"
+    ],
+    "experience_years": 7,
+    "portfolio_images": null,
+    "rating": 4.3,
+    "about": "Emarat Developers & Consultants is an Islamabad-based real estate firm established in 2018. It specializes in property development, trading, and brokerage, aiming to maximize asset value with a low-risk approachensun.io. The company has built a reputation for efficient project execution and sound advisory services, focusing on delivering high returns for investors through well-managed residential and commercial projects.",
+    "created_at": "2018-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000018",
+    "user_id": "000000000000000000000000",
+    "company_name": "Venture Group of Companies",
+    "specialization": [
+      "high-rise development",
+      "commercial projects",
+      "residential farmhouses"
+    ],
+    "experience_years": 6,
+    "portfolio_images": null,
+    "rating": 4.1,
+    "about": "Venture Group of Companies (Rawalpindi Cantonment) is a real estate developer founded in 2019. It focuses on a mix of commercial and residential high-rise projects as well as upscale farmhousesensun.io. The company offers a diverse portfolio of modern projects, aiming to provide investors with innovative development opportunities in the Rawalpindi-Islamabad regionensun.io.",
+    "created_at": "2019-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Rawalpindi",
+      "latitude": 33.5651,
+      "longitude": 73.0169
+    }
+  },
+  {
+    "_id": "000000000000000000000019",
+    "user_id": "000000000000000000000000",
+    "company_name": "Nareema Developments",
+    "specialization": [
+      "land development",
+      "residential projects",
+      "commercial projects"
+    ],
+    "experience_years": 4,
+    "portfolio_images": null,
+    "rating": 4.2,
+    "about": "Nareema Developments is an Islamabad-based real estate development firm established in 2021. The company is dedicated to creating high-end residential and commercial projects, transforming undeveloped land into premium investment propertiesensun.io. Nareema emphasizes transparency, trust, and ethical practices in its development processes, aiming to deliver modern and lucrative projects for investors and homeownersensun.io.",
+    "created_at": "2021-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000020",
+    "user_id": "000000000000000000000000",
+    "company_name": "Blue Arc Design & Construction Company",
+    "specialization": [
+      "residential construction",
+      "commercial construction",
+      "design"
+    ],
+    "experience_years": 15,
+    "portfolio_images": null,
+    "rating": 4.3,
+    "about": "Blue Arc Design & Construction Company is an Islamabad-based construction firm founded in 2010bluearc.com.pk. It has completed hundreds of residential and commercial projects, offering innovative designs and high-quality construction. Known for timely delivery and contemporary architectural solutions, Blue Arc has built a reputation for excellence in Islamabad’s building industrybluearc.com.pk.",
+    "created_at": "2010-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000021",
+    "user_id": "000000000000000000000000",
+    "company_name": "Imarat Group of Companies",
+    "specialization": ["real estate development", "vertical construction"],
+    "experience_years": 15,
+    "portfolio_images": null,
+    "rating": 4.1,
+    "about": "Imarat Group of Companies is an Islamabad real estate developer with over 15 years of experiencebluearc.com.pk. The group specializes in modern infrastructure and housing projects across Pakistan. It offers architectural and engineering services along with property development, focusing on landmark residential and commercial complexes designed for quality and efficiencybluearc.com.pk.",
+    "created_at": "2010-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000023",
+    "user_id": "000000000000000000000000",
+    "company_name": "Frontier Works Organization (FWO)",
+    "specialization": ["military engineering", "infrastructure development"],
+    "experience_years": 59,
+    "portfolio_images": null,
+    "rating": 4.6,
+    "about": "Frontier Works Organization (FWO) is a military engineering organization in Pakistan established in 1966bluearc.com.pk. It undertakes large-scale infrastructure projects including highways, tunnels, and civil engineering works. FWO has a strong track record in combat and peacetime engineering projects, emphasizing excellence and reliability under challenging conditions. It is often involved in strategic development projects, reflecting its long history in engineering and construction.",
+    "created_at": "1966-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000024",
+    "user_id": "000000000000000000000000",
+    "company_name": "ZKB (Pvt) Ltd.",
+    "specialization": ["civil engineering", "transportation infrastructure"],
+    "experience_years": 50,
+    "portfolio_images": null,
+    "rating": 4.3,
+    "about": "ZKB (Pvt) Ltd is a Pakistani engineering and construction firm founded in 1975bluearc.com.pk. It specializes in heavy civil projects such as dams, roads, and bridges. The company’s expertise in large-scale infrastructure and precision engineering has made it a key player in national development projects. ZKB has a reputation for technical skill in transportation and water infrastructure construction across Pakistanbluearc.com.pk.",
+    "created_at": "1975-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000025",
+    "user_id": "000000000000000000000000",
+    "company_name": "Water and Power Development Authority (WAPDA)",
+    "specialization": ["hydropower development", "water infrastructure"],
+    "experience_years": 67,
+    "portfolio_images": null,
+    "rating": 4.5,
+    "about": "The Water and Power Development Authority (WAPDA) is a government agency founded in 1958 responsible for water and power infrastructure in Pakistanbluearc.com.pk. WAPDA develops major hydropower, irrigation, and water storage projects. It plays a crucial role in building dams, canals, and hydropower stations, focusing on national energy and agricultural development. WAPDA’s projects provide irrigation and electricity to millions and are central to Pakistan’s infrastructure.",
+    "created_at": "1958-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000026",
+    "user_id": "000000000000000000000000",
+    "company_name": "Jaffer Group of Companies",
+    "specialization": ["infrastructure", "tech diversification", "real estate"],
+    "experience_years": 174,
+    "portfolio_images": null,
+    "rating": 4.4,
+    "about": "The Jaffer Group of Companies is one of Pakistan’s oldest business conglomerates (founded 1849)bluearc.com.pk. It has diversified interests including infrastructure and construction, notably through its subsidiary Murshid Builders. The group’s historical projects include factories, dams (e.g., Khanpur Dam in Islamabad), and commercial developments. Known for robust civil engineering capability, Jaffer companies have contributed to Pakistan’s industrial and infrastructure growth over many decadesbluearc.com.pk.",
+    "created_at": "1849-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Karachi",
+      "latitude": 24.8607,
+      "longitude": 67.0011
+    }
+  },
+  {
+    "_id": "000000000000000000000027",
+    "user_id": "000000000000000000000000",
+    "company_name": "Dascon Construction Company",
+    "specialization": ["infrastructure", "commercial development"],
+    "experience_years": 45,
+    "portfolio_images": null,
+    "rating": 4.1,
+    "about": "Dascon is a large construction firm established in 1979 specializing in infrastructure and commercial projectsbluearc.com.pk. It has executed a broad portfolio including residential developments, commercial complexes, and government infrastructure. Known for large-scale engineering works, Dascon emphasizes quality and comprehensive construction management on projects like the Mall of Islamabad and others.",
+    "created_at": "1979-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000028",
+    "user_id": "000000000000000000000000",
+    "company_name": "NLC Construction Company",
+    "specialization": ["logistics infrastructure", "engineering"],
+    "experience_years": 47,
+    "portfolio_images": null,
+    "rating": 4.0,
+    "about": "National Logistics Corporation (NLC) Construction is a government-owned construction arm founded in 1978bluearc.com.pk. It specializes in civil engineering projects for transportation and infrastructure, leveraging NLC’s logistics network. The company undertakes major public works, including highways and utility projects, with a mission to develop national infrastructure and support commerce through integrated logistics and construction servicesbluearc.com.pk.",
+    "created_at": "1978-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000029",
+    "user_id": "000000000000000000000000",
+    "company_name": "AH Group of Companies",
+    "specialization": ["real estate development", "infrastructure"],
+    "experience_years": 15,
+    "portfolio_images": null,
+    "rating": 4.2,
+    "about": "AH Group of Companies is a diversified conglomerate founded in 2010 that includes real estate and construction interestsbluearc.com.pk. It is known for projects like IT Heights Islamabad and various housing and commercial developments in Punjab. The group prides itself on innovation and quality, delivering modern residential and commercial properties in Islamabad and other major cities with an emphasis on customer satisfactionbluearc.com.pk.",
+    "created_at": "2010-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000030",
+    "user_id": "000000000000000000000000",
+    "company_name": "RBS Real Estate & Builders",
+    "specialization": ["real estate development", "property sales"],
+    "experience_years": 11,
+    "portfolio_images": null,
+    "rating": 4.3,
+    "about": "RBS Real Estate & Builders (Royal Business Solutions) is an Islamabad-based real estate firm founded in 2014. It provides services in property development and sales, and has collaborated on major projects like Royal Orchard under Habib Rafiq’s HRL bannerrbsland.com. RBS has become a platinum sales partner of Capital Smart City and is known for its modern marketing approach and professionalism in Pakistan’s real estate sectorrbsland.com.",
+    "created_at": "2014-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000031",
+    "user_id": "000000000000000000000000",
+    "company_name": "Defense Housing Authority (DHA) Builders",
+    "specialization": ["planned housing", "infrastructure"],
+    "experience_years": 30,
+    "portfolio_images": null,
+    "rating": 4.5,
+    "about": "DHA Builders is the construction arm of the Defence Housing Authority, a government-controlled real estate developer. It is renowned for developing master-planned communities in cities like Karachi, Lahore, and Islamabad, focusing on high-quality infrastructure and securityrbsland.com. DHA projects include luxury housing schemes with modern amenities, emphasizing reliable construction and long-term maintenance as part of the authority’s offerings.",
+    "created_at": "1994-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000033",
+    "user_id": "000000000000000000000000",
+    "company_name": "Fazaia Housing Scheme",
+    "specialization": ["defense housing", "residential development"],
+    "experience_years": 20,
+    "portfolio_images": null,
+    "rating": 4.2,
+    "about": "Fazaia Housing Scheme is a specialized real estate developer providing housing primarily for Pakistan Air Force personnel, though open to the public. It is known for secure, well-planned residential communities in Islamabad, Lahore, and Karachirbsland.com. The company emphasizes affordability and community facilities, offering quality home developments designed to suit military and civilian families alike.",
+    "created_at": "2005-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000034",
+    "user_id": "000000000000000000000000",
+    "company_name": "Park View City",
+    "specialization": ["residential development", "luxury communities"],
+    "experience_years": 10,
+    "portfolio_images": null,
+    "rating": 4.3,
+    "about": "Park View City is a prestigious housing society operating in Islamabad and Lahore, established around 2013. It has garnered acclaim for upscale residential projects and gated communitiesrbsland.com. The development emphasizes luxury living with modern amenities and lush surroundings, aiming to create refined living environments. Park View City is known for its sophisticated infrastructure and resort-style housing designed for discerning residentsrbsland.com.",
+    "created_at": "2013-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000035",
+    "user_id": "000000000000000000000000",
+    "company_name": "Al Ghurair Giga",
+    "specialization": ["residential development", "commercial projects"],
+    "experience_years": 15,
+    "portfolio_images": null,
+    "rating": 4.0,
+    "about": "Al Ghurair Giga is a Pakistan-UAE joint venture builder with major projects in Islamabad and Lahorerbsland.com. Its developments include mixed-use projects like the Goldcrest Mall & Residency in DHA Islamabad and the Defence Raya Golf Resort Apartments. The company focuses on high-quality residential and commercial construction, aiming for design excellence and customer satisfaction across its portfoliorbsland.com.",
+    "created_at": "2010-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000036",
+    "user_id": "000000000000000000000000",
+    "company_name": "Vision Group (Park View)",
+    "specialization": ["master-planned communities", "residential development"],
+    "experience_years": 15,
+    "portfolio_images": null,
+    "rating": 4.3,
+    "about": "Vision Group is an Islamabad-based developer behind Park View City in Islamabad and Lahorezameensolutions.net. Under the leadership of Mr. Abdul Aleem Khan, it focuses on affordable, high-quality housing societies and commercial areas. Vision Group aims to improve living conditions by offering modern, well-planned communities and has diversified interests across real estate, education, and healthcarezameensolutions.net.",
+    "created_at": "2010-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000037",
+    "user_id": "000000000000000000000000",
+    "company_name": "Zameen Solutions",
+    "specialization": ["housing societies", "residential development"],
+    "experience_years": 7,
+    "portfolio_images": null,
+    "rating": 4.2,
+    "about": "Zameen Solutions is an Islamabad-based real estate group (est. 2018) that develops high-quality housing societies in the capitalzameensolutions.net. It is known for projects like Hill View Garden and Aura Sky. The company aims to innovate in real estate by leveraging industry networks and experienced teams to deliver comfortable lifestyles in Islamabad through modern residential developmentszameensolutions.net.",
+    "created_at": "2018-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000038",
+    "user_id": "000000000000000000000000",
+    "company_name": "GFS Builders & Developers",
+    "specialization": ["residential projects", "commercial projects"],
+    "experience_years": 15,
+    "portfolio_images": null,
+    "rating": 4.1,
+    "about": "GFS Builders & Developers is a noted Islamabad construction and real estate company specializing in residential and mixed-use developmentszameensolutions.net. Its portfolio includes projects like 7 Wonders City Islamabad and Downtown Residency. The firm emphasizes quality construction and modern architectural techniques in its urban projects, contributing to the northern real estate sector’s growth.",
+    "created_at": "2010-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000039",
+    "user_id": "000000000000000000000000",
+    "company_name": "Habib Rafiq (Pvt) Ltd (HRL)",
+    "specialization": ["infrastructure", "engineering", "airports"],
+    "experience_years": 63,
+    "portfolio_images": null,
+    "rating": 4.6,
+    "about": "Habib Rafiq (Pvt) Ltd (HRL) is one of Pakistan’s leading infrastructure development companies, founded in 1962fliphtml5.com. HRL has built dams, highways, airports, and energy projects, contributing significantly to national infrastructure (e.g., involvement in CPEC projects)fliphtml5.com. It is headquartered in Islamabad and is known for its technical excellence and professional engineering services across Pakistan.",
+    "created_at": "1962-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000040",
+    "user_id": "000000000000000000000000",
+    "company_name": "Gemcon Engineering",
+    "specialization": [
+      "civil construction",
+      "architectural design",
+      "interior design"
+    ],
+    "experience_years": 15,
+    "portfolio_images": null,
+    "rating": 4.2,
+    "about": "Gemcon Engineering is a premier Islamabad construction firm with “years of experience” in civil, commercial, and residential projectsgemconengineering.com. The company offers comprehensive services from planning to execution, incorporating modern construction technology and sustainable practices. Gemcon is known for delivering durable, aesthetically pleasing, and cost-effective structures, leveraging its skilled engineering team in Islamabad’s growing marketgemconengineering.com.",
+    "created_at": "2010-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000041",
+    "user_id": "000000000000000000000000",
+    "company_name": "Sardar Group of Companies",
+    "specialization": ["diversified development", "residential development"],
+    "experience_years": 25,
+    "portfolio_images": null,
+    "rating": 4.3,
+    "about": "Sardar Group of Companies is an Islamabad-based conglomerate (est. ~1999) active in construction and real estatebuildings.pksgc.international. Its projects include the iconic Centaurus Mall in Islamabadbuildings.pk. The group manages diverse businesses, but its real estate arm focuses on large-scale residential and commercial developments, leveraging over 25 years of industry experiencebuildings.pksgc.international.",
+    "created_at": "2000-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000042",
+    "user_id": "000000000000000000000000",
+    "company_name": "My4Walls",
+    "specialization": [
+      "general contracting",
+      "architecture",
+      "project management"
+    ],
+    "experience_years": 10,
+    "portfolio_images": null,
+    "rating": 4.2,
+    "about": "My4Walls is an Islamabad-based construction and design company specializing in turnkey projects. The firm provides comprehensive architectural and engineering solutions for residential and commercial buildingsbuildings.pk. With a focus on quality and client satisfaction, My4Walls’s team of engineers and contractors manages the construction process from design through completion, maintaining high standards and timely deliverybuildings.pk.",
+    "created_at": "2015-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000043",
+    "user_id": "000000000000000000000000",
+    "company_name": "Astral Constructors (Pvt) Ltd",
+    "specialization": [
+      "design-build services",
+      "civil engineering",
+      "project management"
+    ],
+    "experience_years": 21,
+    "portfolio_images": null,
+    "rating": 4.5,
+    "about": "Astral Constructors (Pvt) Ltd is an Islamabad-based design-build firm founded in 2004astralconstructors.com. It provides structured turnkey engineering and construction services, and is recognized for high-integrity and timely delivery. Astral was built on a niche design-build model, setting international standards in project management and safety. It is known for securing projects with stringent requirements (e.g., multiple USACE projects) and holds ISO certifications for quality and safetyastralconstructors.com.",
+    "created_at": "2004-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Islamabad",
+      "latitude": 33.6844,
+      "longitude": 73.0479
+    }
+  },
+  {
+    "_id": "000000000000000000000044",
+    "user_id": "000000000000000000000000",
+    "company_name": "Legacy Builders & Developers",
+    "specialization": ["infrastructure", "real estate"],
+    "experience_years": 4,
+    "portfolio_images": null,
+    "rating": 4.4,
+    "about": "Legacy Builders & Developers is a Karachi-based developer (est. 2021) focusing on infrastructure and real estate projectsensun.io. The company’s mission is to create outstanding living and working environments, developing quality housing and community projects. It leverages expertise in residential and commercial development to build high-standard communities in the regionensun.io.",
+    "created_at": "2021-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Karachi",
+      "latitude": 24.8607,
+      "longitude": 67.0011
+    }
+  },
+  {
+    "_id": "000000000000000000000045",
+    "user_id": "000000000000000000000000",
+    "company_name": "H&S Real Estate Pakistan",
+    "specialization": ["luxury developments", "property marketing"],
+    "experience_years": 45,
+    "portfolio_images": null,
+    "rating": 4.3,
+    "about": "H&S Real Estate Pakistan is a Karachi-based luxury real estate developer. The company draws on over four decades of experience (including its founder’s tenure in Dubai’s market) to design and market upscale housing projectsensun.io. It focuses on innovative, quality developments that blend international standards with local investment opportunities. H&S specializes in premium residential communities and commercial spaces.",
+    "created_at": "1979-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Karachi",
+      "latitude": 24.8607,
+      "longitude": 67.0011
+    }
+  },
+  {
+    "_id": "000000000000000000000048",
+    "user_id": "000000000000000000000000",
+    "company_name": "Areva Interior and Build Contractors",
+    "specialization": ["interior design", "remodeling", "construction"],
+    "experience_years": 10,
+    "portfolio_images": null,
+    "rating": 4.0,
+    "about": "Areva Interior and Build is a Karachi-based construction and interior design firm that handles large-scale development, remodeling, and expansion projectsbuildings.pk. The company is experienced in dealing with any property construction needs, from architectural development to building execution. Areva emphasizes efficiency and comprehensive project management for buildings such as schools, mosques, and commercial centersbuildings.pk.",
+    "created_at": "2015-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Karachi",
+      "latitude": 24.8607,
+      "longitude": 67.0011
+    }
+  },
+  {
+    "_id": "000000000000000000000049",
+    "user_id": "000000000000000000000000",
+    "company_name": "Majestic Builders Pvt Ltd",
+    "specialization": [
+      "town planning",
+      "civil construction",
+      "pre-engineered buildings"
+    ],
+    "experience_years": 20,
+    "portfolio_images": null,
+    "rating": 4.1,
+    "about": "Majestic Builders is a Karachi-based construction company with experience in large-scale building projectsbuildings.pk. It focuses on urban planning and construction, utilizing modern technology and client-focused services. The firm is known for its efficient project execution and strong client relationships in the Pakistan construction industrybuildings.pk.",
+    "created_at": "2005-01-01T00:00:00Z",
+    "updated_at": "2025-10-17T00:00:00Z",
+    "location": {
+      "city": "Karachi",
+      "latitude": 24.8607,
+      "longitude": 67.0011
+    }
+  }
+]

@@ -34,6 +34,28 @@ class Settings(BaseSettings):
         description="MongoDB database name"
     )
     
+    # Qdrant Vector Database Configuration
+    QDRANT_URL: str = Field(
+        default="http://localhost:6333",
+        description="Qdrant server URL"
+    )
+    
+    QDRANT_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Qdrant API key (optional, for cloud instances)"
+    )
+    
+    # Clerk Authentication Configuration
+    CLERK_SECRET_KEY: str = Field(
+        default="",
+        description="Clerk secret key for webhook verification"
+    )
+    
+    CLERK_WEBHOOK_SECRET: str = Field(
+        default="",
+        description="Clerk webhook secret for signature verification"
+    )
+    
     # Security Configuration
     SECRET_KEY: str = Field(
         default="dev-secret-key-change-in-production",
@@ -87,6 +109,32 @@ class Settings(BaseSettings):
     PORT: int = Field(
         default=8000,
         description="Server port"
+    )
+    
+    # Backblaze B2 Configuration (S3-compatible API)
+    B2_ENDPOINT: Optional[str] = Field(
+        default=None,
+        description="Backblaze B2 S3-compatible endpoint URL"
+    )
+    
+    B2_ACCESS_KEY: Optional[str] = Field(
+        default=None,
+        description="Backblaze B2 Access Key (S3-compatible)"
+    )
+    
+    B2_SECRET_KEY: Optional[str] = Field(
+        default=None,
+        description="Backblaze B2 Secret Key (S3-compatible)"
+    )
+    
+    B2_BUCKET: Optional[str] = Field(
+        default=None,
+        description="Backblaze B2 Bucket Name"
+    )
+    
+    B2_PUBLIC_URL_TEMPLATE: Optional[str] = Field(
+        default=None,
+        description="Public URL template for uploaded files (e.g., https://{bucket}.s3.us-west-002.backblazeb2.com/{key})"
     )
     
     # Model configuration for Pydantic v2

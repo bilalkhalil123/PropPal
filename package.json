@@ -22,6 +22,8 @@
     "docker:up": "docker compose -f infra/docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f infra/docker/docker-compose.yml down",
     "docker:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
+    "docker:build": "docker compose -f infra/docker/docker-compose.yml build",
+    "docker:rebuild": "docker compose -f infra/docker/docker-compose.yml build --no-cache && docker compose -f infra/docker/docker-compose.yml up -d",
     "setup": "npm install && cd apps/backend && pip install -r requirements.txt"
   },
   "repository": {
@@ -51,5 +53,10 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "framer-motion": "^12.23.24",
+    "react-native-maps": "^1.26.19"
   }
 }

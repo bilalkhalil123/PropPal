@@ -1,0 +1,1102 @@
+[
+  {
+    "_id": {
+      "$oid": "000000000000000000000000"
+    },
+    "clerk_id": "user_443998",
+    "name": "Shahzaib Hussain",
+    "email": "shahzaib.hussain71@hotmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1759054581166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1759061241166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000001"
+    },
+    "clerk_id": "user_964649",
+    "name": "Muneeb Khan",
+    "email": "muneeb.khan14@yahoo.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1729764981166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1729770381166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000002"
+    },
+    "clerk_id": "user_677547",
+    "name": "Farhan Qureshi",
+    "email": "farhan.qureshi22@hotmail.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1736849781166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1736859201166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000003"
+    },
+    "clerk_id": "user_792808",
+    "name": "Saad Qureshi",
+    "email": "saad.qureshi60@yahoo.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1741428981166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1741443261166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000004"
+    },
+    "clerk_id": "user_905001",
+    "name": "Moiz Rauf",
+    "email": "moiz.rauf11@hotmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1733998581166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1734015021166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000005"
+    },
+    "clerk_id": "user_293663",
+    "name": "Ahsan Malik",
+    "email": "ahsan.malik75@gmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1745576181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1745583081166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000006"
+    },
+    "clerk_id": "user_234672",
+    "name": "Farhan Javed",
+    "email": "farhan.javed71@yahoo.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1730369781166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1730383761166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000007"
+    },
+    "clerk_id": "user_380508",
+    "name": "Muneeb Rana",
+    "email": "muneeb.rana58@hotmail.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1737195381166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1737210261166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000008"
+    },
+    "clerk_id": "user_544821",
+    "name": "Rehan Malik",
+    "email": "rehan.malik58@gmail.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1753006581166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1753007301166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000009"
+    },
+    "clerk_id": "user_349964",
+    "name": "Adnan Sheikh",
+    "email": "adnan.sheikh36@yahoo.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1745144181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1745155521166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000010"
+    },
+    "clerk_id": "user_222413",
+    "name": "Adnan Khan",
+    "email": "adnan.khan64@yahoo.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1737540981166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1737555321166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000011"
+    },
+    "clerk_id": "user_635336",
+    "name": "Bilal Iqbal",
+    "email": "bilal.iqbal85@gmail.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1758104181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1758116061166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000012"
+    },
+    "clerk_id": "user_936512",
+    "name": "Imran Mughal",
+    "email": "imran.mughal14@hotmail.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1731924981166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1731931221166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000013"
+    },
+    "clerk_id": "user_623771",
+    "name": "Asad Akram",
+    "email": "asad.akram53@gmail.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1756030581166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1756036701166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000014"
+    },
+    "clerk_id": "user_401738",
+    "name": "Yasir Hussain",
+    "email": "yasir.hussain18@hotmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1742206581166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1742219901166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000015"
+    },
+    "clerk_id": "user_363297",
+    "name": "Junaid Mirza",
+    "email": "junaid.mirza56@gmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1756721781166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1756729641166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000016"
+    },
+    "clerk_id": "user_530647",
+    "name": "Ali Hussain",
+    "email": "ali.hussain54@hotmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1729678581166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1729695081166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000017"
+    },
+    "clerk_id": "user_403566",
+    "name": "Saqib Mughal",
+    "email": "saqib.mughal10@gmail.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1759659381166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1759664661166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000018"
+    },
+    "clerk_id": "user_160127",
+    "name": "Usman Anwar",
+    "email": "usman.anwar45@hotmail.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1749636981166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1749642021166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000019"
+    },
+    "clerk_id": "user_120956",
+    "name": "Farhan Siddiqui",
+    "email": "farhan.siddiqui16@gmail.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1735812981166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1735819881166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000020"
+    },
+    "clerk_id": "user_448158",
+    "name": "Shahzaib Iqbal",
+    "email": "shahzaib.iqbal96@yahoo.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1735467381166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1735477101166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000021"
+    },
+    "clerk_id": "user_427562",
+    "name": "Talha Akram",
+    "email": "talha.akram20@hotmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1745576181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1745578701166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000022"
+    },
+    "clerk_id": "user_554772",
+    "name": "Ahsan Mughal",
+    "email": "ahsan.mughal16@hotmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1738836981166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1738838421166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000023"
+    },
+    "clerk_id": "user_787123",
+    "name": "Shahzaib Bhatti",
+    "email": "shahzaib.bhatti64@yahoo.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1740392181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1740399021166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000024"
+    },
+    "clerk_id": "user_856217",
+    "name": "Adnan Chaudhry",
+    "email": "adnan.chaudhry11@hotmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1750846581166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1750854861166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000025"
+    },
+    "clerk_id": "user_308587",
+    "name": "Farhan Qureshi",
+    "email": "farhan.qureshi62@yahoo.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1749896181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1749896601166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000026"
+    },
+    "clerk_id": "user_974091",
+    "name": "Usman Akram",
+    "email": "usman.akram28@hotmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1750155381166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1750159761166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000027"
+    },
+    "clerk_id": "user_265639",
+    "name": "Waleed Rauf",
+    "email": "waleed.rauf94@gmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1747736181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1747754001166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000028"
+    },
+    "clerk_id": "user_386131",
+    "name": "Moiz Rauf",
+    "email": "moiz.rauf23@yahoo.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1743329781166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1743344361166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000029"
+    },
+    "clerk_id": "user_361708",
+    "name": "Zain Siddiqui",
+    "email": "zain.siddiqui70@gmail.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1760264181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1760264601166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000030"
+    },
+    "clerk_id": "user_834149",
+    "name": "Shahzaib Javed",
+    "email": "shahzaib.javed66@yahoo.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1744280181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1744294041166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000031"
+    },
+    "clerk_id": "user_916564",
+    "name": "Shahzaib Naeem",
+    "email": "shahzaib.naeem86@yahoo.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1751019381166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1751028141166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000032"
+    },
+    "clerk_id": "user_349247",
+    "name": "Rehan Akram",
+    "email": "rehan.akram54@gmail.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1744625781166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1744631601166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000033"
+    },
+    "clerk_id": "user_415747",
+    "name": "Tahir Anwar",
+    "email": "tahir.anwar85@yahoo.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1739614581166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1739624721166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000034"
+    },
+    "clerk_id": "user_756910",
+    "name": "Waleed Anwar",
+    "email": "waleed.anwar27@gmail.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1733393781166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1733396361166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000035"
+    },
+    "clerk_id": "user_100804",
+    "name": "Yasir Khan",
+    "email": "yasir.khan37@yahoo.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1740305781166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1740316341166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000036"
+    },
+    "clerk_id": "user_498703",
+    "name": "Shahzaib Javed",
+    "email": "shahzaib.javed60@yahoo.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1756894581166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1756908201166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000037"
+    },
+    "clerk_id": "user_567913",
+    "name": "Adeel Bhatti",
+    "email": "adeel.bhatti13@hotmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1746872181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1746879261166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000038"
+    },
+    "clerk_id": "user_932937",
+    "name": "Umer Naeem",
+    "email": "umer.naeem59@gmail.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1740046581166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1740047121166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000039"
+    },
+    "clerk_id": "user_330725",
+    "name": "Farhan Iqbal",
+    "email": "farhan.iqbal71@hotmail.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1757240181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1757248641166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000040"
+    },
+    "clerk_id": "user_166461",
+    "name": "Adeel Qureshi",
+    "email": "adeel.qureshi18@gmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1746180981166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1746191181166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000041"
+    },
+    "clerk_id": "user_735929",
+    "name": "Ali Khan",
+    "email": "ali.khan24@yahoo.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1758968181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1758977961166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000042"
+    },
+    "clerk_id": "user_169950",
+    "name": "Yasir Naeem",
+    "email": "yasir.naeem44@gmail.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1758363381166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1758371001166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000043"
+    },
+    "clerk_id": "user_249111",
+    "name": "Muneeb Shah",
+    "email": "muneeb.shah51@gmail.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1740824181166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1740834741166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000044"
+    },
+    "clerk_id": "user_150136",
+    "name": "Muneeb Bhatti",
+    "email": "muneeb.bhatti82@hotmail.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1739268981166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1739274021166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000045"
+    },
+    "clerk_id": "user_187508",
+    "name": "Asad Rana",
+    "email": "asad.rana65@gmail.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1740996981166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1740998061166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000046"
+    },
+    "clerk_id": "user_847179",
+    "name": "Imran Qureshi",
+    "email": "imran.qureshi37@hotmail.com",
+    "phone": null,
+    "role": "agent",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1746526581166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1746543201166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000047"
+    },
+    "clerk_id": "user_407085",
+    "name": "Nouman Tariq",
+    "email": "nouman.tariq21@yahoo.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1747476981166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1747489101166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000048"
+    },
+    "clerk_id": "user_833376",
+    "name": "Haris Javed",
+    "email": "haris.javed38@yahoo.com",
+    "phone": null,
+    "role": "seller",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1747563381166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1747566141166"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "000000000000000000000049"
+    },
+    "clerk_id": "user_374301",
+    "name": "Umer Tariq",
+    "email": "umer.tariq33@hotmail.com",
+    "phone": null,
+    "role": "buyer",
+    "profile_image": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zM3ZPTGptM0hVbTJtWHY1TUs2bXdFdmdxRzMifQ",
+    "password_hash": null,
+    "created_at": {
+      "$date": {
+        "$numberLong": "1756289781166"
+      }
+    },
+    "updated_at": {
+      "$date": {
+        "$numberLong": "1756300281166"
+      }
+    }
+  }
+]
