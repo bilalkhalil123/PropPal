@@ -547,8 +547,19 @@ async def delete_embedding(
     
     Args:
         collection_name: Qdrant collection name
-        point_id: Point ID to delete
+        point_id: MongoDB ObjectId as string (will be converted to Qdrant integer ID)
     """
+    import asyncio
+    
     client = get_qdrant_client()
-    client.delete(collection_name=collection_name, points_selector=[point_id])
+    
+    # Convert MongoDB ObjectId string to Qdrant-compatible integer ID
+    qdrant_point_id = _object_id_to_qdrant_id(point_id)
+    
+    # Qdrant client is synchronous, run in thread pool for async compatibility
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(
+        None,
+        lambda: client.delete(collection_name=collection_name, points_selector=[qdrant_point_id])
+    )
 

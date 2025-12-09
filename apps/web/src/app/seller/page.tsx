@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { UserButton } from '@clerk/nextjs'
 import Link from 'next/link'
-import { HomeIcon, UserIcon, PlusCircleIcon, MicrophoneIcon, SparklesIcon, EyeIcon } from '@heroicons/react/24/outline'
+import { HomeIcon, UserIcon, PlusCircleIcon, MicrophoneIcon, SparklesIcon, EyeIcon, EllipsisVerticalIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
 import RoleDropdown from '@/components/RoleDropdown'
 
@@ -29,6 +29,8 @@ export default function SellerPage() {
   const [currentRole, setCurrentRole] = useState<'buyer' | 'seller' | 'builder'>('seller')
   const [properties, setProperties] = useState<Property[]>([])
   const [loadingProperties, setLoadingProperties] = useState(true)
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
@@ -65,6 +67,45 @@ export default function SellerPage() {
     }
   }, [isAuthenticated, clerkId, API_BASE_URL])
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (menuOpenId && !target.closest('[data-menu-container]')) {
+        setMenuOpenId(null)
+      }
+    }
+
+    if (menuOpenId) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [menuOpenId])
+
+  const handleDelete = async (propertyId: string) => {
+    if (!API_BASE_URL || !clerkId) return
+    const confirmed = window.confirm('Delete this property? This cannot be undone.')
+    if (!confirmed) return
+    setDeletingId(propertyId)
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/properties/${propertyId}?clerk_id=${encodeURIComponent(clerkId)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        console.error('Failed to delete property')
+        return
+      }
+      setProperties((prev) => prev.filter((p) => p._id !== propertyId))
+    } catch (err) {
+      console.error('Error deleting property:', err)
+    } finally {
+      setDeletingId(null)
+      setMenuOpenId(null)
+    }
+  }
+
   // Show loading while user data is being fetched
   if (loading) {
     return (
@@ -90,8 +131,162 @@ export default function SellerPage() {
           <p className="text-slate-700">Manage your property listings and reach potential buyers</p>
         </div>
 
+        {/* My Listings Section */}
+        <div className="mt-12 bg-white/70 backdrop-blur-xl border border-slate-200 shadow-lg rounded-3xl p-8 md:p-12">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-[color:var(--color-primary)]">My Listings</h2>
+              <p className="text-slate-700 mt-2">View and manage all your property listings</p>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.push('/listings/create')}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-[linear-gradient(to_right,#f59e0b,var(--color-accent-gold))] hover:shadow-xl transition-all shadow-md"
+            >
+              <PlusCircleIcon className="h-5 w-5" />
+              New Listing
+            </motion.button>
+          </div>
+
+          {loadingProperties ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[color:var(--color-primary)] mx-auto mb-4"></div>
+              <p className="text-slate-600">Loading your listings...</p>
+            </div>
+          ) : properties.length === 0 ? (
+            <div className="text-center py-12">
+              <HomeIcon className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+              <p className="text-xl font-semibold text-slate-700 mb-2">No listings yet</p>
+              <p className="text-slate-600 mb-6">Create your first property listing to get started!</p>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => router.push('/listings/create')}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-[linear-gradient(to_right,#f59e0b,var(--color-accent-gold))] hover:shadow-xl transition-all shadow-md"
+              >
+                <PlusCircleIcon className="h-5 w-5" />
+                Create Your First Listing
+              </motion.button>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {properties.map((property) => (
+                <motion.div
+                  key={property._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="group relative bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all cursor-pointer flex flex-col h-full"
+                  onClick={() => router.push(`/properties/${property._id}`)}
+                >
+                  {/* Image */}
+                  <div className="h-48 bg-slate-200 relative overflow-hidden">
+                    {property.images && property.images.length > 0 ? (
+                      <img
+                        src={property.images[0]}
+                        alt={property.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <HomeIcon className="h-16 w-16 text-slate-400" />
+                      </div>
+                    )}
+                    <div className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold bg-white/90 text-slate-700 border border-white/60">
+                      {property.city || '—'}
+                    </div>
+                    <div className="absolute top-3 right-3 z-10" data-menu-container>
+                      <button
+                        className="p-1.5 rounded-lg bg-white/95 backdrop-blur-sm text-slate-600 shadow-md border border-slate-200 hover:bg-white hover:shadow-lg transition-all"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setMenuOpenId(menuOpenId === property._id ? null : property._id)
+                        }}
+                        aria-label="Actions"
+                      >
+                        <EllipsisVerticalIcon className="h-5 w-5" />
+                      </button>
+                      {menuOpenId === property._id && (
+                        <div
+                          className="absolute right-0 mt-1 w-44 rounded-xl bg-white shadow-xl border border-slate-200 py-1.5 overflow-hidden"
+                          onClick={(e) => e.stopPropagation()}
+                          data-menu-container
+                        >
+                          <button
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => {
+                              handleDelete(property._id)
+                              setMenuOpenId(null)
+                            }}
+                            disabled={deletingId === property._id}
+                          >
+                            <TrashIcon className="h-4 w-4 flex-shrink-0" />
+                            <span>{deletingId === property._id ? 'Deleting...' : 'Delete Property'}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6 flex-1 flex flex-col gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-800 mb-1 line-clamp-1">
+                        {property.title}
+                      </h3>
+                      <p className="text-slate-600 text-sm line-clamp-2">
+                        {property.description}
+                      </p>
+                    </div>
+
+                    {/* Details */}
+                    <div className="grid grid-cols-2 gap-3 text-sm text-slate-600">
+                      <span className="flex items-center gap-2">
+                        <HomeIcon className="h-4 w-4" />
+                        {property.property_type || 'Type'}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block w-2 h-2 rounded-full bg-slate-300"></span>
+                        {property.area || 'Area'}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block w-2 h-2 rounded-full bg-slate-300"></span>
+                        {property.bedrooms} bed
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block w-2 h-2 rounded-full bg-slate-300"></span>
+                        {property.bathrooms} bath
+                      </span>
+                    </div>
+
+                    {/* Price */}
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-200 mt-auto">
+                      <div>
+                        <p className="text-2xl font-semibold text-slate-900">
+                          PKR {property.price.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-slate-500">{property.area || property.city}</p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          router.push(`/properties/${property._id}`)
+                        }}
+                        className="p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all border border-slate-200"
+                        aria-label="View listing"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Main Content Card */}
-        <div className="bg-white/70 backdrop-blur-xl border border-slate-200 shadow-lg rounded-3xl p-8 md:p-12">
+        <div className="mt-12 bg-white/70 backdrop-blur-xl border border-slate-200 shadow-lg rounded-3xl p-8 md:p-12">
           <div className="text-center mb-8">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -176,114 +371,6 @@ export default function SellerPage() {
               The form supports real-time updates from voice input while you can still edit fields manually.
             </p>
           </div>
-        </div>
-
-        {/* My Listings Section */}
-        <div className="mt-12 bg-white/70 backdrop-blur-xl border border-slate-200 shadow-lg rounded-3xl p-8 md:p-12">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-bold text-[color:var(--color-primary)]">My Listings</h2>
-              <p className="text-slate-700 mt-2">View and manage all your property listings</p>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push('/listings/create')}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-[linear-gradient(to_right,#f59e0b,var(--color-accent-gold))] hover:shadow-xl transition-all shadow-md"
-            >
-              <PlusCircleIcon className="h-5 w-5" />
-              New Listing
-            </motion.button>
-          </div>
-
-          {loadingProperties ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[color:var(--color-primary)] mx-auto mb-4"></div>
-              <p className="text-slate-600">Loading your listings...</p>
-            </div>
-          ) : properties.length === 0 ? (
-            <div className="text-center py-12">
-              <HomeIcon className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-              <p className="text-xl font-semibold text-slate-700 mb-2">No listings yet</p>
-              <p className="text-slate-600 mb-6">Create your first property listing to get started!</p>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => router.push('/listings/create')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-[linear-gradient(to_right,#f59e0b,var(--color-accent-gold))] hover:shadow-xl transition-all shadow-md"
-              >
-                <PlusCircleIcon className="h-5 w-5" />
-                Create Your First Listing
-              </motion.button>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {properties.map((property) => (
-                <motion.div
-                  key={property._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all cursor-pointer"
-                  onClick={() => router.push(`/properties/${property._id}`)}
-                >
-                  {/* Image */}
-                  <div className="h-48 bg-slate-200 relative overflow-hidden">
-                    {property.images && property.images.length > 0 ? (
-                      <img
-                        src={property.images[0]}
-                        alt={property.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <HomeIcon className="h-16 w-16 text-slate-400" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold text-[color:var(--color-primary)] mb-2 line-clamp-1">
-                      {property.title}
-                    </h3>
-                    <p className="text-slate-600 text-sm mb-4 line-clamp-2">
-                      {property.description}
-                    </p>
-
-                    {/* Details */}
-                    <div className="flex flex-wrap gap-4 text-sm text-slate-600 mb-4">
-                      <span className="flex items-center gap-1">
-                        <HomeIcon className="h-4 w-4" />
-                        {property.property_type}
-                      </span>
-                      <span>{property.bedrooms} bed</span>
-                      <span>{property.bathrooms} bath</span>
-                      <span>{property.city}</span>
-                    </div>
-
-                    {/* Price */}
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-                      <div>
-                        <p className="text-2xl font-bold text-[color:var(--color-primary)]">
-                          PKR {property.price.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-slate-500">{property.area}</p>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          router.push(`/properties/${property._id}`)
-                        }}
-                        className="p-2 rounded-lg bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] hover:bg-[color:var(--color-primary)]/20 transition-all"
-                      >
-                        <EyeIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ Provides conversational interface using the RouterAgent orchestrator.
 """
 
 from typing import Dict, Any, Optional, List
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 import sys
@@ -17,7 +17,7 @@ from agents import RouterAgent
 from agents.builder.create_service_agent import BuilderServiceCreationAgent
 from agents.builder.create_profile_agent import BuilderProfileCreationAgent
 from agents.listing.agent import ListingAgent
-from common.db import get_database
+from common.db import get_database, ensure_database_connection
 from common.repositories.user_repository import UserRepository, get_user_repository
 from bson import ObjectId
 from datetime import datetime
@@ -717,6 +717,45 @@ async def unified_chat_websocket(
                 if result.get("error"):
                     response_payload["error"] = result["error"]
                 
+                # Persist chat history for websocket messages
+                try:
+                    if msg_clerk_id and msg_session_id:
+                        db = await ensure_database_connection()
+                        # Resolve internal user id from clerk_id if available
+                        history_key: Any = msg_clerk_id
+                        try:
+                            user_doc = await db["users"].find_one({"clerk_id": msg_clerk_id}, {"_id": 1})
+                            if user_doc and user_doc.get("_id"):
+                                history_key = user_doc["_id"]
+                        except Exception:
+                            history_key = msg_clerk_id
+
+                        now = datetime.utcnow()
+                        user_msg = {"role": "user", "content": message_text, "timestamp": now}
+                        ai_msg = {
+                            "role": "assistant",
+                            "content": result.get("response", ""),
+                            "timestamp": now,
+                            "_payload": {
+                                "classification": result.get("classification"),
+                                "properties": result.get("properties"),
+                                "builders": result.get("builders"),
+                                "services": result.get("services"),
+                            },
+                        }
+
+                        await db["chat_histories"].update_one(
+                            {"user_id": history_key, "session_id": msg_session_id},
+                            {
+                                "$setOnInsert": {"created_at": now, "session_id": msg_session_id},
+                                "$set": {"updated_at": now},
+                                "$push": {"messages": {"$each": [user_msg, ai_msg]}},
+                            },
+                            upsert=True,
+                        )
+                except Exception as e:
+                    logger.warning(f"[WebSocket] Failed to persist chat history: {e}")
+
                 await websocket.send_json(response_payload)
                 
             except Exception as e:
@@ -999,6 +1038,25 @@ async def list_chat_sessions(
     )
 
     return {"count": len(sorted_sessions), "sessions": sorted_sessions}
+
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_chat_session(
+    session_id: str,
+    user_id: str = Query(..., description="User id (Mongo ObjectId, external, or 'session:<sid>')"),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """
+    Delete a chat session (and its history) for a given user/session_id pair.
+    """
+    query_id: Any = user_id
+    if user_id.startswith("session:"):
+        query_id = user_id
+    elif ObjectId.is_valid(user_id):
+        query_id = ObjectId(user_id)
+
+    await db["chat_histories"].delete_many({"user_id": query_id, "session_id": session_id})
+    return None
 # # --- Additional Utility Endpoints ---
 
 # @router.get("/capabilities")

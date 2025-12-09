@@ -166,6 +166,8 @@ export const api = {
       apiClient.get(`/api/chat/history/messages?user_id=${encodeURIComponent(userId)}${sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : ''}${beforeMs ? `&before_ms=${beforeMs}` : ''}&limit=${limit}`),
     sessions: (userId: string) =>
       apiClient.get(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`),
+    deleteSession: (userId: string, sessionId: string) =>
+      apiClient.delete(`/api/chat/sessions/${encodeURIComponent(sessionId)}?user_id=${encodeURIComponent(userId)}`),
   },
 
   /**

@@ -18,6 +18,10 @@ export default function Topbar() {
   const pathname = usePathname()
 
   const activeIndex = useMemo(() => {
+    // Special case: property detail pages should show "Buyer" as active
+    if (pathname.startsWith('/properties/')) {
+      return segments.findIndex(r => r.href === '/buyer')
+    }
     const i = segments.findIndex(r => pathname === r.href || pathname.startsWith(r.href + '/'))
     return i >= 0 ? i : 0
   }, [pathname])

@@ -7,10 +7,17 @@ from typing import Any, Dict, Optional
 from langchain_core.tools import tool
 from motor.motor_asyncio import AsyncIOMotorClient
 from services.embeddings.service import embed_text
+from services.vector_search.qdrant_service import (
+    upsert_builder_profile_embedding,
+    upsert_builder_service_embedding,
+)
 import os
 from typing import List
 from dotenv import load_dotenv
 from bson import ObjectId
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -135,7 +142,37 @@ async def _create_service_async(
         result = await db["builder_services"].insert_one(service_doc)
 
         if result.inserted_id:
-            return {"success": True, "service_id": str(result.inserted_id), "message": f"Successfully created service: '{title}'."}
+            service_id_str = str(result.inserted_id)
+            
+            # 5. Store embedding in Qdrant for vector search
+            try:
+                embedding = service_doc.get("embeddings")
+                if embedding:
+                    # Get city from builder profile for metadata
+                    profile_full = await db["builder_profiles"].find_one({"_id": builder_id}, {"location": 1})
+                    city = profile_full.get("location", {}).get("city", "") if profile_full else ""
+                    
+                    qdrant_metadata = {
+                        "title": title,
+                        "category": category,
+                        "base_price": base_price,
+                        "price_unit": price_unit,
+                        "city": city,
+                    }
+                    if estimated_duration:
+                        qdrant_metadata["estimated_duration"] = estimated_duration
+                    
+                    await upsert_builder_service_embedding(
+                        service_id=service_id_str,
+                        embedding=embedding,
+                        metadata=qdrant_metadata,
+                    )
+                    logger.info(f"Successfully stored service embedding in Qdrant for service_id: {service_id_str}")
+            except Exception as e:
+                # Don't fail the creation if Qdrant fails, but log it
+                logger.warning(f"Failed to store service embedding in Qdrant: {e}")
+            
+            return {"success": True, "service_id": service_id_str, "message": f"Successfully created service: '{title}'."}
         else:
             return {"success": False, "error": "Failed to insert the service into the database."}
 
@@ -190,7 +227,30 @@ async def _create_profile_async(
         result = await db["builder_profiles"].insert_one(profile_doc)
 
         if result.inserted_id:
-            return {"success": True, "profile_id": str(result.inserted_id), "message": f"Successfully created builder profile for '{company_name}'."}
+            profile_id_str = str(result.inserted_id)
+            
+            # 5. Store embedding in Qdrant for vector search
+            try:
+                embedding = profile_doc.get("embeddings")
+                if embedding:
+                    qdrant_metadata = {
+                        "company_name": company_name,
+                        "city": city,
+                        "specialization": specialization,
+                        "experience_years": experience_years,
+                    }
+                    
+                    await upsert_builder_profile_embedding(
+                        profile_id=profile_id_str,
+                        embedding=embedding,
+                        metadata=qdrant_metadata,
+                    )
+                    logger.info(f"Successfully stored profile embedding in Qdrant for profile_id: {profile_id_str}")
+            except Exception as e:
+                # Don't fail the creation if Qdrant fails, but log it
+                logger.warning(f"Failed to store profile embedding in Qdrant: {e}")
+            
+            return {"success": True, "profile_id": profile_id_str, "message": f"Successfully created builder profile for '{company_name}'."}
         else:
             return {"success": False, "error": "Failed to insert the profile into the database."}
 

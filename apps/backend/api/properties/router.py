@@ -18,6 +18,8 @@ from common.db import get_database
 from models.properties import PropertyCreate, PropertyCreateRequest
 from agents.listing.tools.property_creation import create_property_sync
 from agents.listing.create_listing_agent import _generate_description_with_llm
+from services.vector_search.qdrant_service import delete_embedding
+from common.qdrant import PROPERTIES_COLLECTION
 
 
 router = APIRouter(prefix="/api/properties", tags=["properties"])
@@ -171,6 +173,80 @@ async def create_property(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred while creating the property: {str(e)}"
+        )
+
+
+@router.delete("/{property_id}", summary="Delete a property listing")
+async def delete_property(
+    property_id: str,
+    clerk_id: str = Query(..., description="Clerk user ID"),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """
+    Deletes a property listing. Only the owner (seller) can delete their own property.
+    Also removes the property from Qdrant vector search.
+    """
+    try:
+        # Validate property_id
+        try:
+            _id = ObjectId(property_id)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid property id"
+            )
+        
+        # Find user by clerk_id
+        user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User with the specified Clerk ID not found."
+            )
+        
+        seller_id = user["_id"]
+        
+        # Find the property and verify ownership
+        property_doc = await db["properties"].find_one({"_id": _id})
+        if not property_doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Property not found"
+            )
+        
+        # Verify the property belongs to this seller
+        if property_doc.get("seller_id") != seller_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to delete this property"
+            )
+        
+        # Delete from MongoDB
+        delete_result = await db["properties"].delete_one({"_id": _id})
+        
+        if delete_result.deleted_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete property"
+            )
+        
+        # Delete from Qdrant
+        try:
+            await delete_embedding(collection_name=PROPERTIES_COLLECTION, point_id=property_id)
+        except Exception as e:
+            # Log but don't fail if Qdrant deletion fails
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to delete property embedding from Qdrant: {e}")
+        
+        return {"success": True, "message": "Property deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while deleting the property: {str(e)}"
         )
 
 

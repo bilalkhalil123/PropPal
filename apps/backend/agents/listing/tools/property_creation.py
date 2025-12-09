@@ -92,14 +92,37 @@ async def _create_property_async(
         # 3. Insert the new property
         result = await db["properties"].insert_one(property_doc)
 
-        if result.inserted_id:
-            return {
-                "success": True,
-                "property_id": str(result.inserted_id),
-                "message": f"Successfully created property listing: '{title}'."
-            }
-        else:
+        if not result.inserted_id:
             return {"success": False, "error": "Failed to insert the property into the database."}
+
+        property_id_str = str(result.inserted_id)
+
+        # 4. Upsert embedding into Qdrant for vector search
+        try:
+            from services.vector_search.qdrant_service import upsert_property_embedding
+
+            await upsert_property_embedding(
+                property_id=property_id_str,
+                embedding=property_doc["embeddings"],
+                metadata={
+                    "title": title,
+                    "city": city,
+                    "area": area,
+                    "property_type": property_type.lower(),
+                    "bedrooms": bedrooms,
+                    "bathrooms": bathrooms,
+                    "price": price,
+                },
+            )
+        except Exception as qe:
+            # Don't fail creation if Qdrant upsert fails; log and continue
+            print(f"[WARN] Failed to upsert property embedding to Qdrant: {qe}")
+
+        return {
+            "success": True,
+            "property_id": property_id_str,
+            "message": f"Successfully created property listing: '{title}'."
+        }
 
     except Exception as e:
         return {"success": False, "error": str(e)}
