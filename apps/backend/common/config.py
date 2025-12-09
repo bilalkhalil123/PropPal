@@ -111,6 +111,32 @@ class Settings(BaseSettings):
         description="Server port"
     )
     
+    # Backblaze B2 Configuration (S3-compatible API)
+    B2_ENDPOINT: Optional[str] = Field(
+        default=None,
+        description="Backblaze B2 S3-compatible endpoint URL"
+    )
+    
+    B2_ACCESS_KEY: Optional[str] = Field(
+        default=None,
+        description="Backblaze B2 Access Key (S3-compatible)"
+    )
+    
+    B2_SECRET_KEY: Optional[str] = Field(
+        default=None,
+        description="Backblaze B2 Secret Key (S3-compatible)"
+    )
+    
+    B2_BUCKET: Optional[str] = Field(
+        default=None,
+        description="Backblaze B2 Bucket Name"
+    )
+    
+    B2_PUBLIC_URL_TEMPLATE: Optional[str] = Field(
+        default=None,
+        description="Public URL template for uploaded files (e.g., https://{bucket}.s3.us-west-002.backblazeb2.com/{key})"
+    )
+    
     # Model configuration for Pydantic v2
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).parent.parent / ".env"),

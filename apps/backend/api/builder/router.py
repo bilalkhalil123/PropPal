@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import os
+import tempfile
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body, Query, UploadFile, File
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
+from pydantic import BaseModel
 
 # Add parent directory to path to import services module
 import sys
@@ -61,6 +64,85 @@ async def get_builder_profile_by_clerk(
             profile["created_at"] = datetime.datetime.utcnow()
     if "updated_at" not in profile or not profile["updated_at"]:
         profile["updated_at"] = profile["created_at"]
+    # Ensure portfolio_images is a list (for older profiles that may have None)
+    if profile.get("portfolio_images") is None:
+        profile["portfolio_images"] = []
+    return profile
+
+
+class BuilderProfileCreateRequest(BaseModel):
+    """Request body for creating a builder profile"""
+    company_name: str
+    city: str
+    specialization: List[str]
+    experience_years: int
+    about: str
+    portfolio_images: Optional[List[str]] = []
+
+
+@router.post(
+    "/profile",
+    response_model=BuilderProfileResponse,
+    summary="Create a new builder profile",
+)
+async def create_builder_profile(
+    body: BuilderProfileCreateRequest,
+    clerk_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """
+    Creates a new builder profile for a user identified by their Clerk ID.
+    """
+    import datetime
+    
+    # 1. Find the user by clerk_id to get their internal user_id
+    user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User with the specified Clerk ID not found.",
+        )
+
+    user_id = user["_id"]
+
+    # 2. Check if a profile already exists for this user
+    existing_profile = await db["builder_profiles"].find_one({"user_id": user_id})
+    if existing_profile:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A builder profile already exists for this user.",
+        )
+
+    # 3. Prepare the profile document
+    now = datetime.datetime.utcnow()
+    profile_doc = {
+        "user_id": user_id,
+        "company_name": body.company_name,
+        "specialization": body.specialization,
+        "experience_years": body.experience_years,
+        "about": body.about,
+        "location": {"city": body.city, "latitude": 0.0, "longitude": 0.0},
+        "portfolio_images": body.portfolio_images or [],
+        "rating": None,
+        "founded_year": None,
+        "embeddings": embed_text(f"Builder: {body.company_name}. Specializes in {', '.join(body.specialization)}. About: {body.about}"),
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    # 4. Insert the new profile
+    result = await db["builder_profiles"].insert_one(profile_doc)
+
+    if not result.inserted_id:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create builder profile.",
+        )
+
+    # 5. Fetch and return the created profile
+    profile = await db["builder_profiles"].find_one(
+        {"_id": result.inserted_id}, {"embeddings": 0}
+    )
     return profile
 
 
@@ -84,6 +166,9 @@ async def get_my_builder_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Builder profile not found for the current user.",
         )
+    # Ensure portfolio_images is a list (for older profiles that may have None)
+    if profile.get("portfolio_images") is None:
+        profile["portfolio_images"] = []
     return profile
 
 
@@ -122,7 +207,94 @@ async def get_builder_services_by_clerk(
         {"builder_id": builder_id}, {"embeddings": 0}
     )
     services = await services_cursor.to_list(length=None)
+    # Ensure service_images and service_features are lists (for older services that may have None)
+    for service in services:
+        if service.get("service_images") is None:
+            service["service_images"] = []
+        if service.get("service_features") is None:
+            service["service_features"] = []
     return services
+
+
+class BuilderServiceCreateRequest(BaseModel):
+    """Request body for creating a builder service"""
+    title: str
+    description: str
+    category: str
+    base_price: float
+    price_unit: str
+    service_features: Optional[List[str]] = []
+    estimated_duration: Optional[str] = None
+    service_images: Optional[List[str]] = []
+
+
+@router.post(
+    "/service",
+    response_model=BuilderServiceResponse,
+    summary="Create a new builder service",
+)
+async def create_builder_service(
+    body: BuilderServiceCreateRequest,
+    clerk_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """
+    Creates a new builder service for a user identified by their Clerk ID.
+    The user must already have a builder profile.
+    """
+    import datetime
+    
+    # 1. Find the user by clerk_id to get their internal user_id
+    user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User with the specified Clerk ID not found.",
+        )
+
+    user_id = user["_id"]
+
+    # 2. Find the builder profile to get the builder_id
+    profile = await db["builder_profiles"].find_one({"user_id": user_id}, {"_id": 1})
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Builder profile not found. Please create a builder profile first.",
+        )
+
+    builder_id = profile["_id"]
+
+    # 3. Prepare the service document
+    now = datetime.datetime.utcnow()
+    service_doc = {
+        "builder_id": builder_id,
+        "title": body.title,
+        "description": body.description,
+        "category": body.category,
+        "base_price": body.base_price,
+        "price_unit": body.price_unit,
+        "service_features": body.service_features or [],
+        "estimated_duration": body.estimated_duration,
+        "service_images": body.service_images or [],
+        "embeddings": embed_text(f"Builder Service: {body.title}. Category: {body.category}. Description: {body.description}"),
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    # 4. Insert the new service
+    result = await db["builder_services"].insert_one(service_doc)
+
+    if not result.inserted_id:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create builder service.",
+        )
+
+    # 5. Fetch and return the created service
+    service = await db["builder_services"].find_one(
+        {"_id": result.inserted_id}, {"embeddings": 0}
+    )
+    return service
 
 
 @router.delete(
@@ -203,6 +375,12 @@ async def get_my_builder_services(
         {"builder_id": builder_id}, {"embeddings": 0}
     )
     services = await services_cursor.to_list(length=None)
+    # Ensure service_images and service_features are lists (for older services that may have None)
+    for service in services:
+        if service.get("service_images") is None:
+            service["service_images"] = []
+        if service.get("service_features") is None:
+            service["service_features"] = []
 
     return services
 
@@ -303,6 +481,9 @@ async def get_builder_profile_by_id(
         profile["_id"] = str(profile["_id"])
     if profile.get("user_id") is not None:
         profile["user_id"] = str(profile["user_id"]) if isinstance(profile["user_id"], ObjectId) else profile["user_id"]
+    # Ensure portfolio_images is a list (for older profiles that may have None)
+    if profile.get("portfolio_images") is None:
+        profile["portfolio_images"] = []
     return profile
 
 
@@ -380,3 +561,192 @@ async def search_builder_services(
         if "builder_id" in r:
             r["builder_id"] = str(r["builder_id"])
     return {"count": len(results), "results": results}
+
+
+# Helper function for generating descriptions with LLM
+def _generate_builder_description_with_llm(data: Dict[str, Any], description_type: str = "profile") -> str:
+    """
+    Generate a professional description for builder profile or service using LLM.
+    """
+    from groq import Groq
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    
+    if description_type == "profile":
+        prompt = f"""Generate a professional and compelling builder profile description based on the following information. 
+The description should be 2-3 paragraphs, highlighting the company's strengths, experience, and specializations.
+Make it engaging and professional.
+
+Company Name: {data.get('company_name', 'N/A')}
+Specializations: {data.get('specialization', 'N/A')}
+Experience: {data.get('experience_years', 'N/A')} years
+City: {data.get('city', 'N/A')}
+Current About (if any): {data.get('about', 'Not provided')}
+
+Generate only the description text, no titles or headers."""
+    else:  # service
+        prompt = f"""Generate a professional and compelling service description based on the following information.
+The description should be 1-2 paragraphs, highlighting the service benefits, features, and value proposition.
+Make it engaging and professional.
+
+Service Title: {data.get('title', 'N/A')}
+Category: {data.get('category', 'N/A')}
+Base Price: {data.get('base_price', 'N/A')} {data.get('price_unit', '')}
+Features: {data.get('service_features', 'N/A')}
+Current Description (if any): {data.get('description', 'Not provided')}
+
+Generate only the description text, no titles or headers."""
+
+    chat_completion = groq_client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a professional copywriter specializing in construction and builder services marketing."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        model="llama-3.1-8b-instant",
+        temperature=0.7,
+        max_tokens=500
+    )
+    
+    return chat_completion.choices[0].message.content.strip()
+
+
+@router.post("/generate-description", summary="Generate builder profile description using LLM")
+async def generate_builder_description(
+    profile_data: Dict[str, Any] = Body(...),
+    clerk_id: str = Query(..., description="Clerk user ID"),
+):
+    """
+    Generates a builder profile description using LLM based on provided details.
+    """
+    try:
+        description = _generate_builder_description_with_llm(profile_data, "profile")
+        return {"description": description}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate description: {str(e)}"
+        )
+
+
+@router.post("/service/generate-description", summary="Generate builder service description using LLM")
+async def generate_service_description(
+    service_data: Dict[str, Any] = Body(...),
+    clerk_id: str = Query(..., description="Clerk user ID"),
+):
+    """
+    Generates a builder service description using LLM based on provided details.
+    """
+    try:
+        description = _generate_builder_description_with_llm(service_data, "service")
+        return {"description": description}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate description: {str(e)}"
+        )
+
+
+@router.post("/transcribe-audio", summary="Transcribe audio file to text using Groq Whisper")
+async def transcribe_builder_audio(
+    audio_file: UploadFile = File(...),
+    clerk_id: str = Query(..., description="Clerk user ID"),
+):
+    """
+    Transcribes an audio file to text using Groq's Whisper API for builder profiles/services.
+    Accepts: MP3, WAV, OGG, WebM, M4A (max 25MB)
+    """
+    try:
+        # Validate file type
+        valid_types = [
+            'audio/mpeg',
+            'audio/mp3', 
+            'audio/wav',
+            'audio/ogg',
+            'audio/webm',
+            'audio/m4a',
+            'audio/x-m4a',
+        ]
+        
+        file_extension = os.path.splitext(audio_file.filename)[1].lower()
+        valid_extensions = ['.mp3', '.wav', '.ogg', '.webm', '.m4a']
+        
+        if audio_file.content_type not in valid_types and file_extension not in valid_extensions:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid audio file type. Supported formats: MP3, WAV, OGG, WebM, M4A"
+            )
+        
+        # Read file content
+        file_content = await audio_file.read()
+        file_size = len(file_content)
+        
+        # Validate file size (max 25MB)
+        if file_size > 25 * 1024 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Audio file too large. Maximum size is 25MB."
+            )
+        
+        # Save to temporary file for Groq API
+        temp_file_path = None
+        try:
+            # Create temp file with proper extension
+            with tempfile.NamedTemporaryFile(
+                delete=False, 
+                suffix=file_extension,
+                mode='wb'
+            ) as temp_file:
+                temp_file.write(file_content)
+                temp_file_path = temp_file.name
+            
+            # Transcribe using Groq Whisper
+            from groq import Groq
+            from dotenv import load_dotenv
+            load_dotenv()
+            
+            groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+            
+            with open(temp_file_path, "rb") as audio:
+                transcription = groq_client.audio.transcriptions.create(
+                    file=(audio_file.filename, audio.read()),
+                    model="whisper-large-v3-turbo",
+                    response_format="json",
+                    language="en",
+                    temperature=0.0
+                )
+            
+            transcript = transcription.text.strip()
+            
+            if not transcript:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No speech detected in audio file"
+                )
+            
+            return {
+                "success": True,
+                "transcript": transcript,
+                "filename": audio_file.filename,
+                "size_bytes": file_size
+            }
+            
+        finally:
+            # Clean up temp file
+            if temp_file_path and os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to transcribe audio: {str(e)}"
+        )

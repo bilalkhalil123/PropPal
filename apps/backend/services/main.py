@@ -97,6 +97,10 @@ app.include_router(builder_router)
 app.include_router(properties_router)
 app.include_router(recommendations_router)
 
+# Import and include storage router
+from api.storage.router import router as storage_router
+app.include_router(storage_router)
+
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,

@@ -23,7 +23,9 @@ class BuilderProfileBase(BaseModel):
         description="List of specializations: construction, renovation, interior, etc.",
     )
     experience_years: int = Field(..., ge=0)
-    portfolio_images: Optional[str] = Field(None, description="JSON array of image URLs")
+    portfolio_images: Optional[List[str]] = Field(
+        default=[], description="List of portfolio image URLs"
+    )
     rating: Optional[float] = Field(None, ge=0, le=5)
     about: Optional[str] = None
     founded_year: Optional[int] = Field(None, ge=1800, le=datetime.now().year)

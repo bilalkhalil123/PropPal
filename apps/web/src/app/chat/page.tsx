@@ -22,6 +22,7 @@ import {
 } from '@heroicons/react/24/outline'
 import PropertyModal from '@/components/modals/PropertyModal'
 import BuilderModal from '@/components/modals/BuilderModal'
+import ServiceModal from '@/components/modals/ServiceModal'
 import ImageLightbox from '@/components/modals/ImageLightbox'
 import { motion } from 'framer-motion'
 import QuickSuggestions from '@/components/QuickSuggestions'
@@ -50,15 +51,22 @@ interface Builder {
   }
   about?: string
   score?: number
+  portfolio_images?: string[]
 }
 
 interface ServiceResult {
   _id?: string
   service_name?: string
+  title?: string
   description?: string
   category?: string
+  base_price?: number
+  price_unit?: string
   price_range_min?: number
   price_range_max?: number
+  estimated_duration?: string
+  service_features?: string[]
+  service_images?: string[]
   builder_id?: string
   score?: number
 }
@@ -96,9 +104,12 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const [interactiveActive, setInteractiveActive] = useState(false)
+  const [creationType, setCreationType] = useState<'profile' | 'service' | null>(null)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const [wsConnected, setWsConnected] = useState(false)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -110,6 +121,8 @@ export default function ChatPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [selectedBuilder, setSelectedBuilder] = useState<Builder | null>(null)
   const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false)
+  const [selectedService, setSelectedService] = useState<ServiceResult | null>(null)
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
 
   const openPropertyModal = (property: Property) => {
     setSelectedProperty(property)
@@ -121,8 +134,51 @@ export default function ChatPage() {
     setSelectedProperty(null)
   }
 
+  const openBuilderModal = (builder: Builder) => {
+    setSelectedBuilder(builder)
+    setIsBuilderModalOpen(true)
+  }
+
+  const closeBuilderModal = () => {
+    setIsBuilderModalOpen(false)
+    setSelectedBuilder(null)
+  }
+
+  const openServiceModal = (service: ServiceResult) => {
+    setSelectedService(service)
+    setIsServiceModalOpen(true)
+  }
+
+  const closeServiceModal = () => {
+    setIsServiceModalOpen(false)
+    setSelectedService(null)
+  }
+
+  const fetchAndOpenBuilderModal = async (builderId: string) => {
+    try {
+      setIsLoading(true)
+      const builder = (await api.builders.getById(builderId)) as Builder
+      openBuilderModal(builder)
+    } catch (error) {
+      console.error('Failed to fetch builder:', error)
+      // Show error message to user
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-error`,
+          content: 'Failed to load builder details. Please try again.',
+          sender: 'ai',
+          timestamp: new Date(),
+        },
+      ])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
-    const anyOverlayOpen = isPropertyModalOpen || isLightboxOpen || isBuilderModalOpen
+    const anyOverlayOpen =
+      isPropertyModalOpen || isLightboxOpen || isBuilderModalOpen || isServiceModalOpen
     if (!anyOverlayOpen) {
       document.body.style.overflow = ''
       return
@@ -135,6 +191,8 @@ export default function ChatPage() {
           setIsLightboxOpen(false)
         } else if (isPropertyModalOpen) {
           closePropertyModal()
+        } else if (isServiceModalOpen) {
+          closeServiceModal()
         } else if (isBuilderModalOpen) {
           setIsBuilderModalOpen(false)
         }
@@ -155,7 +213,13 @@ export default function ChatPage() {
       window.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = ''
     }
-  }, [isPropertyModalOpen, isLightboxOpen, isBuilderModalOpen, selectedProperty])
+  }, [
+    isPropertyModalOpen,
+    isLightboxOpen,
+    isBuilderModalOpen,
+    isServiceModalOpen,
+    selectedProperty,
+  ])
 
   useEffect(() => {
     if (isPropertyModalOpen || isLightboxOpen) {
@@ -193,6 +257,184 @@ export default function ChatPage() {
     }
   }, [])
 
+  // Unified WebSocket connection setup
+  useEffect(() => {
+    // Don't connect if no API URL or clerk ID
+    if (!API_BASE_URL || !clerkId) {
+      console.log('⏳ Waiting for API URL and Clerk ID...')
+      return
+    }
+
+    // Don't connect if session ID is not ready
+    if (!sessionId) {
+      console.log('⏳ Waiting for session ID...')
+      return
+    }
+
+    // Create WebSocket URL
+    let wsOrigin: string
+    try {
+      const urlObj = new URL(API_BASE_URL)
+      wsOrigin = (urlObj.protocol === 'https:' ? 'wss://' : 'ws://') + urlObj.host
+    } catch (error) {
+      console.error('Invalid API_BASE_URL:', API_BASE_URL)
+      const baseNoSlash = API_BASE_URL.replace(/\/$/, '')
+      wsOrigin = baseNoSlash.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:')
+    }
+
+    const wsUrl = `${wsOrigin}/api/chat/ws?clerk_id=${encodeURIComponent(clerkId)}&session_id=${encodeURIComponent(sessionId)}`
+    console.log('🔌 Connecting to WebSocket:', wsUrl)
+
+    const connectWebSocket = () => {
+      try {
+        const ws = new WebSocket(wsUrl)
+        wsRef.current = ws
+
+        ws.onopen = () => {
+          console.log('✅ WebSocket connected successfully')
+          setWsConnected(true)
+          setIsLoading(false)
+        }
+
+        ws.onmessage = (evt) => {
+          try {
+            const data = JSON.parse(evt.data)
+            console.log('📩 Received:', data)
+
+            if (data.type === 'agent') {
+              if (data.interactive_mode) {
+                setInteractiveActive(true)
+                const metaType =
+                  data.metadata?.agent_type ||
+                  (data.classification === 'builder_create_profile'
+                    ? 'profile'
+                    : data.classification === 'builder_create_service'
+                      ? 'service'
+                      : null)
+                if (metaType === 'profile' || metaType === 'service') {
+                  setCreationType(metaType)
+                }
+              }
+
+              // Add AI message
+              const aiMessage: Message = {
+                id: `${Date.now()}-agent`,
+                content: data.message || '',
+                sender: 'ai',
+                timestamp: new Date(),
+                properties: data.properties,
+                builders: data.builders,
+                services: data.services,
+              }
+              setMessages((prev) => [...prev, aiMessage])
+              setIsLoading(false)
+              setSidebarRefresh((v) => v + 1)
+            } else if (data.type === 'completed') {
+              // Interactive flow completed
+              const completedMessage: Message = {
+                id: `${Date.now()}-completed`,
+                content: data.message || 'Completed successfully!',
+                sender: 'ai',
+                timestamp: new Date(),
+              }
+              setMessages((prev) => [...prev, completedMessage])
+              setInteractiveActive(false)
+              setCreationType(null)
+              setIsLoading(false)
+              setSidebarRefresh((v) => v + 1)
+            } else if (data.type === 'error') {
+              // Error response
+              const errorMessage: Message = {
+                id: `${Date.now()}-error`,
+                content: `Error: ${data.message || 'Unknown error'}`,
+                sender: 'ai',
+                timestamp: new Date(),
+              }
+              setMessages((prev) => [...prev, errorMessage])
+              setInteractiveActive(false)
+              setCreationType(null)
+              setIsLoading(false)
+            }
+          } catch (e) {
+            console.error('Failed to parse WebSocket message:', e)
+          }
+        }
+
+        ws.onerror = (error: Event) => {
+          console.error('❌ WebSocket connection error')
+          console.error('Error details:', {
+            wsUrl,
+            readyState: ws.readyState,
+            error: error,
+          })
+          setWsConnected(false)
+
+          // Add error message to chat
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `${Date.now()}-ws-error`,
+              content: 'Connection error. Using fallback mode (REST API).',
+              sender: 'ai',
+              timestamp: new Date(),
+            },
+          ])
+        }
+
+        ws.onclose = (event: CloseEvent) => {
+          console.log('🔌 WebSocket disconnected', {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean,
+          })
+          setWsConnected(false)
+          setInteractiveActive(false)
+          setCreationType(null)
+          wsRef.current = null
+
+          // Only attempt to reconnect if it wasn't a clean close
+          if (!event.wasClean && event.code !== 1000) {
+            // Attempt to reconnect after 3 seconds
+            if (reconnectTimeoutRef.current) {
+              clearTimeout(reconnectTimeoutRef.current)
+            }
+            reconnectTimeoutRef.current = setTimeout(() => {
+              console.log('🔄 Attempting to reconnect...')
+              connectWebSocket()
+            }, 3000)
+          }
+        }
+      } catch (e) {
+        console.error('Failed to create WebSocket:', e)
+        setWsConnected(false)
+
+        // Add error message to chat
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-ws-create-error`,
+            content: 'Could not establish WebSocket connection. Using fallback mode (REST API).',
+            sender: 'ai',
+            timestamp: new Date(),
+          },
+        ])
+      }
+    }
+
+    connectWebSocket()
+
+    // Cleanup
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+      }
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.close(1000, 'Component unmounting')
+        wsRef.current = null
+      }
+    }
+  }, [API_BASE_URL, clerkId, sessionId])
+
   const sendMessage = useCallback(
     async (messageText: string, clearInput = false) => {
       if (!messageText.trim()) return
@@ -210,169 +452,74 @@ export default function ChatPage() {
       }
       setIsLoading(true)
 
-      try {
-        const response = (await api.chat.sendMessage(
-          messageText,
-          dbUserId || undefined,
-          sessionId || 'session_fallback',
-          clerkId || undefined,
-        )) as {
-          response: string
-          classification: string
-          properties?: Property[]
-          builders?: Builder[]
-          services?: ServiceResult[]
-          start_interactive?: {
-            type: 'service' | 'profile'
-            ws_path: string
-            clerk_id_required?: boolean
-          }
+      // Send via WebSocket if connected
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        try {
+          wsRef.current.send(
+            JSON.stringify({
+              type: 'message',
+              text: messageText,
+              clerk_id: clerkId,
+              session_id: sessionId || 'session_fallback',
+            }),
+          )
+          console.log('📤 Sent via WebSocket:', messageText)
+        } catch (e) {
+          console.error('Failed to send via WebSocket:', e)
+          setIsLoading(false)
+
+          // Fallback to REST API
+          await fallbackToREST(messageText)
         }
-
-        const handoffMessages = [
-          'Starting service creation. Please connect via websocket to continue.',
-          'Starting builder profile creation. Please connect via websocket to continue.',
-        ]
-        const si = (response as any).start_interactive as
-          | { type: 'service' | 'profile'; ws_path: string }
-          | undefined
-        const isHandoff = handoffMessages.includes(response.response)
-
-        let wsPath: string | null = null
-        if (si?.ws_path) {
-          wsPath = si.ws_path
-        } else if (isHandoff) {
-          if (response.response.includes('service creation')) {
-            wsPath = '/api/chat/ws/service/create'
-          } else if (response.response.includes('builder profile creation')) {
-            wsPath = '/api/chat/ws/profile/create'
-          }
-        }
-
-        if (wsPath && API_BASE_URL) {
-          let wsOrigin: string
-          try {
-            const urlObj = new URL(API_BASE_URL)
-            wsOrigin = (urlObj.protocol === 'https:' ? 'wss://' : 'ws://') + urlObj.host
-          } catch {
-            const baseNoSlash = API_BASE_URL.replace(/\/$/, '')
-            wsOrigin = baseNoSlash.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:')
-          }
-          const qs = `?clerk_id=${encodeURIComponent(clerkId || '')}`
-          const wsUrl = `${wsOrigin}${wsPath}${qs}`
-          try {
-            const ws = new WebSocket(wsUrl)
-            wsRef.current = ws
-            setInteractiveActive(true)
-
-            ws.onopen = () => {
-              try {
-                ws.send(JSON.stringify({ type: 'user', text: messageText }))
-              } catch {}
-            }
-
-            ws.onmessage = (evt) => {
-              try {
-                const payload = JSON.parse(evt.data)
-                if (payload.type === 'agent') {
-                  setMessages((prev) => [
-                    ...prev,
-                    {
-                      id: `${Date.now()}-agent`,
-                      content: String(payload.text || ''),
-                      sender: 'ai',
-                      timestamp: new Date(),
-                    },
-                  ])
-                } else if (payload.type === 'completed') {
-                  setMessages((prev) => [
-                    ...prev,
-                    {
-                      id: `${Date.now()}-done`,
-                      content: String(payload.message || 'Completed'),
-                      sender: 'ai',
-                      timestamp: new Date(),
-                    },
-                  ])
-                  ws.close()
-                  wsRef.current = null
-                  setInteractiveActive(false)
-                } else if (payload.type === 'error') {
-                  setMessages((prev) => [
-                    ...prev,
-                    {
-                      id: `${Date.now()}-err`,
-                      content: `Error: ${String(payload.message || 'Unknown error')}`,
-                      sender: 'ai',
-                      timestamp: new Date(),
-                    },
-                  ])
-                  ws.close()
-                  wsRef.current = null
-                  setInteractiveActive(false)
-                }
-              } catch {
-                // ignore malformed
-              }
-            }
-
-            ws.onerror = () => {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: `${Date.now()}-wserr`,
-                  content: 'Connection error during interactive flow.',
-                  sender: 'ai',
-                  timestamp: new Date(),
-                },
-              ])
-              wsRef.current = null
-              setInteractiveActive(false)
-            }
-
-            ws.onclose = () => {
-              wsRef.current = null
-              setInteractiveActive(false)
-            }
-          } catch (e) {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: `${Date.now()}-wsex`,
-                content: 'Failed to start interactive flow.',
-                sender: 'ai',
-                timestamp: new Date(),
-              },
-            ])
-          }
-        } else if (!isHandoff) {
-          const aiResponse: Message = {
-            id: (Date.now() + 1).toString(),
-            content: response.response,
-            sender: 'ai',
-            timestamp: new Date(),
-            properties: response.properties,
-            builders: response.builders,
-            services: (response as any).services,
-          }
-          setMessages((prev) => [...prev, aiResponse])
-          setSidebarRefresh((v) => v + 1)
-        }
-      } catch (error) {
-        console.error('Chat API error:', error)
-        const errorResponse: Message = {
-          id: (Date.now() + 1).toString(),
-          content: 'Sorry, I encountered an error. Please try again.',
-          sender: 'ai',
-          timestamp: new Date(),
-        }
-        setMessages((prev) => [...prev, errorResponse])
-      } finally {
-        setIsLoading(false)
+      } else {
+        // WebSocket not connected, use REST API fallback
+        console.log('⚠️ WebSocket not connected, using REST API')
+        await fallbackToREST(messageText)
       }
     },
-    [dbUserId, clerkId, API_BASE_URL, sessionId],
+    [clerkId, sessionId],
   )
+
+  // Fallback REST API function
+  const fallbackToREST = async (messageText: string) => {
+    try {
+      const response = (await api.chat.sendMessage(
+        messageText,
+        dbUserId || undefined,
+        sessionId || 'session_fallback',
+        clerkId || undefined,
+      )) as {
+        response: string
+        classification: string
+        properties?: Property[]
+        builders?: Builder[]
+        services?: ServiceResult[]
+      }
+
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: response.response,
+        sender: 'ai',
+        timestamp: new Date(),
+        properties: response.properties,
+        builders: response.builders,
+        services: (response as any).services,
+      }
+      setMessages((prev) => [...prev, aiResponse])
+      setSidebarRefresh((v) => v + 1)
+    } catch (error) {
+      console.error('Chat API error:', error)
+      const errorResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: 'Sorry, I encountered an error. Please try again.',
+        sender: 'ai',
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorResponse])
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -423,19 +570,9 @@ export default function ChatPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (interactiveActive && wsRef.current) {
-      const text = inputMessage
-      if (!text.trim()) return
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now().toString(), content: text, sender: 'user', timestamp: new Date() },
-      ])
-      try {
-        wsRef.current.send(JSON.stringify({ type: 'user', text }))
-      } catch {}
-      setInputMessage('')
-      return
-    }
+    if (!inputMessage.trim()) return
+
+    // Send message via unified WebSocket (handles both normal and interactive modes)
     sendMessage(inputMessage, true)
   }
 
@@ -660,6 +797,7 @@ export default function ChatPage() {
                                 {message.builders.map((builder) => (
                                   <div
                                     key={builder._id}
+                                    onClick={() => openBuilderModal(builder)}
                                     className="bg-white rounded-xl shadow-sm border border-slate-200/50 overflow-hidden hover:shadow-lg hover:border-slate-300 transition-all duration-300 cursor-pointer flex flex-col h-full group"
                                   >
                                     {/* Builder Header */}
@@ -725,13 +863,16 @@ export default function ChatPage() {
                                       )}
 
                                       {/* Action Buttons */}
-                                      <div className="flex space-x-2 mt-auto pt-3">
-                                        <Link
-                                          href={`/builders/${builder._id}`}
+                                      <div
+                                        className="flex space-x-2 mt-auto pt-3"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <button
+                                          onClick={() => openBuilderModal(builder)}
                                           className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:shadow-md transition-all text-center"
                                         >
                                           View Profile
-                                        </Link>
+                                        </button>
                                         <button className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
                                           Contact
                                         </button>
@@ -770,7 +911,7 @@ export default function ChatPage() {
                                     {/* Content */}
                                     <div className="p-4 flex flex-col flex-grow">
                                       <h3 className="font-serif font-semibold text-base text-slate-900 mb-1 line-clamp-2">
-                                        {svc.service_name || 'Service'}
+                                        {svc.service_name || svc.title || 'Service'}
                                       </h3>
                                       {svc.description && (
                                         <p className="text-sm text-slate-700 mb-3 line-clamp-3">
@@ -794,16 +935,23 @@ export default function ChatPage() {
 
                                       {/* Actions */}
                                       <div className="mt-auto pt-2 flex gap-2">
+                                        <button
+                                          onClick={() => openServiceModal(svc)}
+                                          className="flex-1 bg-gradient-to-r from-teal-500 to-cyan-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:shadow-md transition-all text-center"
+                                        >
+                                          View Service
+                                        </button>
                                         {svc.builder_id ? (
-                                          <Link
-                                            href={`/builders/${svc.builder_id}`}
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              fetchAndOpenBuilderModal(svc.builder_id!)
+                                            }}
                                             className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:shadow-md transition-all text-center"
                                           >
                                             View Builder
-                                          </Link>
-                                        ) : (
-                                          <div className="flex-1" />
-                                        )}
+                                          </button>
+                                        ) : null}
                                         <button className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
                                           Contact
                                         </button>
@@ -846,7 +994,14 @@ export default function ChatPage() {
               <BuilderModal
                 isOpen={isBuilderModalOpen && !!selectedBuilder}
                 builder={selectedBuilder as any}
-                onClose={() => setIsBuilderModalOpen(false)}
+                onClose={closeBuilderModal}
+              />
+
+              {/* Service Details Modal */}
+              <ServiceModal
+                isOpen={isServiceModalOpen && !!selectedService}
+                service={selectedService as any}
+                onClose={closeServiceModal}
               />
 
               {/* Fullscreen Lightbox */}
@@ -892,7 +1047,24 @@ export default function ChatPage() {
               )}
 
               <div className="px-4 md:px-6 py-4 md:py-6 bg-white/80 backdrop-blur border-t border-slate-200 shadow-md sticky bottom-0">
-                <form onSubmit={handleSendMessage} className="flex space-x-3 items-center">
+                <form onSubmit={handleSendMessage} className="flex space-x-3 items-center relative">
+                  {/* Connection Status Indicator */}
+                  {!wsConnected && clerkId && sessionId && (
+                    <div className="absolute -top-10 left-0 right-0 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 flex items-center gap-2 shadow-sm">
+                      <div className="animate-pulse w-2 h-2 rounded-full bg-amber-500" />
+                      <span>Connecting... (Fallback mode active)</span>
+                    </div>
+                  )}
+                  {interactiveActive && (
+                    <div className="absolute -top-10 left-0 right-0 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700 flex items-center gap-2 shadow-sm">
+                      <div className="animate-pulse w-2 h-2 rounded-full bg-blue-500" />
+                      <span>
+                        Interactive mode: Creating your{' '}
+                        {creationType === 'profile' ? 'profile' : 'service'}
+                      </span>
+                    </div>
+                  )}
+
                   <Input
                     type="text"
                     value={inputMessage}

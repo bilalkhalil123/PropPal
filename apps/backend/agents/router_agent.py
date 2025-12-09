@@ -39,6 +39,9 @@ class RouterState(TypedDict):
     properties: List[dict]
     builders: List[dict]
     services: List[dict]
+    
+    # Metadata for additional information (like interactive session flags)
+    metadata: Optional[dict]
 
 # --- LLM and Router Definition ---
 
@@ -92,7 +95,15 @@ def classify_intent_node(state: RouterState):
             "Respond with 'listing_agent' if they are asking about real estate, "
             "property, listings, houses, apartments, buying, selling, renting, "
             "property search, property details, or property prices. "
-            "Respond with 'builder_agent' if the query is about builders, contractors, construction, renovation, creating a builder profile, or creating a builder service. "
+            "Respond with 'builder_agent' if the query is about:\n"
+            "- Builders, contractors, construction companies, or construction professionals\n"
+            "- Builder services (plumbing, electrical, interior design, renovation, remodeling, "
+            "kitchen remodeling, bathroom renovation, roof repair, painting, tiling, flooring, "
+            "home construction, commercial construction, infrastructure, etc.)\n"
+            "- Finding or searching for builders or builder services\n"
+            "- Creating a builder profile or creating a builder service\n"
+            "- Any service-related queries (e.g., 'who can do plumbing', 'find interior designers', "
+            "'I need electrical work', 'kitchen renovation services')\n\n"
             "For anything else (like 'hello', 'how are you', 'who are you?', "
             "general questions, platform help, etc.), respond with 'general_chat'."
             # "In the future, you might also route to 'financial_agent' "
@@ -218,12 +229,17 @@ def builder_agent_node(state: RouterState):
         "builders": builders,
         "services": services,
     }
+    
+    # Pass through metadata if present (for interactive session flags)
+    if result.get("metadata"):
+        response_payload["metadata"] = result["metadata"]
 
     # Debug: log normalized payload back to the main graph
     try:
         print("--- [Main Graph] BuilderAgent normalized payload:", {
             "builders_len": len(response_payload["builders"] or []),
             "services_len": len(response_payload["services"] or []),
+            "has_metadata": "metadata" in response_payload,
         })
     except Exception:
         pass
@@ -329,6 +345,7 @@ class RouterAgent:
                 properties=[],
                 builders=[],
                 services=[],
+                metadata=None,
             )
             
             # Run the router workflow
@@ -350,6 +367,10 @@ class RouterAgent:
                 "services": final_state.get("services", []),
                 "error": None
             }
+            
+            # Include metadata if present
+            if final_state.get("metadata"):
+                response_obj["metadata"] = final_state["metadata"]
 
             # Debug: log router final response summary
             try:

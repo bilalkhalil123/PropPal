@@ -21,7 +21,7 @@ interface BuilderProfile {
   specialization: string[]
   experience_years: number
   rating?: number
-  location: {
+  location?: {
     city: string
     latitude: number
     longitude: number
@@ -39,6 +39,7 @@ interface BuilderService {
   base_price?: number
   price_unit?: string
   service_features?: string[]
+  service_images?: string[]
 }
 
 export default function BuilderPage() {
@@ -58,15 +59,28 @@ export default function BuilderPage() {
       try {
         setDataLoading(true)
         setDataError(null)
+        console.log('Fetching builder data for clerkId:', clerkId)
+        
         const [profile, services] = await Promise.all([
-          api.builders.getProfile(clerkId).catch(() => null) as Promise<BuilderProfile | null>,
-          api.builders.getServices(clerkId).catch(() => []) as Promise<BuilderService[]>,
+          api.builders.getProfile(clerkId).catch((err) => {
+            console.error('Error fetching profile:', err)
+            return null
+          }) as Promise<BuilderProfile | null>,
+          api.builders.getServices(clerkId).catch((err) => {
+            console.error('Error fetching services:', err)
+            return []
+          }) as Promise<BuilderService[]>,
         ])
+        
+        console.log('Fetched profile:', profile)
+        console.log('Fetched services:', services)
+        
         if (!cancelled) {
           setBuilderProfile(profile)
           setBuilderServices(services || [])
         }
       } catch (err: any) {
+        console.error('Load error:', err)
         if (!cancelled) setDataError(err?.message || 'Failed to load builder data')
       } finally {
         if (!cancelled) setDataLoading(false)
@@ -92,11 +106,11 @@ export default function BuilderPage() {
   }
 
   const handleCreateProfile = () => {
-    router.push('/chat?q=Create my builder profile')
+    router.push('/builder/profile/create')
   }
 
-  const handleManageServices = () => {
-    router.push('/chat?q=Manage my services')
+  const handleAddService = () => {
+    router.push('/builder/service/create')
   }
 
   // Show spinner while loading and have not received API result; but not after fetching null
@@ -190,15 +204,17 @@ export default function BuilderPage() {
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <span className="text-sm text-slate-600 font-medium">Founded</span>
                     <span className="text-lg font-bold text-slate-900">
-                      {builderProfile.founded_year}
+                      {builderProfile.founded_year || 'N/A'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
-                    <span className="text-sm text-slate-600 font-medium">Location</span>
-                    <span className="text-lg font-bold text-slate-900">
-                      {builderProfile.location.city}
-                    </span>
-                  </div>
+                  {builderProfile.location?.city && (
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+                      <span className="text-sm text-slate-600 font-medium">Location</span>
+                      <span className="text-lg font-bold text-slate-900">
+                        {builderProfile.location.city}
+                      </span>
+                    </div>
+                  )}
                   {builderProfile.rating && (
                     <div className="flex items-center justify-between p-4 bg-amber-50 rounded-lg border border-amber-200">
                       <span className="text-sm text-slate-600 font-medium">Rating</span>
@@ -233,6 +249,24 @@ export default function BuilderPage() {
                   )}
                 </div>
               </div>
+
+              {/* Portfolio Images */}
+              {builderProfile.portfolio_images && builderProfile.portfolio_images.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-slate-200">
+                  <h4 className="text-sm font-semibold text-slate-900 mb-4">Portfolio</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {builderProfile.portfolio_images.map((url, index) => (
+                      <div key={index} className="relative group overflow-hidden rounded-xl border border-slate-200">
+                        <img
+                          src={url}
+                          alt={`Portfolio ${index + 1}`}
+                          className="w-full h-32 object-cover transition-transform group-hover:scale-105"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="bg-white/70 backdrop-blur rounded-2xl shadow-card border border-slate-200 p-12 text-center">
@@ -260,11 +294,11 @@ export default function BuilderPage() {
                   <p className="text-slate-600 mt-1">Manage and showcase your offerings</p>
                 </div>
                 <Button
-                  onClick={handleManageServices}
+                  onClick={handleAddService}
                   variant="ghost"
                   className="px-6 py-2.5 text-sm"
                 >
-                  Manage Services
+                  Add New Service
                 </Button>
               </div>
 
@@ -273,48 +307,70 @@ export default function BuilderPage() {
                   {builderServices.map((service) => (
                     <div
                       key={service._id}
-                      className="border border-slate-200 rounded-xl p-6 hover:shadow-elevated transition-all duration-300 bg-white/70 backdrop-blur"
+                      className="border border-slate-200 rounded-xl overflow-hidden hover:shadow-elevated transition-all duration-300 bg-white/70 backdrop-blur"
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <h3 className="font-semibold text-lg text-slate-900 flex-1">
-                          {service.title}
-                        </h3>
-                      </div>
-                      <p className="text-sm text-slate-600 mb-4 line-clamp-2">
-                        {service.description}
-                      </p>
-                      <div className="space-y-2 text-xs text-slate-500 mb-4 pb-4 border-b border-slate-200">
-                        <div>
-                          <span className="font-medium">Category:</span> {service.category}
+                      {/* Service Image */}
+                      {service.service_images && service.service_images.length > 0 ? (
+                        <div className="relative h-40 overflow-hidden">
+                          <img
+                            src={service.service_images[0]}
+                            alt={service.title}
+                            className="w-full h-full object-cover"
+                          />
+                          {service.service_images.length > 1 && (
+                            <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                              +{service.service_images.length - 1} more
+                            </div>
+                          )}
                         </div>
-                        {(service.base_price || service.price_unit) && (
+                      ) : (
+                        <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                          <WrenchScrewdriverIcon className="h-12 w-12 text-slate-400" />
+                        </div>
+                      )}
+
+                      <div className="p-6">
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="font-semibold text-lg text-slate-900 flex-1">
+                            {service.title}
+                          </h3>
+                        </div>
+                        <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                          {service.description}
+                        </p>
+                        <div className="space-y-2 text-xs text-slate-500 mb-4 pb-4 border-b border-slate-200">
                           <div>
-                            <span className="font-medium">Price:</span>{' '}
-                            {service.base_price ? `Rs ${service.base_price.toLocaleString()}` : ''}
-                            {service.price_unit ? ` ${service.price_unit}` : ''}
+                            <span className="font-medium">Category:</span> {service.category}
+                          </div>
+                          {(service.base_price || service.price_unit) && (
+                            <div>
+                              <span className="font-medium">Price:</span>{' '}
+                              {service.base_price ? `Rs ${service.base_price.toLocaleString()}` : ''}
+                              {service.price_unit ? ` ${service.price_unit}` : ''}
+                            </div>
+                          )}
+                        </div>
+                        {service.service_features && service.service_features.length > 0 && (
+                          <div className="text-xs">
+                            <span className="font-medium text-slate-700">Features:</span>
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {service.service_features.slice(0, 3).map((feature, idx) => (
+                                <span
+                                  key={idx}
+                                  className="bg-amber-100 text-amber-700 px-2 py-1 rounded"
+                                >
+                                  {feature}
+                                </span>
+                              ))}
+                              {service.service_features.length > 3 && (
+                                <span className="text-slate-500">
+                                  +{service.service_features.length - 3} more
+                                </span>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
-                      {service.service_features && service.service_features.length > 0 && (
-                        <div className="text-xs">
-                          <span className="font-medium text-slate-700">Features:</span>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {service.service_features.slice(0, 3).map((feature, idx) => (
-                              <span
-                                key={idx}
-                                className="bg-amber-100 text-amber-700 px-2 py-1 rounded"
-                              >
-                                {feature}
-                              </span>
-                            ))}
-                            {service.service_features.length > 3 && (
-                              <span className="text-slate-500">
-                                +{service.service_features.length - 3} more
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -322,7 +378,7 @@ export default function BuilderPage() {
                 <div className="text-center py-12 bg-slate-50 rounded-xl border border-slate-200">
                   <p className="text-slate-600 mb-4">No services added yet</p>
                   <button
-                    onClick={handleManageServices}
+                    onClick={handleAddService}
                     className="text-amber-600 hover:text-amber-700 font-semibold text-sm"
                   >
                     Add your first service →

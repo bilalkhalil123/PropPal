@@ -12,6 +12,7 @@ type Builder = {
   location?: { city: string }
   about?: string
   score?: number
+  portfolio_images?: string[]
 }
 
 interface BuilderModalProps {
@@ -94,6 +95,26 @@ export default function BuilderModal({ isOpen, builder, onClose }: BuilderModalP
             <div>
               <h4 className="text-sm font-medium text-gray-700 mb-2">About</h4>
               <p className="text-sm text-gray-700 leading-relaxed">{builder.about}</p>
+            </div>
+          )}
+
+          {builder.portfolio_images && builder.portfolio_images.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Portfolio</h4>
+              <div className="grid grid-cols-3 gap-2">
+                {builder.portfolio_images.slice(0, 6).map((url, idx) => (
+                  <div key={idx} className="relative aspect-square overflow-hidden rounded-lg">
+                    <img
+                      src={url}
+                      alt={`Portfolio ${idx + 1}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform"
+                    />
+                  </div>
+                ))}
+              </div>
+              {builder.portfolio_images.length > 6 && (
+                <p className="text-xs text-gray-500 mt-2">+{builder.portfolio_images.length - 6} more images</p>
+              )}
             </div>
           )}
 

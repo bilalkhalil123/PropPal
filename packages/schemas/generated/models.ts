@@ -1,7 +1,7 @@
 /**
  * AUTO-GENERATED TypeScript interfaces from Pydantic models
  * DO NOT EDIT MANUALLY - Changes will be overwritten
- * Generated on: 2025-12-07T01:22:53.858812
+ * Generated on: 2025-12-09T18:19:00.689792
  */
 
 export interface UserResponse {
@@ -43,9 +43,9 @@ export interface PropertyResponse {
   city: string;
   area: string;
   /** Longitude */
-  lng: number;
+  lng?: number | null;
   /** Latitude */
-  lat: number;
+  lat?: number | null;
   _id: string;
   seller_id: string;
   images?: string[];
@@ -72,9 +72,9 @@ export interface PropertyCreate {
   city: string;
   area: string;
   /** Longitude */
-  lng: number;
+  lng?: number | null;
   /** Latitude */
-  lat: number;
+  lat?: number | null;
   seller_id: string;
   /** Array of image URLs */
   images?: string[];
@@ -121,8 +121,8 @@ export interface BuilderProfileResponse {
   /** List of specializations: construction, renovation, interior, etc. */
   specialization?: string[];
   experience_years: number;
-  /** JSON array of image URLs */
-  portfolio_images?: string | null;
+  /** List of portfolio image URLs */
+  portfolio_images?: string[];
   rating?: number | null;
   about?: string | null;
   founded_year?: number | null;
@@ -138,8 +138,8 @@ export interface BuilderProfileCreate {
   /** List of specializations: construction, renovation, interior, etc. */
   specialization?: string[];
   experience_years: number;
-  /** JSON array of image URLs */
-  portfolio_images?: string | null;
+  /** List of portfolio image URLs */
+  portfolio_images?: string[];
   rating?: number | null;
   about?: string | null;
   founded_year?: number | null;
@@ -157,6 +157,8 @@ export interface BuilderServiceResponse {
   estimated_duration?: string | null;
   /** List of features: 3D design, material sourcing, etc. */
   service_features?: string[];
+  /** List of image URLs for the service */
+  service_images?: string[];
   _id: string;
   builder_id: string;
   created_at?: string | null;
@@ -174,6 +176,8 @@ export interface BuilderServiceCreate {
   estimated_duration?: string | null;
   /** List of features: 3D design, material sourcing, etc. */
   service_features?: string[];
+  /** List of image URLs for the service */
+  service_images?: string[];
 }
 
 export interface UserProjectResponse {

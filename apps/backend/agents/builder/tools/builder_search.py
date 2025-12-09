@@ -2,7 +2,7 @@
 Search tools for the Builder Agent.
 """
 import asyncio
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from langchain_core.tools import tool
 from motor.motor_asyncio import AsyncIOMotorClient
 from services.embeddings.service import embed_text
@@ -19,7 +19,14 @@ def get_database_client():
         raise ValueError("MONGODB_URL environment variable is required")
     return AsyncIOMotorClient(mongodb_url)
 
-async def _search_async(query: str, collection_name: str, index_name: str, project_fields: Dict[str, Any], k: int = 5) -> Dict[str, Any]:
+async def _search_async(
+    query: str,
+    collection_name: str,
+    index_name: str,
+    project_fields: Dict[str, Any],
+    k: int = 5,
+    filters: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """
     Generic vector search function using Qdrant for builder profiles and services.
     """
@@ -104,6 +111,10 @@ async def _search_async(query: str, collection_name: str, index_name: str, proje
             except Exception:
                 pass
 
+        print(f"[DEBUG] Search completed: {len(results)} results for query '{query}' with filters: {filters}")
+        if filters and len(results) == 0:
+            print(f"[WARNING] No results found with filters. This might indicate a filter issue.")
+        
         return {
             "success": True,
             "query": query,
@@ -111,6 +122,9 @@ async def _search_async(query: str, collection_name: str, index_name: str, proje
             "count": len(results)
         }
     except Exception as e:
+        print(f"[ERROR] Search failed: {e}")
+        import traceback
+        traceback.print_exc()
         return {"success": False, "error": str(e), "query": query, "results": [], "count": 0}
     finally:
         if client:
@@ -129,20 +143,18 @@ def _run_async_search(search_coro):
     except Exception as e:
         return {"success": False, "error": str(e), "results": [], "count": 0}
 
-@tool
-def builder_profile_search_tool(query: str) -> Dict[str, Any]:
+def _builder_profile_search_impl(query: str, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
-    Searches for builder profiles based on a natural language query.
-    Use this to find builders, construction companies, or contractors.
-    
-    Args:
-        query: The user's search query (e.g., "builders who specialize in residential homes").
+    Internal implementation of builder profile search.
     """
     project_fields = {
         "company_name": 1,
         "specialization": 1,
         "experience_years": 1,
         "city": 1,
+        "location": 1,  # Include location if it exists
+        "rating": 1,
+        "about": 1,
         "contact_person": 1,
         "contact_email": 1,
         "contact_phone": 1,
@@ -152,25 +164,49 @@ def builder_profile_search_tool(query: str) -> Dict[str, Any]:
         collection_name="builder_profiles",
         index_name="builder_profile_index",
         project_fields=project_fields,
-        k=5
+        k=5,
+        filters=filters
     )
     return _run_async_search(search_coro)
 
 @tool
-def builder_service_search_tool(query: str) -> Dict[str, Any]:
+def builder_profile_search_tool(query: str) -> Dict[str, Any]:
     """
-    Searches for specific services offered by builders.
-    Use this to find services like 'kitchen remodeling', 'roof repair', or 'new home construction'.
+    Searches for builder profiles based on a natural language query.
+    Automatically extracts filters (city, experience, specialization, rating) from the query.
+    Use this to find builders, construction companies, or contractors.
     
     Args:
-        query: The user's search query for a service (e.g., "who can do plumbing work").
+        query: The user's search query (e.g., "builders in Islamabad with 5+ years experience").
+    """
+    # Extract filters from the query, but don't fail if extraction fails
+    filters = None
+    try:
+        from .filter_extractor import extract_builder_filters
+        filters = extract_builder_filters(query)
+        if not filters:
+            filters = None
+    except Exception as e:
+        # If filter extraction fails, continue without filters
+        print(f"Filter extraction failed (continuing without filters): {e}")
+        filters = None
+    
+    return _builder_profile_search_impl(query, filters)
+
+def _builder_service_search_impl(query: str, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Internal implementation of builder service search.
     """
     project_fields = {
-        "service_name": 1,
+        "title": 1,  # The actual field name in the database
         "description": 1,
         "category": 1,
+        "base_price": 1,  # Also include base_price
+        "price_unit": 1,  # And price_unit
         "price_range_min": 1,
         "price_range_max": 1,
+        "estimated_duration": 1,
+        "service_features": 1,
         "builder_id": 1, # To link back to the builder
     }
     search_coro = _search_async(
@@ -178,6 +214,31 @@ def builder_service_search_tool(query: str) -> Dict[str, Any]:
         collection_name="builder_services",
         index_name="builder_service_index",
         project_fields=project_fields,
-        k=5
+        k=5,
+        filters=filters
     )
     return _run_async_search(search_coro)
+
+@tool
+def builder_service_search_tool(query: str) -> Dict[str, Any]:
+    """
+    Searches for specific services offered by builders.
+    Automatically extracts filters (city, category, price range, duration) from the query.
+    Use this to find services like 'kitchen remodeling', 'roof repair', or 'new home construction'.
+    
+    Args:
+        query: The user's search query for a service (e.g., "plumbing services in Karachi under 50000").
+    """
+    # Extract filters from the query, but don't fail if extraction fails
+    filters = None
+    try:
+        from .filter_extractor import extract_service_filters
+        filters = extract_service_filters(query)
+        if not filters:
+            filters = None
+    except Exception as e:
+        # If filter extraction fails, continue without filters
+        print(f"Filter extraction failed (continuing without filters): {e}")
+        filters = None
+    
+    return _builder_service_search_impl(query, filters)
