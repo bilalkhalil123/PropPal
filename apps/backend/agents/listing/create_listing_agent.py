@@ -350,11 +350,11 @@ def _convert_area_to_sqft(text: str) -> Optional[float]:
         return base_num * 272.25  # 1 marla = 272.25 sqft
     elif 'acre' in text_lower:
         return base_num * 43560  # 1 acre = 43560 sqft
-    elif 'sq\s*yard' in text_lower or 'square\s*yard' in text_lower or 'yard' in text_lower:
+    elif 'sq yard' in text_lower or 'square yard' in text_lower or 'yard' in text_lower:
         return base_num * 9  # 1 sq yard = 9 sqft
-    elif 'sq\s*meter' in text_lower or 'square\s*meter' in text_lower or 'sq\s*m' in text_lower:
+    elif 'sq meter' in text_lower or 'square meter' in text_lower or 'sq m' in text_lower:
         return base_num * 10.764  # 1 sq meter = 10.764 sqft
-    elif 'sqft' in text_lower or 'sq\s*ft' in text_lower or 'square\s*feet' in text_lower:
+    elif 'sqft' in text_lower or 'sq ft' in text_lower or 'square feet' in text_lower:
         return base_num  # Already in sqft
     else:
         # Assume square feet if no unit specified

@@ -106,17 +106,33 @@ git checkout dev
 2. **Connect a repository**:
    - Select the GitHub account/org and the repository that contains PropPal.
    - If PropPal is the **root** of the repo, choose that repo. If PropPal is inside a monorepo, choose the repo; we’ll set the root directory in the next step.
-3. Configure the service:
+3. **Switch to Docker:** In the form, change **Language** from "Python 3" to **Docker**. Build/Start command fields will be replaced by Dockerfile options.
+4. Fill the form with these exact values:
+
+| Field | Enter / Select |
+|--------|----------------|
+| **Name** | `PropPal` |
+| **Project** | *(optional)* |
+| **Environment** | `Production` |
+| **Language** | **Docker** |
+| **Branch** | `main` |
+| **Region** | `Oregon (US West)` or `Frankfurt (EU Central)` |
+| **Root Directory** | `apps/backend` |
+| **Dockerfile Path** | `Dockerfile` *(relative to Root Directory)* |
+| **Docker Context** | *(leave blank)* |
+| **Instance Type** | **Free** |
+
+5. Add **Environment Variables** (see B.5), then click **Deploy web service**.
+
+---
+
+*(Alternative if your repo root is PropPal and you prefer no Root Directory):*
 
 | Field | Value |
 |--------|--------|
-| **Name** | `proppal-backend` (or any name you like) |
-| **Region** | Choose closest to your users (e.g. **Oregon (US West)** or **Frankfurt (EU Central)**) |
-| **Branch** | `main` |
-| **Root Directory** | Leave blank if the repo root is PropPal. If your repo root is **above** PropPal, set: `PropPal` (or the path to the folder that contains `apps/backend`). |
-| **Runtime** | **Docker** |
-| **Dockerfile Path** | If repo root is PropPal: `apps/backend/Dockerfile`. If root is above PropPal: `PropPal/apps/backend/Dockerfile`. |
-| **Docker Context** | Same as Root Directory: leave blank if PropPal is repo root, otherwise e.g. `PropPal` so the Docker build context is the monorepo root (needed if Dockerfile copies from `apps/backend`). |
+| **Root Directory** | *(leave blank)* |
+| **Dockerfile Path** | `apps/backend/Dockerfile` |
+| **Docker Context** | `apps/backend` |
 
 Important: Render runs `docker build` from the **root directory** you set. So:
 
