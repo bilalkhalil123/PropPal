@@ -104,6 +104,7 @@ export default function BuilderModal({ isOpen, builder, onClose }: BuilderModalP
               <div className="grid grid-cols-3 gap-2">
                 {builder.portfolio_images.slice(0, 6).map((url, idx) => (
                   <div key={idx} className="relative aspect-square overflow-hidden rounded-lg">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={url}
                       alt={`Portfolio ${idx + 1}`}

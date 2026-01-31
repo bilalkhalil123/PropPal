@@ -81,11 +81,14 @@ export default function PropertyModal({
             onClick={property?.images?.length ? onOpenLightbox : undefined}
           >
             {property.images && property.images.length > 0 ? (
-              <img
-                src={property.images[currentImageIndex] || "/placeholder.svg"}
-                alt={property.title}
-                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-              />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={property.images[currentImageIndex] || "/placeholder.svg"}
+                  alt={property.title}
+                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                />
+              </>
             ) : (
               <HomeModernIcon className="h-16 w-16 text-slate-400" />
             )}
