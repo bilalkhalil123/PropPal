@@ -1,83 +1,100 @@
 """
-MongoDB database connection management for PropPal backend services.
+Database connection management for PropPal backend services.
 
-Provides a singleton-style client plus a lazy `ensure_database_connection`
-helper so that the API can recover gracefully if the FastAPI lifespan hook
-didn't run (e.g. when the app is imported outside of uvicorn or during tests).
+PostgreSQL (Neon): async SQLAlchemy engine and session; use get_db_session() for API and repositories.
+Engine/session are cached per event loop so tools run in a thread (e.g. LangGraph with asyncio.run)
+get their own engine and avoid "Future attached to a different loop".
 """
 
 import asyncio
-from typing import Optional
+from contextlib import asynccontextmanager
+from typing import Any, AsyncGenerator, Dict, Optional
 
-from fastapi import HTTPException
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from .config import get_settings
 
+# ---------------------------------------------------------------------------
+# PostgreSQL (Neon) async engine and session (per event loop)
+# ---------------------------------------------------------------------------
 
-class DatabaseClient:
-    """Tracks the currently active MongoDB client/database instances."""
-
-    client: Optional[AsyncIOMotorClient] = None
-    database: Optional[AsyncIOMotorDatabase] = None
-
-
-_db_init_lock = asyncio.Lock()
+_engines_by_loop: Dict[int, Any] = {}
+_factories_by_loop: Dict[int, async_sessionmaker[AsyncSession]] = {}
 
 
-async def ensure_database_connection() -> AsyncIOMotorDatabase:
+def _make_async_url(url: str) -> str:
+    if not url or not url.strip():
+        raise ValueError("DATABASE_URL or POSTGRES_URL must be set for PostgreSQL.")
+    url = url.strip()
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgresql+asyncpg://"):
+        return url
+    return "postgresql+asyncpg://" + (url.split("://", 1)[-1] if "://" in url else url)
+
+
+def get_async_session_factory(loop: Optional[asyncio.AbstractEventLoop] = None) -> async_sessionmaker[AsyncSession]:
     """
-    Lazily establish a MongoDB connection if the lifespan hook has not run.
-
-    Returns:
-        AsyncIOMotorDatabase: The connected database instance.
+    Return async session factory for the given event loop (or current loop if None).
+    Call from async code and pass asyncio.get_running_loop() when you need the current loop.
+    Caches engine and factory per loop so threads using asyncio.run() get their own engine.
     """
-    if DatabaseClient.database is not None and DatabaseClient.client is not None:
-        return DatabaseClient.database
-
-    async with _db_init_lock:
-        if DatabaseClient.database is not None and DatabaseClient.client is not None:
-            return DatabaseClient.database
-
-        settings = get_settings()
+    if loop is None:
         try:
-            client = AsyncIOMotorClient(
-                settings.MONGODB_URL,
-                serverSelectionTimeoutMS=5000,
-            )
-            await client.admin.command("ping")
-            DatabaseClient.client = client
-            DatabaseClient.database = client[settings.MONGODB_DB_NAME]
-            return DatabaseClient.database
-        except Exception as exc:
-            if 'client' in locals():
-                client.close()
-            raise HTTPException(
-                status_code  = 500,
-                detail="Unable to connect to MongoDB. Ensure the database is reachable."
-            ) from exc
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            raise RuntimeError("get_async_session_factory(loop=...) must be called with a loop or from async code")
+    key = id(loop)
+    if key in _factories_by_loop:
+        return _factories_by_loop[key]
+    settings = get_settings()
+    url = _make_async_url(settings.get_postgres_url())
+    engine = create_async_engine(url, pool_pre_ping=True, echo=False)
+    _engines_by_loop[key] = engine
+    factory = async_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=False,
+        autocommit=False,
+    )
+    _factories_by_loop[key] = factory
+    return factory
 
 
-async def get_db_client() -> AsyncIOMotorClient:
-    """
-    FastAPI dependency to inject the MongoDB client.
+async def dispose_async_engine() -> None:
+    """Dispose all cached async engines (call on app shutdown)."""
+    global _engines_by_loop, _factories_by_loop
+    for key, engine in list(_engines_by_loop.items()):
+        try:
+            await engine.dispose()
+        except Exception:
+            pass
+    _engines_by_loop.clear()
+    _factories_by_loop.clear()
 
-    Automatically initialises the client if the lifespan hook has not yet run.
-    """
-    if DatabaseClient.client is None:
-        await ensure_database_connection()
-    assert DatabaseClient.client is not None
-    return DatabaseClient.client
+
+@asynccontextmanager
+async def get_db_session_ctx() -> AsyncGenerator[AsyncSession, None]:
+    """Async context manager yielding a single Postgres session (uses engine for current event loop)."""
+    loop = asyncio.get_running_loop()
+    factory = get_async_session_factory(loop)
+    async with factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 
-async def get_database() -> AsyncIOMotorDatabase:
-    """
-    FastAPI dependency to inject the MongoDB database.
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency: yield one Postgres session per request, close after."""
+    async with get_db_session_ctx() as session:
+        yield session
 
-    Automatically initialises the database connection if required.
-    """
-    if DatabaseClient.database is None:
-        await ensure_database_connection()
-    assert DatabaseClient.database is not None
-    return DatabaseClient.database
 
+# Alias for repository code: use Depends(get_db) or Depends(get_db_session).
+get_db = get_db_session

@@ -22,16 +22,14 @@ class Settings(BaseSettings):
     Uses Pydantic validation to ensure correct types and required fields.
     """
     
-    # MongoDB Atlas Configuration
-    MONGODB_URL: str = Field(
-        ...,
-        description="MongoDB Atlas connection string",
-        alias="MONGODB_URL"
+    # PostgreSQL (Neon) - primary database
+    DATABASE_URL: str = Field(
+        default="",
+        description="PostgreSQL connection string (Neon). e.g. postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require",
     )
-    
-    MONGODB_DB_NAME: str = Field(
-        default="proppal",
-        description="MongoDB database name"
+    POSTGRES_URL: Optional[str] = Field(
+        default=None,
+        description="Alternative to DATABASE_URL. If set and DATABASE_URL is empty, used as the PostgreSQL connection string.",
     )
     
     # Qdrant Vector Database Configuration
@@ -54,6 +52,11 @@ class Settings(BaseSettings):
     CLERK_WEBHOOK_SECRET: str = Field(
         default="",
         description="Clerk webhook secret for signature verification"
+    )
+
+    CLERK_JWKS_URL: Optional[str] = Field(
+        default=None,
+        description="Clerk JWKS URL for JWT verification (e.g. https://<frontend-api>/.well-known/jwks.json)"
     )
     
     # Security Configuration
@@ -148,11 +151,10 @@ class Settings(BaseSettings):
     def get_allowed_origins_list(self) -> list[str]:
         """Parse ALLOWED_ORIGINS string into a list."""
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
-    
-    @property
-    def mongo_uri(self) -> str:
-        """Alias for MONGODB_URL for backward compatibility."""
-        return self.MONGODB_URL
+
+    def get_postgres_url(self) -> str:
+        """Return PostgreSQL connection string (Neon). Prefer DATABASE_URL, fallback to POSTGRES_URL."""
+        return (self.DATABASE_URL or self.POSTGRES_URL or "").strip()
 
 
 # Singleton pattern using lru_cache

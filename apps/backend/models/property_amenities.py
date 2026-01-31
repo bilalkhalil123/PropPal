@@ -4,7 +4,6 @@ Property amenities models (schools, hospitals, nearby facilities)
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict
-from .base import PyObjectId
 
 
 class PropertyAmenityBase(BaseModel):
@@ -22,10 +21,10 @@ class PropertyAmenityBase(BaseModel):
 
 
 class PropertyAmenity(PropertyAmenityBase):
-    """Complete property amenity model"""
+    """Complete property amenity model (id and property_id are UUID strings)."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    property_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    property_id: str
     fetched_at: datetime = Field(default_factory=datetime.utcnow)
 
     model_config = ConfigDict(
@@ -37,14 +36,14 @@ class PropertyAmenity(PropertyAmenityBase):
 class PropertyAmenityCreate(PropertyAmenityBase):
     """Schema for creating property amenity"""
 
-    property_id: PyObjectId
+    property_id: str
 
 
 class PropertyAmenityResponse(PropertyAmenityBase):
-    """Schema for amenity API responses"""
+    """Schema for amenity API responses (id and property_id are UUID strings)."""
 
-    id: PyObjectId = Field(alias="_id")
-    property_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    property_id: str
     fetched_at: datetime
 
     model_config = ConfigDict(

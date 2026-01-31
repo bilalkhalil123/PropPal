@@ -4,7 +4,6 @@ User models for authentication and user management
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
-from .base import PyObjectId
 
 
 class UserBase(BaseModel):
@@ -19,9 +18,9 @@ class UserBase(BaseModel):
 
 
 class User(UserBase):
-    """Complete user model (for internal use)"""
+    """Complete user model (for internal use). id is UUID string (Postgres) or ObjectId string (legacy)."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: str = Field(..., alias="_id")
     password_hash: Optional[str] = Field(None, description="Password hash (optional with Clerk)")
     deleted_at: Optional[datetime] = Field(None, description="Soft delete timestamp")
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -32,7 +31,7 @@ class User(UserBase):
         arbitrary_types_allowed=True,
         json_schema_extra={
             "example": {
-                "_id": "507f1f77bcf86cd799439011",
+                "_id": "550e8400-e29b-41d4-a716-446655440000",
                 "name": "John Doe",
                 "email": "john@example.com",
                 "phone": "+92-300-1234567",
@@ -65,9 +64,9 @@ class UserCreate(UserBase):
 
 
 class UserResponse(UserBase):
-    """Schema for user API responses (excludes password_hash)"""
+    """Schema for user API responses (excludes password_hash). id is UUID string."""
 
-    id: PyObjectId = Field(alias="_id")
+    id: str = Field(..., alias="_id")
     created_at: datetime
     updated_at: datetime
 
@@ -76,7 +75,7 @@ class UserResponse(UserBase):
         arbitrary_types_allowed=True,
         json_schema_extra={
             "example": {
-                "_id": "507f1f77bcf86cd799439011",
+                "_id": "550e8400-e29b-41d4-a716-446655440000",
                 "name": "John Doe",
                 "email": "john@example.com",
                 "phone": "+92-300-1234567",

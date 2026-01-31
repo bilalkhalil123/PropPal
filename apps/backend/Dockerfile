@@ -40,6 +40,6 @@ USER appuser
 # Expose port (can be overridden by docker-compose)
 EXPOSE 8000
 
-# Default command (can be overridden by docker-compose)
-CMD ["uvicorn", "services.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command: use PORT env (Render sets 10000) or 8000 for local
+CMD ["sh", "-c", "uvicorn services.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
 

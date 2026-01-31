@@ -52,15 +52,11 @@ class ListingAgent:
 Your job is to help users find properties by using the property_search_tool.
 
 CRITICAL INSTRUCTIONS:
-- When a user asks about properties, you MUST immediately call the property_search_tool with their exact query
-- Do NOT ask follow-up questions or explain what you're doing
-- Do NOT generate text like <function=property_search_tool> - use the actual tool call
-- Just call the tool and then present the results
-
-For general questions (like "hello", "how are you"), answer naturally without using tools.
-
-After using the property_search_tool, present the results clearly to the user.
-If no properties are found, inform them politely and suggest they try different search terms.
+- When a user asks about properties, call the property_search_tool ONCE with their exact query. Do NOT ask follow-up questions.
+- After the tool returns results, present them as CARDS (title, price, location per property). Do NOT call the tool again.
+- If you already have "Found N properties" or a list of properties in the conversation, present that list to the user and STOP. Do not call the tool again.
+- Keep your reply concise. For general questions (like "hello"), answer naturally without using tools.
+- If no properties are found, say so politely and suggest different search terms.
 """
         
         self.tools = [property_search_tool]
@@ -147,51 +143,70 @@ If no properties are found, inform them politely and suggest they try different 
     def _tool_node(self, state: AgentState) -> Dict[str, Any]:
         """
         Executes tools, parses results, and updates the state.
+        Replaces long tool content with a short summary for the LLM to avoid 413 token limit;
+        full results stay in state["data"] for the API/frontend cards.
         """
         try:
             logger.info(f"Tool node called with state: {state}")
-            
-            # Call the pre-built ToolNode to get ToolMessages
             tool_result = self.tool_executor.invoke(state)
-            logger.info(f"Tool result type: {type(tool_result)}")
-            logger.info(f"Tool result: {tool_result}")
-            
-            # Extract messages from the result
             if isinstance(tool_result, dict) and "messages" in tool_result:
                 tool_messages = tool_result["messages"]
             else:
                 tool_messages = tool_result
 
-            logger.info(f"Tool messages: {tool_messages}")
-
-            # We assume only one tool call for property search
             data_result = {}
             success = False
-            
+            new_messages = []
+
             for msg in tool_messages:
                 if isinstance(msg, ToolMessage):
-                    logger.info(f"Processing ToolMessage: {msg.content}")
                     try:
-                        # Parse the tool's JSON output
-                        tool_data = json.loads(msg.content)
-                        logger.info(f"Parsed tool data: {tool_data}")
+                        content = msg.content
+                        if isinstance(content, dict):
+                            tool_data = content
+                        else:
+                            tool_data = json.loads(content) if isinstance(content, str) else {}
                         if tool_data.get("success"):
                             data_result = tool_data
                             success = True
-                            break  # Found our data
-                    except json.JSONDecodeError as e:
-                        logger.error(f"JSON decode error: {e}")
-                        continue  # Not valid JSON, skip
-
-            logger.info(f"Final data_result: {data_result}")
-            logger.info(f"Final success: {success}")
+                        # Send only a short summary to the LLM to stay under Groq token limit
+                        short_content = tool_data.get("summary_for_llm")
+                        if not short_content and tool_data.get("results"):
+                            lines = []
+                            for i, p in enumerate(tool_data["results"][:8], 1):
+                                title = (p.get("title") or p.get("property_title") or "Property")[:50]
+                                price = p.get("price") or p.get("price_display") or "Price on request"
+                                lines.append(f"{i}. {title} - {price}")
+                            short_content = "Found {} properties:\n".format(len(tool_data["results"])) + "\n".join(lines)
+                        if not short_content:
+                            short_content = tool_data.get("error") or str(tool_data)[:500]
+                        new_messages.append(
+                            ToolMessage(content=short_content, tool_call_id=msg.tool_call_id)
+                        )
+                    except json.JSONDecodeError:
+                        try:
+                            import ast
+                            tool_data = ast.literal_eval(content) if isinstance(content, str) else {}
+                            short_content = tool_data.get("summary_for_llm") or str(tool_data)[:500]
+                            if tool_data.get("success"):
+                                data_result = tool_data
+                                success = True
+                            new_messages.append(
+                                ToolMessage(content=short_content, tool_call_id=msg.tool_call_id)
+                            )
+                        except Exception:
+                            new_messages.append(msg)
+                    except Exception as e:
+                        logger.warning(f"Tool message parse failed: {e}")
+                        new_messages.append(msg)
+                else:
+                    new_messages.append(msg)
 
             return {
-                "messages": tool_messages,
-                "data": data_result,  # <-- Update the state's 'data' field
-                "success": success    # <-- Update the state's 'success' field
+                "messages": new_messages,
+                "data": data_result,
+                "success": success,
             }
-        
         except Exception as e:
             logger.error(f"Tool node failed: {e}")
             error_message = ToolMessage(content=f"Tool execution failed: {e}", tool_call_id="error_000")
@@ -224,7 +239,7 @@ If no properties are found, inform them politely and suggest they try different 
         
         # Run the workflow
         try:
-            final_state = self.app.invoke(initial_state, {"recursion_limit": 5})
+            final_state = self.app.invoke(initial_state, {"recursion_limit": 12})
             
             # The final response is the agent's last message
             final_response = final_state["messages"][-1].content

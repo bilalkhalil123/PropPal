@@ -4,21 +4,22 @@ import os
 import tempfile
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Body, Query, UploadFile, File
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from bson import ObjectId
 from pydantic import BaseModel
 
-# Add parent directory to path to import services module
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from common.db import get_database
+from common.repositories.user_repository import UserRepository, get_user_repository
+from common.repositories.builder_profile_repository import BuilderProfileRepository, get_builder_profile_repository
+from common.repositories.builder_service_repository import BuilderServiceRepository, get_builder_service_repository
+from common.uuid_utils import parse_uuid
 from models.builder_profiles import BuilderProfileResponse
 from models.builder_services import BuilderServiceResponse
 from models.users import User
 from services.auth.utils import get_current_user
 from services.embeddings.service import embed_text
+from services.vector_search.qdrant_service import search_builder_profiles, search_builder_services as qdrant_search_builder_services
 
 router = APIRouter(prefix="/api/builder", tags=["builder"])
 
@@ -30,41 +31,22 @@ router = APIRouter(prefix="/api/builder", tags=["builder"])
 )
 async def get_builder_profile_by_clerk(
     clerk_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    user_repo: UserRepository = Depends(get_user_repository),
+    profile_repo: BuilderProfileRepository = Depends(get_builder_profile_repository),
 ):
-    """
-    Retrieves a builder profile using the associated user's Clerk ID.
-    """
-    # 1. Find the user by clerk_id to get their internal user_id
-    user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
+    """Retrieves a builder profile using the associated user's Clerk ID."""
+    user = await user_repo.get_by_clerk_id(clerk_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User with the specified Clerk ID not found.",
         )
-
-    # 2. Find the builder profile using the internal user_id
-    user_id = user["_id"]
-    profile = await db["builder_profiles"].find_one(
-        {"user_id": user_id}, {"embeddings": 0}
-    )
+    profile = await profile_repo.get_by_user_id(user.id)
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Builder profile not found for this user.",
         )
-    # Ensure created_at and updated_at are present
-    import datetime
-    if "created_at" not in profile or not profile["created_at"]:
-        # Use ObjectId timestamp if present, else utcnow()
-        oid = profile.get("_id")
-        if hasattr(oid, "generation_time"):
-            profile["created_at"] = oid.generation_time
-        else:
-            profile["created_at"] = datetime.datetime.utcnow()
-    if "updated_at" not in profile or not profile["updated_at"]:
-        profile["updated_at"] = profile["created_at"]
-    # Ensure portfolio_images is a list (for older profiles that may have None)
     if profile.get("portfolio_images") is None:
         profile["portfolio_images"] = []
     return profile
@@ -88,35 +70,24 @@ class BuilderProfileCreateRequest(BaseModel):
 async def create_builder_profile(
     body: BuilderProfileCreateRequest,
     clerk_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    user_repo: UserRepository = Depends(get_user_repository),
+    profile_repo: BuilderProfileRepository = Depends(get_builder_profile_repository),
 ):
-    """
-    Creates a new builder profile for a user identified by their Clerk ID.
-    """
-    import datetime
-    
-    # 1. Find the user by clerk_id to get their internal user_id
-    user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
+    """Creates a new builder profile for a user identified by their Clerk ID."""
+    user = await user_repo.get_by_clerk_id(clerk_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User with the specified Clerk ID not found.",
         )
-
-    user_id = user["_id"]
-
-    # 2. Check if a profile already exists for this user
-    existing_profile = await db["builder_profiles"].find_one({"user_id": user_id})
+    existing_profile = await profile_repo.get_by_user_id(user.id)
     if existing_profile:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A builder profile already exists for this user.",
         )
-
-    # 3. Prepare the profile document
-    now = datetime.datetime.utcnow()
     profile_doc = {
-        "user_id": user_id,
+        "user_id": user.id,
         "company_name": body.company_name,
         "specialization": body.specialization,
         "experience_years": body.experience_years,
@@ -125,24 +96,11 @@ async def create_builder_profile(
         "portfolio_images": body.portfolio_images or [],
         "rating": None,
         "founded_year": None,
-        "embeddings": embed_text(f"Builder: {body.company_name}. Specializes in {', '.join(body.specialization)}. About: {body.about}"),
-        "created_at": now,
-        "updated_at": now,
     }
-
-    # 4. Insert the new profile
-    result = await db["builder_profiles"].insert_one(profile_doc)
-
-    if not result.inserted_id:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create builder profile.",
-        )
-
-    # 5. Fetch and return the created profile
-    profile = await db["builder_profiles"].find_one(
-        {"_id": result.inserted_id}, {"embeddings": 0}
-    )
+    row = await profile_repo.create(profile_doc)
+    profile = profile_repo._row_to_dict(row)
+    if profile.get("portfolio_images") is None:
+        profile["portfolio_images"] = []
     return profile
 
 
@@ -152,21 +110,16 @@ async def create_builder_profile(
     summary="Get the current user's builder profile",
 )
 async def get_my_builder_profile(
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    profile_repo: BuilderProfileRepository = Depends(get_builder_profile_repository),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Retrieves the builder profile associated with the currently authenticated user.
-    """
-    profile = await db["builder_profiles"].find_one(
-        {"user_id": current_user.id}, {"embeddings": 0}
-    )
+    """Retrieves the builder profile associated with the currently authenticated user."""
+    profile = await profile_repo.get_by_user_id(current_user.id)
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Builder profile not found for the current user.",
         )
-    # Ensure portfolio_images is a list (for older profiles that may have None)
     if profile.get("portfolio_images") is None:
         profile["portfolio_images"] = []
     return profile
@@ -179,35 +132,24 @@ async def get_my_builder_profile(
 )
 async def get_builder_services_by_clerk(
     clerk_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    user_repo: UserRepository = Depends(get_user_repository),
+    profile_repo: BuilderProfileRepository = Depends(get_builder_profile_repository),
+    service_repo: BuilderServiceRepository = Depends(get_builder_service_repository),
 ):
-    """
-    Retrieves all services for a builder using the associated user's Clerk ID.
-    """
-    # 1. Find the user by clerk_id to get their internal user_id
-    user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
+    """Retrieves all services for a builder using the associated user's Clerk ID."""
+    user = await user_repo.get_by_clerk_id(clerk_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User with the specified Clerk ID not found.",
         )
-
-    # 2. Find the builder profile using the user_id to get the builder_id
-    user_id = user["_id"]
-    profile = await db["builder_profiles"].find_one({"user_id": user_id}, {"_id": 1})
+    profile = await profile_repo.get_by_user_id(user.id)
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Builder profile not found for this user.",
         )
-
-    # 3. Find services using the builder_id from the profile
-    builder_id = profile["_id"]
-    services_cursor = db["builder_services"].find(
-        {"builder_id": builder_id}, {"embeddings": 0}
-    )
-    services = await services_cursor.to_list(length=None)
-    # Ensure service_images and service_features are lists (for older services that may have None)
+    services = await service_repo.list_by_builder_id(profile["id"])
     for service in services:
         if service.get("service_images") is None:
             service["service_images"] = []
@@ -236,38 +178,25 @@ class BuilderServiceCreateRequest(BaseModel):
 async def create_builder_service(
     body: BuilderServiceCreateRequest,
     clerk_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    user_repo: UserRepository = Depends(get_user_repository),
+    profile_repo: BuilderProfileRepository = Depends(get_builder_profile_repository),
+    service_repo: BuilderServiceRepository = Depends(get_builder_service_repository),
 ):
-    """
-    Creates a new builder service for a user identified by their Clerk ID.
-    The user must already have a builder profile.
-    """
-    import datetime
-    
-    # 1. Find the user by clerk_id to get their internal user_id
-    user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
+    """Creates a new builder service for a user identified by their Clerk ID."""
+    user = await user_repo.get_by_clerk_id(clerk_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User with the specified Clerk ID not found.",
         )
-
-    user_id = user["_id"]
-
-    # 2. Find the builder profile to get the builder_id
-    profile = await db["builder_profiles"].find_one({"user_id": user_id}, {"_id": 1})
+    profile = await profile_repo.get_by_user_id(user.id)
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Builder profile not found. Please create a builder profile first.",
         )
-
-    builder_id = profile["_id"]
-
-    # 3. Prepare the service document
-    now = datetime.datetime.utcnow()
     service_doc = {
-        "builder_id": builder_id,
+        "builder_id": profile["id"],
         "title": body.title,
         "description": body.description,
         "category": body.category,
@@ -276,25 +205,9 @@ async def create_builder_service(
         "service_features": body.service_features or [],
         "estimated_duration": body.estimated_duration,
         "service_images": body.service_images or [],
-        "embeddings": embed_text(f"Builder Service: {body.title}. Category: {body.category}. Description: {body.description}"),
-        "created_at": now,
-        "updated_at": now,
     }
-
-    # 4. Insert the new service
-    result = await db["builder_services"].insert_one(service_doc)
-
-    if not result.inserted_id:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create builder service.",
-        )
-
-    # 5. Fetch and return the created service
-    service = await db["builder_services"].find_one(
-        {"_id": result.inserted_id}, {"embeddings": 0}
-    )
-    return service
+    row = await service_repo.create(service_doc)
+    return service_repo._row_to_dict(row)
 
 
 @router.delete(
@@ -303,46 +216,34 @@ async def create_builder_service(
 )
 async def delete_builder_profile_by_clerk(
     clerk_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    user_repo: UserRepository = Depends(get_user_repository),
+    profile_repo: BuilderProfileRepository = Depends(get_builder_profile_repository),
+    service_repo: BuilderServiceRepository = Depends(get_builder_service_repository),
 ):
-    """
-    Deletes a builder profile identified by the user's Clerk ID and removes all
-    services associated with that profile. This operation is idempotent for services
-    removal but will 404 if the user or profile does not exist.
-    """
-    # 1) Resolve user by clerk_id
-    user = await db["users"].find_one({"clerk_id": clerk_id}, {"_id": 1})
+    """Deletes a builder profile and all its services. 404 if user or profile not found."""
+    user = await user_repo.get_by_clerk_id(clerk_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User with the specified Clerk ID not found.",
         )
-
-    # 2) Resolve builder profile by user_id
-    user_id = user["_id"]
-    profile = await db["builder_profiles"].find_one({"user_id": user_id}, {"_id": 1})
+    profile = await profile_repo.get_by_user_id(user.id)
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Builder profile not found for this user.",
         )
-
-    builder_id = profile["_id"]
-
-    # 3) Delete all services first
-    services_result = await db["builder_services"].delete_many({"builder_id": builder_id})
-
-    # 4) Delete the profile
-    profile_result = await db["builder_profiles"].delete_one({"_id": builder_id})
-    if profile_result.deleted_count != 1:
+    builder_id = profile["id"]
+    deleted_services_count = await service_repo.delete_by_builder_id(builder_id)
+    deleted = await profile_repo.delete(builder_id)
+    if not deleted:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete builder profile.",
         )
-
     return {
         "success": True,
-        "deleted_services_count": getattr(services_result, "deleted_count", 0),
+        "deleted_services_count": deleted_services_count,
         "message": "Builder profile and associated services deleted successfully.",
     }
 
@@ -352,136 +253,70 @@ async def delete_builder_profile_by_clerk(
     summary="Get the current builder's services",
 )
 async def get_my_builder_services(
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    profile_repo: BuilderProfileRepository = Depends(get_builder_profile_repository),
+    service_repo: BuilderServiceRepository = Depends(get_builder_service_repository),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Retrieves all services associated with the currently authenticated builder's profile.
-    """
-    # First, find the builder profile to get its ID
-    profile = await db["builder_profiles"].find_one(
-        {"user_id": current_user.id}, {"_id": 1}
-    )
+    """Retrieves all services for the currently authenticated builder's profile."""
+    profile = await profile_repo.get_by_user_id(current_user.id)
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Builder profile not found for the current user.",
         )
-
-    builder_id = profile["_id"]
-
-    # Then, find all services associated with that builder_id
-    services_cursor = db["builder_services"].find(
-        {"builder_id": builder_id}, {"embeddings": 0}
-    )
-    services = await services_cursor.to_list(length=None)
-    # Ensure service_images and service_features are lists (for older services that may have None)
+    services = await service_repo.list_by_builder_id(profile["id"])
     for service in services:
         if service.get("service_images") is None:
             service["service_images"] = []
         if service.get("service_features") is None:
             service["service_features"] = []
-
     return services
 
-
-from typing import Any, Dict, List
 
 @router.post("/profiles/search", summary="Search for builder profiles")
 async def search_builders(
     body: Dict[str, Any],
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    profile_repo: BuilderProfileRepository = Depends(get_builder_profile_repository),
 ):
-    """
-    Searches for builder profiles using Qdrant vector search with optional filters.
-    """
-    from bson import ObjectId
-    from services.vector_search.qdrant_service import search_builder_profiles
-    
+    """Searches for builder profiles using Qdrant; full docs from Postgres by UUID."""
     query_text: str = body.get("query", "")
     k: int = int(body.get("k", 10))
     if not query_text:
         return {"count": 0, "results": []}
-
     query_vec = embed_text(query_text)
-
-    # Prepare filters for Qdrant
     filters: Dict[str, Any] = {}
     city = body.get("city")
     if city:
         filters["city"] = city
-
-    # Search in Qdrant
     qdrant_results = await search_builder_profiles(
         query_vector=query_vec,
         limit=k,
         filters=filters if filters else None,
     )
-
     if not qdrant_results:
         return {"count": 0, "results": []}
-
-    # Fetch full documents from MongoDB using the IDs from Qdrant
-    profile_ids = [ObjectId(result["id"]) for result in qdrant_results]
-    
-    # Fetch profiles from MongoDB
-    profiles_cursor = db["builder_profiles"].find(
-        {"_id": {"$in": profile_ids}},
-        {
-            "_id": 1,
-            "company_name": 1,
-            "specialization": 1,
-            "experience_years": 1,
-            "rating": 1,
-            "location": 1,
-            "about": 1
-        }
-    )
-    
-    profiles = await profiles_cursor.to_list(length=k)
-    
-    # Create a map of _id to score for ordering
-    score_map = {result["id"]: result["score"] for result in qdrant_results}
-    
-    # Sort results by Qdrant score and add score to results
-    results = []
-    for profile in profiles:
-        profile_id_str = str(profile["_id"])
-        if profile_id_str in score_map:
-            profile["_id"] = profile_id_str
-            profile["score"] = score_map[profile_id_str]
-            results.append(profile)
-    
-    # Sort by score (descending)
-    results.sort(key=lambda x: x.get("score", 0), reverse=True)
-    
+    profile_ids = [r["id"] for r in qdrant_results if r.get("id")]
+    profiles = await profile_repo.list_by_ids(profile_ids)
+    score_map = {r["id"]: r["score"] for r in qdrant_results}
+    for p in profiles:
+        p["score"] = score_map.get(p["id"], 0.0)
+    results = sorted(profiles, key=lambda x: x.get("score", 0), reverse=True)
     return {"count": len(results), "results": results}
 
 
 @router.get(
     "/profiles/id/{builder_id}",
-    summary="Get a builder profile by its ObjectId",
+    summary="Get a builder profile by UUID",
 )
 async def get_builder_profile_by_id(
     builder_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    profile_repo: BuilderProfileRepository = Depends(get_builder_profile_repository),
 ):
-    """Fetch a builder profile document by its ObjectId (from `builder_profiles`)."""
-    try:
-        _id = ObjectId(builder_id)
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid builder id")
-
-    profile = await db["builder_profiles"].find_one({"_id": _id}, {"embeddings": 0})
+    """Fetch a builder profile by UUID. Returns 404 if invalid or not found."""
+    bid = parse_uuid(builder_id, "builder_id")
+    profile = await profile_repo.get_by_id(bid)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Builder profile not found")
-
-    # Normalize ids
-    if profile.get("_id") is not None:
-        profile["_id"] = str(profile["_id"])
-    if profile.get("user_id") is not None:
-        profile["user_id"] = str(profile["user_id"]) if isinstance(profile["user_id"], ObjectId) else profile["user_id"]
-    # Ensure portfolio_images is a list (for older profiles that may have None)
     if profile.get("portfolio_images") is None:
         profile["portfolio_images"] = []
     return profile
@@ -490,76 +325,40 @@ async def get_builder_profile_by_id(
 @router.post("/services/search", summary="Search for builder services")
 async def search_builder_services(
     body: Dict[str, Any],
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    service_repo: BuilderServiceRepository = Depends(get_builder_service_repository),
 ):
-    """
-    Searches for builder services using a query string and optional filters.
-    """
+    """Searches builder services via Qdrant; full docs from Postgres by UUID."""
     query_text: str = body.get("query", "")
     k: int = int(body.get("k", 10))
     if not query_text:
         return {"count": 0, "results": []}
-
     query_vec = embed_text(query_text)
-
-    # --- Start of Changes ---
-
-    # Build the vector search stage
-    search_stage = {
-        "$vectorSearch": {
-            "index": "builder_service_index",
-            "path": "embeddings",
-            "queryVector": query_vec,
-            "numCandidates": max(50, k * 5),
-            "limit": k,
-        }
-    }
-
-    # Build the filter document using MQL
-    filters = {}
+    filters: Dict[str, Any] = {}
     category = body.get("category")
     price_min = body.get("price_min")
     price_max = body.get("price_max")
-
     if category:
         filters["category"] = category
-
     if price_min is not None or price_max is not None:
-        price_cond = {}
+        price_cond: Dict[str, float] = {}
         if price_min is not None:
             price_cond["$gte"] = float(price_min)
         if price_max is not None:
             price_cond["$lte"] = float(price_max)
         filters["base_price"] = price_cond
-    
-    # If any filters exist, add them to the $vectorSearch stage
-    if filters:
-        search_stage["$vectorSearch"]["filter"] = filters
-
-    pipeline: List[Dict[str, Any]] = [
-        search_stage,
-        {
-            "$project": {
-                "score": {"$meta": "vectorSearchScore"},
-                "_id": 1,
-                "title": 1,
-                "description": 1,
-                "category": 1,
-                "base_price": 1,
-                "price_unit": 1,
-                "builder_id": 1,
-                "service_features": 1
-            }
-        },
-    ]
-    # --- End of Changes ---
-
-    results = await db["builder_services"].aggregate(pipeline).to_list(k)
-    for r in results:
-        if "_id" in r:
-            r["_id"] = str(r["_id"])
-        if "builder_id" in r:
-            r["builder_id"] = str(r["builder_id"])
+    qdrant_results = await qdrant_search_builder_services(
+        query_vector=query_vec,
+        limit=k,
+        filters=filters if filters else None,
+    )
+    if not qdrant_results:
+        return {"count": 0, "results": []}
+    service_ids = [r["id"] for r in qdrant_results if r.get("id")]
+    services = await service_repo.list_by_ids(service_ids)
+    score_map = {r["id"]: r["score"] for r in qdrant_results}
+    for s in services:
+        s["score"] = score_map.get(s["id"], 0.0)
+    results = sorted(services, key=lambda x: x.get("score", 0), reverse=True)
     return {"count": len(results), "results": results}
 
 

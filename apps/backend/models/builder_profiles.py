@@ -4,7 +4,6 @@ Builder profile models
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
-from .base import PyObjectId
 
 
 class Location(BaseModel):
@@ -33,10 +32,10 @@ class BuilderProfileBase(BaseModel):
 
 
 class BuilderProfile(BuilderProfileBase):
-    """Complete builder profile model"""
+    """Complete builder profile model (id and user_id are UUID strings)."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    user_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    user_id: str
     embeddings: Optional[List[float]] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -54,10 +53,10 @@ class BuilderProfileCreate(BuilderProfileBase):
 
 
 class BuilderProfileResponse(BuilderProfileBase):
-    """Schema for builder profile API responses"""
+    """Schema for builder profile API responses (id and user_id are UUID strings)."""
 
-    id: PyObjectId = Field(alias="_id")
-    user_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    user_id: str
     created_at: datetime
     updated_at: datetime
 

@@ -1,162 +1,187 @@
 """
-User repository for database operations
+User repository for database operations (PostgreSQL/Neon).
+
+Uses async SQLAlchemy session; IDs are UUID strings.
 """
-from typing import Optional, List, Dict, Any
+
 from datetime import datetime
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from bson import ObjectId
+from typing import Any, Dict, List, Optional
+
 from fastapi import Depends
-from models.users import User, UserCreate, UserResponse
-from common.errors import ResourceNotFoundException
-from common.db import get_database
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from common.db import get_db_session
+from db.models import User as UserModel
+from models.users import User
 
 
 class UserRepository:
-    """Repository for user database operations"""
-    
-    def __init__(self, db: AsyncIOMotorDatabase):
-        self.db = db
-        self.collection = db.users
-    
+    """Repository for user database operations (Postgres)."""
+
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    def _row_to_user(self, row: UserModel) -> User:
+        """Map SQLAlchemy User row to Pydantic User (id as string)."""
+        return User(
+            _id=row.id,
+            name=row.name,
+            email=row.email,
+            phone=row.phone,
+            role=row.role,
+            profile_image=row.profile_image,
+            clerk_id=row.clerk_id,
+            password_hash=row.password_hash,
+            deleted_at=row.deleted_at,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
     async def create_user(self, user_data: Dict[str, Any]) -> User:
-        """Create a new user in the database"""
-        try:
-            # Add timestamps
-            user_data.update({
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
-            })
-            
-            result = await self.collection.insert_one(user_data)
-            
-            # Return the created user
-            created_user = await self.collection.find_one({"_id": result.inserted_id})
-            return User(**created_user)
-            
-        except Exception as e:
-            raise Exception(f"Failed to create user: {str(e)}")
-    
+        """Create a new user in the database."""
+        now = datetime.utcnow()
+        user_data.setdefault("created_at", now)
+        user_data.setdefault("updated_at", now)
+        row = UserModel(
+            name=user_data["name"],
+            email=user_data["email"],
+            phone=user_data.get("phone"),
+            role=user_data["role"],
+            profile_image=user_data.get("profile_image"),
+            clerk_id=user_data.get("clerk_id"),
+            password_hash=user_data.get("password_hash"),
+            deleted_at=user_data.get("deleted_at"),
+            created_at=user_data["created_at"],
+            updated_at=user_data["updated_at"],
+        )
+        self.session.add(row)
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._row_to_user(row)
+
     async def get_user_by_clerk_id(self, clerk_id: str) -> Optional[User]:
-        """Get user by Clerk ID"""
-        try:
-            user_doc = await self.collection.find_one({"clerk_id": clerk_id})
-            if user_doc:
-                return User(**user_doc)
-            return None
-        except Exception as e:
-            raise Exception(f"Failed to get user by clerk_id: {str(e)}")
-    
+        """Get user by Clerk ID."""
+        result = await self.session.execute(
+            select(UserModel).where(
+                UserModel.clerk_id == clerk_id,
+                UserModel.deleted_at.is_(None),
+            )
+        )
+        row = result.scalar_one_or_none()
+        return self._row_to_user(row) if row else None
+
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
-        """Get user by MongoDB ObjectId"""
-        try:
-            user_doc = await self.collection.find_one({"_id": ObjectId(user_id)})
-            if user_doc:
-                return User(**user_doc)
-            return None
-        except Exception as e:
-            raise Exception(f"Failed to get user by id: {str(e)}")
-    
+        """Get user by UUID string."""
+        result = await self.session.execute(
+            select(UserModel).where(
+                UserModel.id == user_id,
+                UserModel.deleted_at.is_(None),
+            )
+        )
+        row = result.scalar_one_or_none()
+        return self._row_to_user(row) if row else None
+
     async def get_user_by_email(self, email: str) -> Optional[User]:
-        """Get user by email"""
-        try:
-            user_doc = await self.collection.find_one({"email": email})
-            if user_doc:
-                return User(**user_doc)
-            return None
-        except Exception as e:
-            raise Exception(f"Failed to get user by email: {str(e)}")
-    
+        """Get user by email."""
+        result = await self.session.execute(
+            select(UserModel).where(
+                UserModel.email == email,
+                UserModel.deleted_at.is_(None),
+            )
+        )
+        row = result.scalar_one_or_none()
+        return self._row_to_user(row) if row else None
+
     async def update_user(self, clerk_id: str, update_data: Dict[str, Any]) -> Optional[User]:
-        """Update user data"""
-        try:
-            # Add updated timestamp
-            update_data["updated_at"] = datetime.utcnow()
-            
-            result = await self.collection.update_one(
-                {"clerk_id": clerk_id},
-                {"$set": update_data}
-            )
-            
-            if result.modified_count > 0:
-                # Return updated user
-                updated_user = await self.collection.find_one({"clerk_id": clerk_id})
-                return User(**updated_user)
+        """Update user data."""
+        update_data["updated_at"] = datetime.utcnow()
+        result = await self.session.execute(
+            select(UserModel).where(UserModel.clerk_id == clerk_id)
+        )
+        row = result.scalar_one_or_none()
+        if not row:
             return None
-            
-        except Exception as e:
-            raise Exception(f"Failed to update user: {str(e)}")
-    
+        for k, v in update_data.items():
+            if hasattr(row, k):
+                setattr(row, k, v)
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._row_to_user(row)
+
     async def soft_delete_user(self, clerk_id: str) -> bool:
-        """Soft delete user (mark as deleted)"""
-        try:
-            result = await self.collection.update_one(
-                {"clerk_id": clerk_id},
-                {
-                    "$set": {
-                        "deleted_at": datetime.utcnow(),
-                        "updated_at": datetime.utcnow()
-                    }
-                }
-            )
-            return result.modified_count > 0
-        except Exception as e:
-            raise Exception(f"Failed to soft delete user: {str(e)}")
-    
+        """Soft delete user (mark as deleted)."""
+        result = await self.session.execute(
+            select(UserModel).where(UserModel.clerk_id == clerk_id)
+        )
+        row = result.scalar_one_or_none()
+        if not row:
+            return False
+        row.deleted_at = datetime.utcnow()
+        row.updated_at = datetime.utcnow()
+        await self.session.flush()
+        return True
+
     async def get_all_users(self, skip: int = 0, limit: int = 100) -> List[User]:
-        """Get all users with pagination"""
-        try:
-            cursor = self.collection.find({"deleted_at": {"$exists": False}}).skip(skip).limit(limit)
-            users = []
-            async for user_doc in cursor:
-                users.append(User(**user_doc))
-            return users
-        except Exception as e:
-            raise Exception(f"Failed to get users: {str(e)}")
-    
+        """Get all users with pagination."""
+        result = await self.session.execute(
+            select(UserModel)
+            .where(UserModel.deleted_at.is_(None))
+            .offset(skip)
+            .limit(limit)
+        )
+        rows = result.scalars().all()
+        return [self._row_to_user(r) for r in rows]
+
     async def get_users_by_role(self, role: str, skip: int = 0, limit: int = 100) -> List[User]:
-        """Get users by role"""
-        try:
-            cursor = self.collection.find({
-                "role": role,
-                "deleted_at": {"$exists": False}
-            }).skip(skip).limit(limit)
-            
-            users = []
-            async for user_doc in cursor:
-                users.append(User(**user_doc))
-            return users
-        except Exception as e:
-            raise Exception(f"Failed to get users by role: {str(e)}")
-    
+        """Get users by role."""
+        result = await self.session.execute(
+            select(UserModel)
+            .where(UserModel.role == role, UserModel.deleted_at.is_(None))
+            .offset(skip)
+            .limit(limit)
+        )
+        rows = result.scalars().all()
+        return [self._row_to_user(r) for r in rows]
+
     async def user_exists(self, clerk_id: str) -> bool:
-        """Check if user exists by Clerk ID"""
-        try:
-            count = await self.collection.count_documents({"clerk_id": clerk_id})
-            return count > 0
-        except Exception as e:
-            raise Exception(f"Failed to check user existence: {str(e)}")
-    
+        """Check if user exists by Clerk ID."""
+        result = await self.session.execute(
+            select(UserModel.id).where(UserModel.clerk_id == clerk_id)
+        )
+        return result.scalar_one_or_none() is not None
+
+    # Aliases for plan: same method names (get_by_id, get_by_email, get_by_clerk_id, create)
+    async def get_by_id(self, user_id: str) -> Optional[User]:
+        return await self.get_user_by_id(user_id)
+
+    async def get_by_email(self, email: str) -> Optional[User]:
+        return await self.get_user_by_email(email)
+
+    async def get_by_clerk_id(self, clerk_id: str) -> Optional[User]:
+        return await self.get_user_by_clerk_id(clerk_id)
+
+    async def create(self, user_data: Dict[str, Any]) -> User:
+        return await self.create_user(user_data)
+
     async def get_user_stats(self) -> Dict[str, int]:
-        """Get user statistics"""
-        try:
-            total_users = await self.collection.count_documents({"deleted_at": {"$exists": False}})
-            buyers = await self.collection.count_documents({"role": "buyer", "deleted_at": {"$exists": False}})
-            sellers = await self.collection.count_documents({"role": "seller", "deleted_at": {"$exists": False}})
-            builders = await self.collection.count_documents({"role": "builder", "deleted_at": {"$exists": False}})
-            admins = await self.collection.count_documents({"role": "admin", "deleted_at": {"$exists": False}})
-            
-            return {
-                "total_users": total_users,
-                "buyers": buyers,
-                "sellers": sellers,
-                "builders": builders,
-                "admins": admins
-            }
-        except Exception as e:
-            raise Exception(f"Failed to get user stats: {str(e)}")
+        """Get user statistics."""
+        from sqlalchemy import func
+
+        total = (await self.session.execute(select(func.count()).select_from(UserModel).where(UserModel.deleted_at.is_(None)))).scalar() or 0
+        buyers = (await self.session.execute(select(func.count()).select_from(UserModel).where(UserModel.role == "buyer", UserModel.deleted_at.is_(None)))).scalar() or 0
+        sellers = (await self.session.execute(select(func.count()).select_from(UserModel).where(UserModel.role == "seller", UserModel.deleted_at.is_(None)))).scalar() or 0
+        builders = (await self.session.execute(select(func.count()).select_from(UserModel).where(UserModel.role == "builder", UserModel.deleted_at.is_(None)))).scalar() or 0
+        admins = (await self.session.execute(select(func.count()).select_from(UserModel).where(UserModel.role == "admin", UserModel.deleted_at.is_(None)))).scalar() or 0
+        return {
+            "total_users": total,
+            "buyers": buyers,
+            "sellers": sellers,
+            "builders": builders,
+            "admins": admins,
+        }
 
 
-# Dependency injection function
-async def get_user_repository(db: AsyncIOMotorDatabase = Depends(get_database)) -> UserRepository:
-    """Get user repository instance"""
-    return UserRepository(db)
+async def get_user_repository(session: AsyncSession = Depends(get_db_session)) -> UserRepository:
+    """Get user repository instance (Postgres session)."""
+    return UserRepository(session)

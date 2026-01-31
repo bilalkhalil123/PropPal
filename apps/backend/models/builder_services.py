@@ -2,9 +2,8 @@
 Builder services models
 """
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
-from .base import PyObjectId
 
 
 class BuilderServiceBase(BaseModel):
@@ -25,10 +24,10 @@ class BuilderServiceBase(BaseModel):
 
 
 class BuilderService(BuilderServiceBase):
-    """Complete builder service model"""
+    """Complete builder service model (id and builder_id are UUID strings)."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    builder_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    builder_id: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     embeddings: Optional[List[float]] = Field(
@@ -48,10 +47,10 @@ class BuilderServiceCreate(BuilderServiceBase):
 
 
 class BuilderServiceResponse(BuilderServiceBase):
-    """Schema for builder service API responses"""
+    """Schema for builder service API responses (id and builder_id are UUID strings)."""
 
-    id: PyObjectId = Field(alias="_id")
-    builder_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    builder_id: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

@@ -8,14 +8,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from jose import JWTError, jwt
 import bcrypt
-from motor.motor_asyncio import AsyncIOMotorDatabase
-
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from common.config import get_settings
-from common.db import get_database
 from common.repositories.user_repository import UserRepository, get_user_repository
 from models.users import User, UserResponse
 
@@ -81,7 +78,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 @router.post("/signup", response_model=AuthResponse)
 async def signup(
     user_data: SignUpRequest,
-    db: AsyncIOMotorDatabase = Depends(get_database),
     user_repo: UserRepository = Depends(get_user_repository),
 ):
     """
@@ -89,7 +85,7 @@ async def signup(
     """
     try:
         # Check if user already exists
-        existing_user = await db["users"].find_one({"email": user_data.email})
+        existing_user = await user_repo.get_user_by_email(user_data.email)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -143,14 +139,14 @@ async def signup(
 @router.post("/login", response_model=AuthResponse)
 async def login(
     credentials: LoginRequest,
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    user_repo: UserRepository = Depends(get_user_repository),
 ):
     """
     Login with email and password
     """
     try:
         # Find user by email
-        user = await db["users"].find_one({"email": credentials.email})
+        user = await user_repo.get_user_by_email(credentials.email)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -158,14 +154,14 @@ async def login(
             )
         
         # Check if user has a password hash (simple auth user)
-        if not user.get("password_hash"):
+        if not user.password_hash:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="This account uses a different authentication method. Please use the original sign-in method."
             )
         
         # Verify password
-        password_hash = user.get("password_hash")
+        password_hash = user.password_hash
         if not password_hash:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -180,10 +176,10 @@ async def login(
         
         # Create access token
         access_token = create_access_token(
-            data={"sub": str(user["_id"]), "email": user["email"]}
+            data={"sub": str(user.id), "email": user.email}
         )
         
-        user_obj = User(**user)
+        user_obj = user
         return AuthResponse(
             access_token=access_token,
             token_type="bearer",
@@ -210,7 +206,7 @@ async def login(
 
 async def get_current_user_simple(
     creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    user_repo: UserRepository = Depends(get_user_repository),
 ) -> User:
     """
     Get current user from JWT token (simple auth, not Clerk)
@@ -232,7 +228,6 @@ async def get_current_user_simple(
     )
     
     try:
-        # Decode JWT token
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
@@ -244,20 +239,13 @@ async def get_current_user_simple(
     except JWTError:
         raise credentials_exception
     
-    # Find user by ID
-    from bson import ObjectId
-    try:
-        user = await db["users"].find_one({"_id": ObjectId(user_id)})
-    except Exception:
-        raise credentials_exception
-    
+    user = await user_repo.get_user_by_id(user_id)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
-    return User(**user)
+    return user
 
 
 @router.get("/me", response_model=UserResponse)

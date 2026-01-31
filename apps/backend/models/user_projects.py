@@ -4,7 +4,6 @@ User projects models (for builder bidding system)
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict
-from .base import PyObjectId
 
 
 class UserProjectBase(BaseModel):
@@ -22,11 +21,11 @@ class UserProjectBase(BaseModel):
 
 
 class UserProject(UserProjectBase):
-    """Complete user project model"""
+    """Complete user project model (id, user_id, property_id are UUID strings)."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    user_id: PyObjectId
-    property_id: Optional[PyObjectId] = Field(
+    id: str = Field(..., alias="_id")
+    user_id: str
+    property_id: Optional[str] = Field(
         None, description="Can be null if not linked to a property"
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -41,15 +40,15 @@ class UserProject(UserProjectBase):
 class UserProjectCreate(UserProjectBase):
     """Schema for creating user project"""
 
-    property_id: Optional[PyObjectId] = None
+    property_id: Optional[str] = None
 
 
 class UserProjectResponse(UserProjectBase):
-    """Schema for user project API responses"""
+    """Schema for user project API responses (id, user_id, property_id are UUID strings)."""
 
-    id: PyObjectId = Field(alias="_id")
-    user_id: PyObjectId
-    property_id: Optional[PyObjectId] = None
+    id: str = Field(..., alias="_id")
+    user_id: str
+    property_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

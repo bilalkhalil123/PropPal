@@ -1,5 +1,8 @@
 """
-Base model utilities for handling MongoDB ObjectId with Pydantic
+Base model utilities for Pydantic.
+
+- PyObjectId: kept only for the MongoDB→Postgres data migration script (reads from MongoDB).
+- App and API use UUID strings for all ids and FKs (str); parse with common.uuid_utils.parse_uuid.
 """
 from typing import Any
 from bson import ObjectId
