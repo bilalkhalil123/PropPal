@@ -18,7 +18,7 @@ const roles = [
 
 export default function RoleDropdown({ currentRole, onRoleChange }: RoleDropdownProps) {
   const router = useRouter()
-  const { user } = useCurrentUser()
+  useCurrentUser() // hook for auth context; role comes from currentRole prop
   const [isOpen, setIsOpen] = useState(false)
 
   const currentRoleConfig = roles.find(r => r.value === currentRole)

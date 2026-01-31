@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { api } from '@/lib/api-client'
@@ -81,9 +81,9 @@ interface Message {
   services?: ServiceResult[]
 }
 
-export default function ChatPage() {
-  const { user, isAuthenticated, userId, clerkId } = useCurrentUser()
-  const dbUserId = (user as any)?._id || userId || null
+function ChatPageContent() {
+  const { user, userId, clerkId } = useCurrentUser()
+  const dbUserId = (user as { _id?: string } | null)?._id ?? userId ?? null
   const searchParams = useSearchParams()
   const router = useRouter()
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL as string | undefined
@@ -1193,5 +1193,13 @@ export default function ChatPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[color:var(--color-accent-gold)]" /></div>}>
+      <ChatPageContent />
+    </Suspense>
   )
 }

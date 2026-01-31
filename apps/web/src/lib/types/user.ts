@@ -28,6 +28,9 @@ export interface UserUpdate {
   profile_image?: string
 }
 
+/** Alias for form/update payloads; used by UserProfile and user-service */
+export type UpdateUserData = UserUpdate
+
 export interface UserStats {
   total_users: number
   buyers: number

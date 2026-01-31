@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { UserService } from '@/lib/services/user-service'
 import { UserResponse, UpdateUserData } from '@/lib/types/user'
@@ -15,13 +15,7 @@ export default function UserProfile() {
   const [editMode, setEditMode] = useState(false)
   const [formData, setFormData] = useState<UpdateUserData>({})
 
-  useEffect(() => {
-    if (isLoaded && clerkUser) {
-      loadUser()
-    }
-  }, [isLoaded, clerkUser])
-
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     if (!clerkUser?.id) return
 
     try {
@@ -39,7 +33,13 @@ export default function UserProfile() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [clerkUser?.id])
+
+  useEffect(() => {
+    if (isLoaded && clerkUser) {
+      loadUser()
+    }
+  }, [isLoaded, clerkUser, loadUser])
 
   const handleUpdate = async () => {
     if (!clerkUser?.id) return
@@ -146,11 +146,14 @@ export default function UserProfile() {
               <div className="h-24 w-24 rounded-full bg-gradient-to-br from-[color:var(--color-primary)] to-[color:var(--color-accent-gold)] p-[2px]">
                 <div className="h-full w-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                   {user.profile_image ? (
-                    <img
-                      src={user.profile_image}
-                      alt={user.name}
-                      className="h-full w-full object-cover rounded-full"
-                    />
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={user.profile_image}
+                        alt={user.name}
+                        className="h-full w-full object-cover rounded-full"
+                      />
+                    </>
                   ) : (
                     <span className="text-3xl font-semibold text-slate-500">
                       {user.name.charAt(0).toUpperCase()}
@@ -225,7 +228,7 @@ export default function UserProfile() {
                 {editMode ? (
                   <select
                     value={formData.role || 'buyer'}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as UserResponse['role'] })}
                     className="mt-1 block w-full rounded-xl border-slate-300 focus:ring-2 focus:ring-[color:var(--color-accent-gold)] text-slate-800"
                   >
                     <option value="buyer">Buyer</option>
