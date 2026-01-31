@@ -129,7 +129,7 @@ export const api = {
    */
   users: {
     getCurrent: (clerkId: string) => apiClient.get(`/api/users/me?clerk_id=${clerkId}`),
-    sync: (data: any) => apiClient.post('/api/users/sync', data),
+    sync: (data: Record<string, unknown>) => apiClient.post('/api/users/sync', data),
   },
 
   /**
@@ -146,9 +146,9 @@ export const api = {
       apiClient.get('/api/builder/services/me/', options),
     getById: (id: string, options?: RequestInit) => 
       apiClient.get(`/api/builder/profiles/id/${id}`, options),
-    searchProfiles: (query: string, filters?: any, options?: RequestInit) => 
+    searchProfiles: (query: string, filters?: Record<string, unknown>, options?: RequestInit) => 
       apiClient.post('/api/builder/profiles/search', { query, ...filters }, options),
-    searchServices: (query: string, filters?: any, options?: RequestInit) => 
+    searchServices: (query: string, filters?: Record<string, unknown>, options?: RequestInit) => 
       apiClient.post('/api/builder/services/search', { query, ...filters }, options),
   },
 
@@ -174,7 +174,7 @@ export const api = {
    * Search endpoints
    */
   search: {
-    properties: (query: string, filters?: any) =>
+    properties: (query: string, filters?: Record<string, unknown>) =>
       apiClient.post('/api/search/properties', { query, ...filters }),
   },
 
