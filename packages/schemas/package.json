@@ -15,7 +15,7 @@
     }
   },
   "scripts": {
-    "generate": "cd ../../apps/backend && venv\\Scripts\\python generate_schemas.py",
+    "generate": "cd ../../apps/backend && ..\\..\\.venv\\Scripts\\python generate_schemas.py",
     "build": "npm run generate && tsc",
     "dev": "tsc --watch",
     "lint": "eslint .",

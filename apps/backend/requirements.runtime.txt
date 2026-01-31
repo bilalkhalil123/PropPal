@@ -12,6 +12,7 @@ httptools==0.6.4
 idna==3.10
 isort==6.0.1
 mccabe==0.7.0
+motor==3.6.0
 mypy==1.18.2
 mypy_extensions==1.1.0
 packaging==25.0
@@ -24,6 +25,7 @@ pydantic-settings==2.10.1
 pydantic-to-typescript==2.0.0
 # clerk-sdk-python intentionally omitted for runtime image (pydantic v1 constraint)
 pyflakes==3.4.0
+pymongo==4.9.2
 python-dotenv==1.1.1
 pytokens==0.1.10
 PyYAML==6.0.3
@@ -58,11 +60,6 @@ ollama==0.6.0
 httpx==0.28.1
 httpx-sse==0.4.3
 
-# PostgreSQL (Neon) - async driver and ORM
-asyncpg>=0.30.0
-sqlalchemy[asyncio]>=2.0
-alembic>=1.14.0
-
 # Database and Serialization
 aiosqlite==0.21.0
 orjson==3.11.3
@@ -72,3 +69,12 @@ xxhash==3.6.0
 bcrypt==3.2.2
 passlib==1.7.4
 langchain-groq
+
+python-jose[cryptography]==3.3.0
+qdrant-client==1.16.02
+python-multipart==0.0.22
+boto3==1.42.39
+
+asyncpg>=0.31.0
+sqlalchemy[asyncio]>=2.0
+alembic>=1.18.3
