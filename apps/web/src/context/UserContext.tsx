@@ -139,7 +139,7 @@ export function UserProvider({ children }: UserProviderProps) {
       setIsSynced(false)
       setError(null)
     }
-  }, [clerkUser?.id])
+  }, [clerkUser])
 
   useEffect(() => {
     if (isClerkLoaded && clerkUser && !isSynced) {

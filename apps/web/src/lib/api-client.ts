@@ -43,9 +43,9 @@ class ApiClient {
         const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
         throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Enhanced error logging for debugging
-      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         console.error(`[API Client] Network error - Could not reach ${url}`)
         console.error('This usually means:', {
           'Backend server not running': 'Check if the backend is running on the expected port',
@@ -78,7 +78,7 @@ class ApiClient {
   /**
    * POST request
    */
-  async post<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+  async post<T>(endpoint: string, data?: Record<string, unknown>, options?: RequestInit): Promise<T> {
     return this.makeRequest<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
@@ -89,7 +89,7 @@ class ApiClient {
   /**
    * PUT request
    */
-  async put<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+  async put<T>(endpoint: string, data?: Record<string, unknown>, options?: RequestInit): Promise<T> {
     return this.makeRequest<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
@@ -100,7 +100,7 @@ class ApiClient {
   /**
    * PATCH request
    */
-  async patch<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+  async patch<T>(endpoint: string, data?: Record<string, unknown>, options?: RequestInit): Promise<T> {
     return this.makeRequest<T>(endpoint, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
