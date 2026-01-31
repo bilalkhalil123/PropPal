@@ -139,6 +139,14 @@ class Settings(BaseSettings):
         default=None,
         description="Public URL template for uploaded files (e.g., https://{bucket}.s3.us-west-002.backblazeb2.com/{key})"
     )
+
+    # Embedding provider: "local" (sentence-transformers), "huggingface" (HF Inference API), "openai"
+    EMBEDDING_PROVIDER: str = Field(
+        default="local",
+        description="Embedding backend: local | huggingface | openai. Use huggingface or openai on Render to avoid loading torch.",
+    )
+    HF_TOKEN: Optional[str] = Field(default=None, description="Hugging Face token for Inference API (embedding provider=huggingface)")
+    OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API key for embeddings (embedding provider=openai)")
     
     # Model configuration for Pydantic v2
     model_config = SettingsConfigDict(
