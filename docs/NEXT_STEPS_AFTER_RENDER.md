@@ -9,15 +9,16 @@ Your backend is live at **https://proppal.onrender.com**. Follow these steps to 
 1. Go to [vercel.com](https://vercel.com) and sign in (GitHub).
 2. **Add New** → **Project** → import the same repo (**bilalrana8718/PropPal**).
 3. **Before deploying**, set these so the build does not fail:
-   - **Root Directory:** click **Edit** and set to **`apps/web`** (required so Vercel builds only the Next.js app, not the whole monorepo/turbo).
+   - **Root Directory:** set to **`apps/web`** (so Vercel treats this as the Next.js app and puts output in the right place).
    - **Framework Preset:** Next.js (auto-detected).
-   - **Build Command:** leave default **`npm run build`** (runs `next build` in `apps/web`).
+   - **Build Command:** leave default **`npm run build`** (or use the one from `apps/web/vercel.json`).
    - **Output Directory:** leave default.
-4. **Environment Variables** (add before first deploy; required for build and runtime):
+4. **Install from repo root:** The repo has **`apps/web/vercel.json`** with **`installCommand": "cd ../.. && npm install"`**. That makes Vercel run **install from the PropPal repo root** (so all workspaces and root-level deps are installed), then **build from `apps/web`**. So you get root context for install while still building only the web app. Do **not** override Install Command in the Vercel UI unless you want to change this.
+5. **Environment Variables** (add before first deploy; required for build and runtime):
    - **`NEXT_PUBLIC_API_URL`** = **`https://proppal.onrender.com`** (no trailing slash).  
      If this is missing, the build will fail with "NEXT_PUBLIC_API_URL environment variable is not set".
    - Copy all other **`NEXT_PUBLIC_*`** from your `apps/web/.env.local` (Clerk keys, sign-in URLs, etc.).
-5. Click **Deploy**. Note the Vercel URL (e.g. `https://proppal-xxx.vercel.app`).
+6. Click **Deploy**. Note the Vercel URL (e.g. `https://proppal-xxx.vercel.app`).
 
 **If the build still fails:** check the **full** error in the build logs (scroll to the bottom). Common causes: Root Directory not set to `apps/web`, or a missing `NEXT_PUBLIC_*` env var.
 
