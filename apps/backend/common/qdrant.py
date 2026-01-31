@@ -40,6 +40,7 @@ class QdrantClientSingleton:
             cls._client = QdrantClient(
                 url=settings.QDRANT_URL,
                 api_key=api_key,
+                timeout=120,  # 2 min for batch upserts (default 5s can cause ReadTimeout)
             )
         return cls._client
     
@@ -93,20 +94,20 @@ async def ensure_collections_exist():
             # Check if collection exists (run in executor for async compatibility)
             await loop.run_in_executor(
                 None,
-                lambda: client.get_collection(collection_name)
+                lambda c=collection_name: client.get_collection(c),
             )
             print(f"[QDRANT] Collection '{collection_name}' already exists")
         except Exception:
             # Collection doesn't exist, create it
             await loop.run_in_executor(
                 None,
-                lambda: client.create_collection(
-                    collection_name=collection_name,
+                lambda c=collection_name: client.create_collection(
+                    collection_name=c,
                     vectors_config=VectorParams(
                         size=VECTOR_DIMENSION,
                         distance=Distance.COSINE,
                     ),
-                )
+                ),
             )
             print(f"[QDRANT] Created collection '{collection_name}' ({description})")
 

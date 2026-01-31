@@ -8,7 +8,7 @@ This package provides shared functionality across all backend services:
 """
 
 from .config import Settings, get_settings
-from .db import DatabaseClient, get_db_client
+from .db import get_db_session, get_db
 from .errors import (
     ResourceNotFoundException,
     AuthenticationFailedException,
@@ -19,8 +19,8 @@ from .errors import (
 __all__ = [
     "Settings",
     "get_settings",
-    "DatabaseClient",
-    "get_db_client",
+    "get_db_session",
+    "get_db",
     "ResourceNotFoundException",
     "AuthenticationFailedException",
     "ValidationErrorException",

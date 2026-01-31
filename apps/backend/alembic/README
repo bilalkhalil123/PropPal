@@ -1,0 +1,12 @@
+Generic single-database configuration for Neon PostgreSQL.
+
+Run from apps/backend:
+  alembic upgrade head
+
+Set DATABASE_URL in .env (from Neon dashboard). URL is read via get_postgres_url();
+ensure it uses postgresql+asyncpg:// for async (env.py normalizes postgresql:// to that).
+
+If the DB host is unreachable from your machine (e.g. DNS/network), create the schema
+in Neon's SQL Editor instead:
+  alembic upgrade head --sql > initial_schema.sql
+Then paste the contents of initial_schema.sql into Neon Dashboard → SQL Editor → Run.

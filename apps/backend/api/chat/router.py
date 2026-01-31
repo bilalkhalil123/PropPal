@@ -5,7 +5,6 @@ Provides conversational interface using the RouterAgent orchestrator.
 
 from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Query, status
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 import sys
 import os
@@ -17,9 +16,10 @@ from agents import RouterAgent
 from agents.builder.create_service_agent import BuilderServiceCreationAgent
 from agents.builder.create_profile_agent import BuilderProfileCreationAgent
 from agents.listing.agent import ListingAgent
-from common.db import get_database, ensure_database_connection
+from common.db import get_db_session_ctx
 from common.repositories.user_repository import UserRepository, get_user_repository
-from bson import ObjectId
+from common.repositories.chat_history_repository import ChatHistoryRepository, get_chat_history_repository
+from common.uuid_utils import parse_uuid
 from datetime import datetime
 from fastapi import WebSocket, WebSocketDisconnect
 import json
@@ -83,8 +83,8 @@ async def health_check():
 @router.post("/message", response_model=ChatResponse)
 async def send_message(
     request: ChatRequest,
-    db: AsyncIOMotorDatabase = Depends(get_database),
     user_repo: UserRepository = Depends(get_user_repository),
+    chat_repo: ChatHistoryRepository = Depends(get_chat_history_repository),
 ):
     """
     Send a message to the chat agent and get a response.
@@ -138,16 +138,16 @@ async def send_message(
             "agent_type": result.get("classification", "unknown")
         }
 
-        # --- Persist chat history per (user_id, session_id) document ---
+        # --- Persist chat history (Postgres) per (user_id, session_id) ---
         try:
             if resolved_user_id and request.session_id:
-                history_key: Any = ObjectId(resolved_user_id) if ObjectId.is_valid(resolved_user_id) else resolved_user_id
+                existing = await chat_repo.get_by_user_and_session(resolved_user_id, request.session_id)
                 now = datetime.utcnow()
-                user_msg = {"role": "user", "content": request.message.strip(), "timestamp": now}
+                user_msg = {"role": "user", "content": request.message.strip(), "timestamp": now.isoformat()}
                 ai_msg = {
                     "role": "assistant",
                     "content": result.get("response", ""),
-                    "timestamp": now,
+                    "timestamp": now.isoformat(),
                     "_payload": {
                         "classification": result.get("classification"),
                         "properties": result.get("properties"),
@@ -155,18 +155,9 @@ async def send_message(
                         "services": result.get("services"),
                     },
                 }
-
-                await db["chat_histories"].update_one(
-                    {"user_id": history_key, "session_id": request.session_id},
-                    {
-                        "$setOnInsert": {"created_at": now, "session_id": request.session_id},
-                        "$set": {"updated_at": now},
-                        "$push": {"messages": {"$each": [user_msg, ai_msg]}},
-                    },
-                    upsert=True,
-                )
+                messages = ((existing or {}).get("messages") or []) + [user_msg, ai_msg]
+                await chat_repo.upsert_messages(resolved_user_id, request.session_id, messages)
         except Exception:
-            # Do not fail the chat if logging encounters an error
             pass
         
         # Return the response with properties, builders, and services
@@ -259,10 +250,11 @@ async def unified_chat_websocket(
                 })
                 continue
             
-            # Extract message details
+            # Extract message details (user_id from frontend so we can persist when clerk lookup fails)
             message_text = data.get("text", "").strip()
             msg_clerk_id = data.get("clerk_id") or clerk_id
             msg_session_id = data.get("session_id") or session_id
+            msg_user_id = (data.get("user_id") or "").strip() or None
             
             print("=" * 80)
             print(f"MESSAGE RECEIVED: '{message_text}'")
@@ -717,44 +709,44 @@ async def unified_chat_websocket(
                 if result.get("error"):
                     response_payload["error"] = result["error"]
                 
-                # Persist chat history for websocket messages
+                # Persist chat history (Postgres) for websocket messages
                 try:
-                    if msg_clerk_id and msg_session_id:
-                        db = await ensure_database_connection()
-                        # Resolve internal user id from clerk_id if available
-                        history_key: Any = msg_clerk_id
-                        try:
-                            user_doc = await db["users"].find_one({"clerk_id": msg_clerk_id}, {"_id": 1})
-                            if user_doc and user_doc.get("_id"):
-                                history_key = user_doc["_id"]
-                        except Exception:
-                            history_key = msg_clerk_id
-
-                        now = datetime.utcnow()
-                        user_msg = {"role": "user", "content": message_text, "timestamp": now}
-                        ai_msg = {
-                            "role": "assistant",
-                            "content": result.get("response", ""),
-                            "timestamp": now,
-                            "_payload": {
-                                "classification": result.get("classification"),
-                                "properties": result.get("properties"),
-                                "builders": result.get("builders"),
-                                "services": result.get("services"),
-                            },
-                        }
-
-                        await db["chat_histories"].update_one(
-                            {"user_id": history_key, "session_id": msg_session_id},
-                            {
-                                "$setOnInsert": {"created_at": now, "session_id": msg_session_id},
-                                "$set": {"updated_at": now},
-                                "$push": {"messages": {"$each": [user_msg, ai_msg]}},
-                            },
-                            upsert=True,
-                        )
+                    if msg_session_id:
+                        resolved_uid: Optional[str] = None
+                        if msg_clerk_id:
+                            async with get_db_session_ctx() as session:
+                                user_repo_ws = UserRepository(session)
+                                user_doc = await user_repo_ws.get_user_by_clerk_id(msg_clerk_id)
+                                if user_doc is not None:
+                                    resolved_uid = getattr(user_doc, "id", None) or getattr(user_doc, "_id", None)
+                                    if resolved_uid is not None:
+                                        resolved_uid = str(resolved_uid)
+                        if not resolved_uid and msg_user_id:
+                            resolved_uid = msg_user_id
+                        if resolved_uid:
+                            async with get_db_session_ctx() as session:
+                                chat_repo_ws = ChatHistoryRepository(session)
+                                now = datetime.utcnow()
+                                user_msg = {"role": "user", "content": message_text, "timestamp": now.isoformat()}
+                                ai_msg = {
+                                    "role": "assistant",
+                                    "content": result.get("response", ""),
+                                    "timestamp": now.isoformat(),
+                                    "_payload": {
+                                        "classification": result.get("classification"),
+                                        "properties": result.get("properties"),
+                                        "builders": result.get("builders"),
+                                        "services": result.get("services"),
+                                    },
+                                }
+                                existing = await chat_repo_ws.get_by_user_and_session(resolved_uid, msg_session_id)
+                                messages = ((existing or {}).get("messages") or []) + [user_msg, ai_msg]
+                                await chat_repo_ws.upsert_messages(resolved_uid, msg_session_id, messages)
+                                logger.info(f"[WebSocket] Persisted chat for user_id={resolved_uid} session_id={msg_session_id}")
+                        else:
+                            logger.warning("[WebSocket] Skip persist: no user_id (clerk_id lookup failed and no user_id in message)")
                 except Exception as e:
-                    logger.warning(f"[WebSocket] Failed to persist chat history: {e}")
+                    logger.warning(f"[WebSocket] Failed to persist chat history: {e}", exc_info=True)
 
                 await websocket.send_json(response_payload)
                 
@@ -867,22 +859,15 @@ async def unified_chat_websocket(
 #     return await send_message(request, db)
 
 
-def _str_oid(value: Any) -> Any:
-    try:
-        if isinstance(value, ObjectId):
-            return str(value)
-    except Exception:
-        pass
-    return value
-
-
 def _normalize_messages(msgs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for m in msgs:
-        mm = {k: _str_oid(v) for k, v in m.items()}
+        mm = dict(m)
         ts = mm.get("timestamp")
         if isinstance(ts, datetime):
             mm["timestamp"] = ts.isoformat()
+        elif isinstance(ts, str) and "T" in ts:
+            pass
         out.append(mm)
     return out
 
@@ -892,85 +877,56 @@ def _get_ts(m: Dict[str, Any]) -> float:
     if isinstance(ts, datetime):
         return ts.timestamp()
     try:
-        return datetime.fromisoformat(ts).timestamp()
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp()
     except Exception:
         return 0.0
 
 
 @router.get("/history")
 async def get_chat_history(
-    user_id: str = Query(..., description="User id (Mongo ObjectId, external, or 'session:<sid>')"),
+    user_id: str = Query(..., description="User ID (UUID)"),
     session_id: Optional[str] = Query(None, description="Filter messages by session id (optional)"),
     limit: int = Query(50, ge=1, le=200, description="Max messages to return (newest last)"),
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    chat_repo: ChatHistoryRepository = Depends(get_chat_history_repository),
 ):
-    """Return a user's chat history. If session_id is provided, messages are filtered to that session."""
-    query_id: Any = user_id
-    if user_id.startswith("session:"):
-        query_id = user_id
-    elif ObjectId.is_valid(user_id):
-        query_id = ObjectId(user_id)
-
+    """Return a user's chat history. user_id must be a valid UUID (404 if invalid)."""
+    uid = parse_uuid(user_id, "user_id")
     if session_id:
-        doc = await db["chat_histories"].find_one({"user_id": query_id, "session_id": session_id})
+        doc = await chat_repo.get_by_user_and_session(uid, session_id)
         if not doc:
             return {"count": 0, "messages": []}
-        messages: List[Dict[str, Any]] = doc.get("messages", [])
+        messages = list(doc.get("messages", []))
+        updated_at = doc.get("updated_at")
+        doc_id = doc.get("id")
     else:
-        cursor = db["chat_histories"].find({"user_id": query_id})
-        docs = await cursor.to_list(length=None)
+        docs = await chat_repo.list_by_user_id(uid)
         if not docs:
             return {"count": 0, "messages": []}
-
-        messages: List[Dict[str, Any]] = []
-        for doc in docs:
-            messages.extend(doc.get("messages", []))
-
-        doc = docs[0] if docs else None
-
+        messages = []
+        for d in docs:
+            messages.extend(d.get("messages", []))
+        latest = await chat_repo.get_latest_by_user_id(uid)
+        updated_at = latest.get("updated_at") if latest else None
+        doc_id = latest.get("id") if latest else None
     messages.sort(key=_get_ts)
     if len(messages) > limit:
         messages = messages[-limit:]
-
-    if session_id and doc:
-        updated_at = doc.get("updated_at")
-        doc_id = doc.get("_id")
-    else:
-        cursor = db["chat_histories"].find({"user_id": query_id}).sort("updated_at", -1).limit(1)
-        latest_doc = await cursor.to_list(length=1)
-        if latest_doc:
-            updated_at = latest_doc[0].get("updated_at")
-            doc_id = latest_doc[0].get("_id")
-        else:
-            updated_at = None
-            doc_id = None
-
     return {
         "count": len(messages),
         "messages": _normalize_messages(messages),
         "updated_at": (updated_at.isoformat() if isinstance(updated_at, datetime) else str(updated_at) if updated_at else ""),
-        "_id": _str_oid(doc_id) if doc_id else None,
+        "_id": doc_id,
     }
 
 
 @router.get("/sessions")
 async def list_chat_sessions(
-    user_id: str = Query(..., description="User id (Mongo ObjectId, external, or 'session:<sid>')"),
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    user_id: str = Query(..., description="User ID (UUID)"),
+    chat_repo: ChatHistoryRepository = Depends(get_chat_history_repository),
 ):
-    """Return a condensed list of prior sessions (by session_id) with last message and updated time.
-    Queries all chat history documents for the user and extracts unique sessions.
-    """
-    query_id: Any = user_id
-    if user_id.startswith("session:"):
-        query_id = user_id
-    elif ObjectId.is_valid(user_id):
-        query_id = ObjectId(user_id)
-
-    # Query all chat history documents for this user
-    cursor = db["chat_histories"].find({"user_id": query_id})
-    docs = await cursor.to_list(length=None)
-    
+    """Return a condensed list of prior sessions for the user. user_id must be a valid UUID (404 if invalid)."""
+    uid = parse_uuid(user_id, "user_id")
+    docs = await chat_repo.list_by_user_id(uid)
     if not docs:
         return {"count": 0, "sessions": []}
 
@@ -1043,19 +999,12 @@ async def list_chat_sessions(
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_chat_session(
     session_id: str,
-    user_id: str = Query(..., description="User id (Mongo ObjectId, external, or 'session:<sid>')"),
-    db: AsyncIOMotorDatabase = Depends(get_database),
+    user_id: str = Query(..., description="User ID (UUID)"),
+    chat_repo: ChatHistoryRepository = Depends(get_chat_history_repository),
 ):
-    """
-    Delete a chat session (and its history) for a given user/session_id pair.
-    """
-    query_id: Any = user_id
-    if user_id.startswith("session:"):
-        query_id = user_id
-    elif ObjectId.is_valid(user_id):
-        query_id = ObjectId(user_id)
-
-    await db["chat_histories"].delete_many({"user_id": query_id, "session_id": session_id})
+    """Delete a chat session for the given user/session_id. user_id must be a valid UUID (404 if invalid)."""
+    uid = parse_uuid(user_id, "user_id")
+    await chat_repo.delete_by_user_and_session(uid, session_id)
     return None
 # # --- Additional Utility Endpoints ---
 

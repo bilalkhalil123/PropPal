@@ -4,7 +4,6 @@ Visit booking models
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
-from .base import PyObjectId
 
 
 class VisitBase(BaseModel):
@@ -22,12 +21,12 @@ class VisitBase(BaseModel):
 
 
 class Visit(VisitBase):
-    """Complete visit model"""
+    """Complete visit model (id and FKs are UUID strings)."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    buyer_id: PyObjectId
-    property_id: Optional[PyObjectId] = None
-    builder_id: Optional[PyObjectId] = Field(
+    id: str = Field(..., alias="_id")
+    buyer_id: str
+    property_id: Optional[str] = None
+    builder_id: Optional[str] = Field(
         None, description="For direct builder appointments"
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -42,17 +41,17 @@ class Visit(VisitBase):
 class VisitCreate(VisitBase):
     """Schema for creating visit"""
 
-    property_id: Optional[PyObjectId] = None
-    builder_id: Optional[PyObjectId] = None
+    property_id: Optional[str] = None
+    builder_id: Optional[str] = None
 
 
 class VisitResponse(VisitBase):
-    """Schema for visit API responses"""
+    """Schema for visit API responses (id and FKs are UUID strings)."""
 
-    id: PyObjectId = Field(alias="_id")
-    buyer_id: PyObjectId
-    property_id: Optional[PyObjectId] = None
-    builder_id: Optional[PyObjectId] = None
+    id: str = Field(..., alias="_id")
+    buyer_id: str
+    property_id: Optional[str] = None
+    builder_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

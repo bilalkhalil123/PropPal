@@ -4,7 +4,6 @@ Chat history models
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
-from .base import PyObjectId
 
 
 class ChatMessage(BaseModel):
@@ -22,10 +21,10 @@ class ChatHistoryBase(BaseModel):
 
 
 class ChatHistory(ChatHistoryBase):
-    """Complete chat history model"""
+    """Complete chat history model (id and user_id are UUID strings)."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    user_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    user_id: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -42,10 +41,10 @@ class ChatHistoryCreate(ChatHistoryBase):
 
 
 class ChatHistoryResponse(ChatHistoryBase):
-    """Schema for chat history API responses"""
+    """Schema for chat history API responses (id and user_id are UUID strings)."""
 
-    id: PyObjectId = Field(alias="_id")
-    user_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    user_id: str
     created_at: datetime
     updated_at: datetime
 

@@ -1,8 +1,9 @@
 """
 Qdrant vector search service.
 
-This service provides functions to store and retrieve embeddings from Qdrant,
-replacing MongoDB Atlas Vector Search.
+Stores and retrieves embeddings in Qdrant. Point IDs are derived from string IDs (UUID)
+via _string_id_to_qdrant_id. Payloads store property_id, profile_id, or service_id as UUID
+strings; the app fetches full rows from Postgres by that UUID after vector search.
 """
 
 import hashlib
@@ -18,26 +19,14 @@ from common.qdrant import (
 from common.config import get_settings
 
 
-def _object_id_to_qdrant_id(object_id_str: str) -> int:
+def _string_id_to_qdrant_id(id_str: str) -> int:
     """
-    Convert MongoDB ObjectId string to Qdrant-compatible integer ID.
-    
-    Uses hash function to convert ObjectId string to unsigned integer.
-    This ensures consistent mapping between MongoDB IDs and Qdrant point IDs.
-    
-    Args:
-        object_id_str: MongoDB ObjectId as string
-        
-    Returns:
-        Unsigned integer suitable for Qdrant point ID
+    Convert string ID (UUID) to Qdrant-compatible integer point ID.
+    Uses hash for consistent mapping. App fetches full rows from Postgres by this UUID after vector search.
     """
-    # Use SHA256 hash and take first 8 bytes to create a 64-bit integer
-    hash_obj = hashlib.sha256(object_id_str.encode('utf-8'))
+    hash_obj = hashlib.sha256(id_str.encode("utf-8"))
     hash_bytes = hash_obj.digest()[:8]
-    # Convert to unsigned integer (max 2^64 - 1)
-    point_id = int.from_bytes(hash_bytes, byteorder='big')
-    # Ensure it's within Qdrant's acceptable range (0 to 2^63 - 1 for signed, but we use unsigned)
-    # Qdrant accepts up to 2^63 - 1, so we'll use modulo to ensure it fits
+    point_id = int.from_bytes(hash_bytes, byteorder="big")
     return point_id % (2**63 - 1)
 
 
@@ -50,7 +39,7 @@ async def upsert_property_embedding(
     Store or update a property embedding in Qdrant.
     
     Args:
-        property_id: MongoDB property ObjectId as string
+        property_id: Property UUID string (Postgres). Stored in payload for lookup; app fetches full row from Postgres by this ID.
         embedding: Vector embedding (384 dimensions)
         metadata: Optional metadata to store with the vector
     """
@@ -59,10 +48,9 @@ async def upsert_property_embedding(
     client = get_qdrant_client()
     
     payload = metadata or {}
-    payload["property_id"] = property_id  # Store original MongoDB ID in payload
+    payload["property_id"] = property_id  # UUID string for Postgres lookup after vector search
     
-    # Convert ObjectId string to Qdrant-compatible integer ID
-    qdrant_point_id = _object_id_to_qdrant_id(property_id)
+    qdrant_point_id = _string_id_to_qdrant_id(property_id)
     
     # Qdrant client is synchronous, run in thread pool for async compatibility
     loop = asyncio.get_event_loop()
@@ -78,6 +66,37 @@ async def upsert_property_embedding(
                 )
             ],
         )
+    )
+
+
+async def upsert_property_embeddings_batch(
+    items: List[tuple],
+) -> None:
+    """
+    Upsert multiple property embeddings in one Qdrant request.
+    Each item is (property_id: str, embedding: List[float], metadata: Optional[Dict]).
+    Reduces HTTP calls and avoids read timeouts on large backfills.
+    """
+    import asyncio
+
+    if not items:
+        return
+    client = get_qdrant_client()
+    points = []
+    for property_id, embedding, metadata in items:
+        payload = dict(metadata or {})
+        payload["property_id"] = property_id
+        points.append(
+            PointStruct(
+                id=_string_id_to_qdrant_id(property_id),
+                vector=embedding,
+                payload=payload,
+            )
+        )
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(
+        None,
+        lambda: client.upsert(collection_name=PROPERTIES_COLLECTION, points=points),
     )
 
 
@@ -199,14 +218,14 @@ async def search_properties(
             payload = point.get("payload", {})
             score = point.get("score", 1.0)
             
-            # Get MongoDB ObjectId from payload
-            mongo_id = payload.get("property_id") if payload else None
-            if not mongo_id and point_id:
-                mongo_id = str(point_id)
+            # UUID string from payload for Postgres lookup
+            prop_id = payload.get("property_id") if payload else None
+            if not prop_id and point_id:
+                prop_id = str(point_id)
             
-            if mongo_id:  # Only add if we have an ID
+            if prop_id:
                 formatted_results.append({
-                    "id": mongo_id,
+                    "id": prop_id,
                     "score": score,
                     "payload": payload,
                 })
@@ -215,12 +234,12 @@ async def search_properties(
             point_id = getattr(point, 'id', None)
             point_payload = getattr(point, 'payload', {}) or {}
             point_score = getattr(point, 'score', 1.0)
-            mongo_id = point_payload.get("property_id") if point_payload else None
-            if not mongo_id and point_id:
-                mongo_id = str(point_id)
-            if mongo_id:
+            prop_id = point_payload.get("property_id") if point_payload else None
+            if not prop_id and point_id:
+                prop_id = str(point_id)
+            if prop_id:
                 formatted_results.append({
-                    "id": mongo_id,
+                    "id": prop_id,
                     "score": point_score,
                     "payload": point_payload,
                 })
@@ -237,7 +256,7 @@ async def upsert_builder_profile_embedding(
     Store or update a builder profile embedding in Qdrant.
     
     Args:
-        profile_id: MongoDB builder profile ObjectId as string
+        profile_id: Builder profile UUID string (Postgres). Stored in payload; app fetches full row from Postgres by this ID.
         embedding: Vector embedding (384 dimensions)
         metadata: Optional metadata to store with the vector
     """
@@ -246,10 +265,9 @@ async def upsert_builder_profile_embedding(
     client = get_qdrant_client()
     
     payload = metadata or {}
-    payload["profile_id"] = profile_id  # Store original MongoDB ID in payload
+    payload["profile_id"] = profile_id  # UUID string for Postgres lookup (builder profile by ID)
     
-    # Convert ObjectId string to Qdrant-compatible integer ID
-    qdrant_point_id = _object_id_to_qdrant_id(profile_id)
+    qdrant_point_id = _string_id_to_qdrant_id(profile_id)
     
     # Qdrant client is synchronous, run in thread pool for async compatibility
     loop = asyncio.get_event_loop()
@@ -265,6 +283,36 @@ async def upsert_builder_profile_embedding(
                 )
             ],
         )
+    )
+
+
+async def upsert_builder_profile_embeddings_batch(
+    items: List[tuple],
+) -> None:
+    """
+    Upsert multiple builder profile embeddings in one Qdrant request.
+    Each item is (profile_id: str, embedding: List[float], metadata: Optional[Dict]).
+    """
+    import asyncio
+
+    if not items:
+        return
+    client = get_qdrant_client()
+    points = []
+    for profile_id, embedding, metadata in items:
+        payload = dict(metadata or {})
+        payload["profile_id"] = profile_id
+        points.append(
+            PointStruct(
+                id=_string_id_to_qdrant_id(profile_id),
+                vector=embedding,
+                payload=payload,
+            )
+        )
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(
+        None,
+        lambda: client.upsert(collection_name=BUILDER_PROFILES_COLLECTION, points=points),
     )
 
 
@@ -370,12 +418,12 @@ async def search_builder_profiles(
             point_id = point.get("id")
             payload = point.get("payload", {})
             score = point.get("score", 1.0)
-            mongo_id = payload.get("profile_id") if payload else None
-            if not mongo_id and point_id:
-                mongo_id = str(point_id)
-            if mongo_id:
+            profile_id = payload.get("profile_id") if payload else None
+            if not profile_id and point_id:
+                profile_id = str(point_id)
+            if profile_id:
                 formatted_results.append({
-                    "id": mongo_id,
+                    "id": profile_id,
                     "score": score,
                     "payload": payload,
                 })
@@ -383,12 +431,12 @@ async def search_builder_profiles(
             point_id = getattr(point, 'id', None)
             point_payload = getattr(point, 'payload', {}) or {}
             point_score = getattr(point, 'score', 1.0)
-            mongo_id = point_payload.get("profile_id") if point_payload else None
-            if not mongo_id and point_id:
-                mongo_id = str(point_id)
-            if mongo_id:
+            profile_id = point_payload.get("profile_id") if point_payload else None
+            if not profile_id and point_id:
+                profile_id = str(point_id)
+            if profile_id:
                 formatted_results.append({
-                    "id": mongo_id,
+                    "id": profile_id,
                     "score": point_score,
                     "payload": point_payload,
                 })
@@ -404,7 +452,7 @@ async def upsert_builder_service_embedding(
     Store or update a builder service embedding in Qdrant.
     
     Args:
-        service_id: MongoDB builder service ObjectId as string
+        service_id: Builder service UUID string (Postgres). Stored in payload; app fetches full row from Postgres by this ID.
         embedding: Vector embedding (384 dimensions)
         metadata: Optional metadata to store with the vector
     """
@@ -413,10 +461,9 @@ async def upsert_builder_service_embedding(
     client = get_qdrant_client()
     
     payload = metadata or {}
-    payload["service_id"] = service_id  # Store original MongoDB ID in payload
+    payload["service_id"] = service_id  # UUID string for Postgres lookup (builder service by ID)
     
-    # Convert ObjectId string to Qdrant-compatible integer ID
-    qdrant_point_id = _object_id_to_qdrant_id(service_id)
+    qdrant_point_id = _string_id_to_qdrant_id(service_id)
     
     # Qdrant client is synchronous, run in thread pool for async compatibility
     loop = asyncio.get_event_loop()
@@ -432,6 +479,36 @@ async def upsert_builder_service_embedding(
                 )
             ],
         )
+    )
+
+
+async def upsert_builder_service_embeddings_batch(
+    items: List[tuple],
+) -> None:
+    """
+    Upsert multiple builder service embeddings in one Qdrant request.
+    Each item is (service_id: str, embedding: List[float], metadata: Optional[Dict]).
+    """
+    import asyncio
+
+    if not items:
+        return
+    client = get_qdrant_client()
+    points = []
+    for service_id, embedding, metadata in items:
+        payload = dict(metadata or {})
+        payload["service_id"] = service_id
+        points.append(
+            PointStruct(
+                id=_string_id_to_qdrant_id(service_id),
+                vector=embedding,
+                payload=payload,
+            )
+        )
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(
+        None,
+        lambda: client.upsert(collection_name=BUILDER_SERVICES_COLLECTION, points=points),
     )
 
 
@@ -513,12 +590,12 @@ async def search_builder_services(
             point_id = point.get("id")
             payload = point.get("payload", {})
             score = point.get("score", 1.0)
-            mongo_id = payload.get("service_id") if payload else None
-            if not mongo_id and point_id:
-                mongo_id = str(point_id)
-            if mongo_id:
+            service_id = payload.get("service_id") if payload else None
+            if not service_id and point_id:
+                service_id = str(point_id)
+            if service_id:
                 formatted_results.append({
-                    "id": mongo_id,
+                    "id": service_id,
                     "score": score,
                     "payload": payload,
                 })
@@ -526,12 +603,12 @@ async def search_builder_services(
             point_id = getattr(point, 'id', None)
             point_payload = getattr(point, 'payload', {}) or {}
             point_score = getattr(point, 'score', 1.0)
-            mongo_id = point_payload.get("service_id") if point_payload else None
-            if not mongo_id and point_id:
-                mongo_id = str(point_id)
-            if mongo_id:
+            service_id = point_payload.get("service_id") if point_payload else None
+            if not service_id and point_id:
+                service_id = str(point_id)
+            if service_id:
                 formatted_results.append({
-                    "id": mongo_id,
+                    "id": service_id,
                     "score": point_score,
                     "payload": point_payload,
                 })
@@ -547,14 +624,13 @@ async def delete_embedding(
     
     Args:
         collection_name: Qdrant collection name
-        point_id: MongoDB ObjectId as string (will be converted to Qdrant integer ID)
+        point_id: UUID string (property_id / profile_id / service_id); converted to Qdrant integer point ID.
     """
     import asyncio
     
     client = get_qdrant_client()
     
-    # Convert MongoDB ObjectId string to Qdrant-compatible integer ID
-    qdrant_point_id = _object_id_to_qdrant_id(point_id)
+    qdrant_point_id = _string_id_to_qdrant_id(point_id)
     
     # Qdrant client is synchronous, run in thread pool for async compatibility
     loop = asyncio.get_event_loop()

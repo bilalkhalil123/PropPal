@@ -1,7 +1,7 @@
 /**
  * AUTO-GENERATED TypeScript interfaces from Pydantic models
  * DO NOT EDIT MANUALLY - Changes will be overwritten
- * Generated on: 2025-12-09T20:44:19.433831
+ * Generated on: 2026-01-31T15:30:01.014321
  */
 
 export interface UserResponse {

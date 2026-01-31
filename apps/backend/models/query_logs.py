@@ -4,7 +4,6 @@ Query logs models (for NLP/RAG system)
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict
-from .base import PyObjectId
 
 
 class QueryLogBase(BaseModel):
@@ -21,10 +20,10 @@ class QueryLogBase(BaseModel):
 
 
 class QueryLog(QueryLogBase):
-    """Complete query log model"""
+    """Complete query log model (id and user_id are UUID strings)."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    user_id: Optional[PyObjectId] = None
+    id: str = Field(..., alias="_id")
+    user_id: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     model_config = ConfigDict(
@@ -36,14 +35,14 @@ class QueryLog(QueryLogBase):
 class QueryLogCreate(QueryLogBase):
     """Schema for creating query log"""
 
-    user_id: Optional[PyObjectId] = None
+    user_id: Optional[str] = None
 
 
 class QueryLogResponse(QueryLogBase):
-    """Schema for query log API responses"""
+    """Schema for query log API responses (id and user_id are UUID strings)."""
 
-    id: PyObjectId = Field(alias="_id")
-    user_id: Optional[PyObjectId] = None
+    id: str = Field(..., alias="_id")
+    user_id: Optional[str] = None
     timestamp: datetime
 
     model_config = ConfigDict(

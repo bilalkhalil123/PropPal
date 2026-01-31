@@ -4,7 +4,6 @@ Property listing models
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
-from .base import PyObjectId
 
 
 class PropertyBase(BaseModel):
@@ -25,10 +24,10 @@ class PropertyBase(BaseModel):
 
 
 class Property(PropertyBase):
-    """Complete property model"""
+    """Complete property model (id and seller_id are UUID strings)."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    seller_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    seller_id: str
     images: Optional[List[str]] = Field(
         default=None, description="Array of image URLs"
     )
@@ -84,7 +83,7 @@ class PropertyCreateRequest(PropertyBase):
 class PropertyCreate(PropertyBase):
     """Schema for creating a new property listing (internal use, includes seller_id)"""
 
-    seller_id: PyObjectId
+    seller_id: str
     images: Optional[List[str]] = Field(default=[], description="Array of image URLs")
     metadata: Optional[dict] = Field(default={}, description="Additional metadata")
     # Optional provenance inputs on create (useful for imports)
@@ -115,10 +114,10 @@ class PropertyCreate(PropertyBase):
 
 
 class PropertyResponse(PropertyBase):
-    """Schema for property API responses"""
+    """Schema for property API responses (id and seller_id are UUID strings)."""
 
-    id: PyObjectId = Field(alias="_id")
-    seller_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    seller_id: str
     images: List[str] = Field(default=[])
     metadata: dict = Field(default={})
     external_id: Optional[str] = None

@@ -92,7 +92,18 @@ For general conversation (like "hello"), respond naturally without using tools.
             for msg in tool_messages:
                 if isinstance(msg, ToolMessage):
                     try:
-                        tool_data = json.loads(msg.content)
+                        content = msg.content
+                        if isinstance(content, dict):
+                            tool_data = content
+                        else:
+                            tool_data = json.loads(content) if isinstance(content, str) else {}
+                    except json.JSONDecodeError:
+                        try:
+                            import ast
+                            tool_data = ast.literal_eval(content) if isinstance(content, str) else {}
+                        except Exception:
+                            continue
+                    try:
                         logger.info(f"Parsed tool data: {tool_data}")
                         if tool_data.get("success"):
                             results = tool_data.get("results", [])
@@ -124,8 +135,8 @@ For general conversation (like "hello"), respond naturally without using tools.
                             }
                             success = True
                             break
-                    except json.JSONDecodeError as e:
-                        logger.warning(f"Failed to parse tool message as JSON: {e}")
+                    except Exception as e:
+                        logger.warning(f"Failed to parse tool message: {e}")
                         continue
 
             # Generate a response message based on results
@@ -193,7 +204,7 @@ For general conversation (like "hello"), respond naturally without using tools.
         )
 
         try:
-            final_state = self.app.invoke(initial_state, {"recursion_limit": 5})
+            final_state = self.app.invoke(initial_state, {"recursion_limit": 12})
             
             # Check if tools were actually called
             messages = final_state.get("messages", [])

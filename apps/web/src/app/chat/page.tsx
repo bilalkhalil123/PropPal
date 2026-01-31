@@ -360,31 +360,25 @@ export default function ChatPage() {
           }
         }
 
-        ws.onerror = (error: Event) => {
-          console.error('❌ WebSocket connection error')
-          console.error('Error details:', {
-            wsUrl,
-            readyState: ws.readyState,
-            error: error,
-          })
+        let didShowFallbackRef = { current: false }
+        ws.onerror = () => {
+          // Browser does not expose useful details on WebSocket error event; log URL for debugging
+          if (!didShowFallbackRef.current) {
+            console.warn(
+              'WebSocket connection issue. URL:',
+              wsUrl,
+              '| State:',
+              ws.readyState,
+              '(0=CONNECTING,1=OPEN,2=CLOSING,3=CLOSED). Chat will use REST fallback if needed.'
+            )
+          }
           setWsConnected(false)
-
-          // Add error message to chat
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `${Date.now()}-ws-error`,
-              content: 'Connection error. Using fallback mode (REST API).',
-              sender: 'ai',
-              timestamp: new Date(),
-            },
-          ])
         }
 
         ws.onclose = (event: CloseEvent) => {
           console.log('🔌 WebSocket disconnected', {
             code: event.code,
-            reason: event.reason,
+            reason: event.reason || '(none)',
             wasClean: event.wasClean,
           })
           setWsConnected(false)
@@ -392,9 +386,22 @@ export default function ChatPage() {
           setCreationType(null)
           wsRef.current = null
 
+          // Show fallback message only once when connection fails (not clean close)
+          if (!event.wasClean && event.code !== 1000 && !didShowFallbackRef.current) {
+            didShowFallbackRef.current = true
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `${Date.now()}-ws-fallback`,
+                content: 'Real-time connection unavailable. Using REST — your messages will still work.',
+                sender: 'ai',
+                timestamp: new Date(),
+              },
+            ])
+          }
+
           // Only attempt to reconnect if it wasn't a clean close
           if (!event.wasClean && event.code !== 1000) {
-            // Attempt to reconnect after 3 seconds
             if (reconnectTimeoutRef.current) {
               clearTimeout(reconnectTimeoutRef.current)
             }
@@ -461,6 +468,7 @@ export default function ChatPage() {
               text: messageText,
               clerk_id: clerkId,
               session_id: sessionId || 'session_fallback',
+              user_id: dbUserId || undefined,
             }),
           )
           console.log('📤 Sent via WebSocket:', messageText)
@@ -477,7 +485,7 @@ export default function ChatPage() {
         await fallbackToREST(messageText)
       }
     },
-    [clerkId, sessionId],
+    [clerkId, sessionId, dbUserId],
   )
 
   // Fallback REST API function
@@ -529,7 +537,9 @@ export default function ChatPage() {
         const res = (await api.chat.history(dbUserId, sessionId, 50)) as any
         const serverMessages = (res?.messages || []) as Array<any>
         if (serverMessages.length === 0) {
-          // If no messages for this session, keep the welcome message
+          // If we just sent the initial query from ?q=, don't overwrite (keep user + welcome)
+          if (hasProcessedQueryRef.current) return
+          // Otherwise show welcome message for empty session
           setMessages([
             {
               id: '1',
@@ -558,15 +568,17 @@ export default function ChatPage() {
     loadHistory()
   }, [dbUserId, sessionId])
 
+  // Send initial search query from buyer page (?q=...) only after sessionId is ready
+  // so the message is saved under the correct session and chat works properly.
   useEffect(() => {
     const query = searchParams.get('q')
-    if (query && !hasProcessedQueryRef.current && user && sendMessage) {
-      hasProcessedQueryRef.current = true
-      setInputMessage(query)
-      router.replace('/chat')
-      sendMessage(query, false)
-    }
-  }, [searchParams, user, router, sendMessage])
+    if (!query || hasProcessedQueryRef.current || !user || !sendMessage) return
+    if (!sessionId) return // wait for session so chat is saved under the right session
+    hasProcessedQueryRef.current = true
+    setInputMessage(query)
+    router.replace('/chat', { scroll: false })
+    sendMessage(query, false)
+  }, [searchParams, user, router, sendMessage, sessionId])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()

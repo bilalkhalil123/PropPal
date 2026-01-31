@@ -4,7 +4,6 @@ Builder project showcase models
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
-from .base import PyObjectId
 
 
 class ProjectBase(BaseModel):
@@ -18,10 +17,10 @@ class ProjectBase(BaseModel):
 
 
 class Project(ProjectBase):
-    """Complete project model"""
+    """Complete project model (id and builder_id are UUID strings)."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    builder_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    builder_id: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -38,10 +37,10 @@ class ProjectCreate(ProjectBase):
 
 
 class ProjectResponse(ProjectBase):
-    """Schema for project API responses"""
+    """Schema for project API responses (id and builder_id are UUID strings)."""
 
-    id: PyObjectId = Field(alias="_id")
-    builder_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    builder_id: str
     created_at: datetime
     updated_at: datetime
 

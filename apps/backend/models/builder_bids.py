@@ -4,7 +4,6 @@ Builder bids models (for project bidding)
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
-from .base import PyObjectId
 
 
 class BuilderBidBase(BaseModel):
@@ -24,11 +23,11 @@ class BuilderBidBase(BaseModel):
 
 
 class BuilderBid(BuilderBidBase):
-    """Complete builder bid model"""
+    """Complete builder bid model (id, project_id, builder_id are UUID strings)."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    project_id: PyObjectId
-    builder_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    project_id: str
+    builder_id: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -41,15 +40,15 @@ class BuilderBid(BuilderBidBase):
 class BuilderBidCreate(BuilderBidBase):
     """Schema for creating builder bid"""
 
-    project_id: PyObjectId
+    project_id: str
 
 
 class BuilderBidResponse(BuilderBidBase):
-    """Schema for builder bid API responses"""
+    """Schema for builder bid API responses (id, project_id, builder_id are UUID strings)."""
 
-    id: PyObjectId = Field(alias="_id")
-    project_id: PyObjectId
-    builder_id: PyObjectId
+    id: str = Field(..., alias="_id")
+    project_id: str
+    builder_id: str
     created_at: datetime
     updated_at: datetime
 
