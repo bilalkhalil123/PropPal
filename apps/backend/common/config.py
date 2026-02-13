@@ -142,7 +142,7 @@ class Settings(BaseSettings):
 
     # Embedding provider: "local" (sentence-transformers), "huggingface" (HF Inference API), "openai"
     EMBEDDING_PROVIDER: str = Field(
-        default="local",
+        default="openai",
         description="Embedding backend: local | huggingface | openai. Use huggingface or openai on Render to avoid loading torch.",
     )
     HF_TOKEN: Optional[str] = Field(default=None, description="Hugging Face token for Inference API (embedding provider=huggingface)")
