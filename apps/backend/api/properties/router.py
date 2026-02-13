@@ -10,15 +10,17 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, UploadFile, File, Request
 
 from common.uuid_utils import parse_uuid
 from common.repositories.user_repository import UserRepository, get_user_repository
 from common.repositories.property_repository import PropertyRepository, get_property_repository
 from models.properties import PropertyCreate, PropertyCreateRequest
+from models.users import User
 from agents.listing.create_listing_agent import _generate_description_with_llm
 from services.vector_search.qdrant_service import delete_embedding, upsert_property_embedding
 from services.embeddings.service import embed_text
+from services.auth.utils import get_current_user
 from common.qdrant import PROPERTIES_COLLECTION
 
 
@@ -276,6 +278,76 @@ async def transcribe_audio(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to transcribe audio: {str(e)}"
         )
+
+
+@router.post("/{property_id}/contact-seller", summary="Contact seller for a property (requires authentication)")
+async def contact_seller(
+    property_id: str,
+    request: Request,
+    message: Optional[str] = Body(None, description="Optional message to seller"),
+    current_user: User = Depends(get_current_user),
+    property_repo: PropertyRepository = Depends(get_property_repository),
+    user_repo: UserRepository = Depends(get_user_repository),
+):
+    """
+    Contact the seller of a property. Requires authentication.
+    Returns seller contact information and initiates a contact request.
+    """
+    # Validate property ID
+    pid = parse_uuid(property_id, "property_id")
+    
+    # Get property
+    property_doc = await property_repo.get_by_id(pid)
+    if not property_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Property not found"
+        )
+    
+    # Get seller information
+    seller_id = property_doc.get("seller_id")
+    if not seller_id:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Property seller information not available"
+        )
+    
+    seller = await user_repo.get_by_id(seller_id)
+    if not seller:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Seller not found"
+        )
+    
+    # Prevent users from contacting themselves
+    if current_user.id == seller_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot contact yourself"
+        )
+    
+    # Return seller contact information (limited for privacy)
+    return {
+        "success": True,
+        "message": "Contact request initiated successfully",
+        "property": {
+            "id": property_doc.get("id"),
+            "title": property_doc.get("title"),
+        },
+        "seller": {
+            "id": seller.id,
+            "name": seller.name,
+            "email": seller.email if seller.email else None,
+            "phone": seller.phone if seller.phone else None,
+        },
+        "buyer": {
+            "id": current_user.id,
+            "name": current_user.name,
+            "email": current_user.email,
+        },
+        "contact_message": message,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
 
 
 
