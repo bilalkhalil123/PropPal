@@ -183,6 +183,8 @@ export const api = {
    */
   properties: {
     getById: (id: string) => apiClient.get(`/api/properties/${id}`),
+    contactSeller: (propertyId: string, message?: string, options?: RequestInit) =>
+      apiClient.post(`/api/properties/${propertyId}/contact-seller`, { message }, options),
   },
 
   /**

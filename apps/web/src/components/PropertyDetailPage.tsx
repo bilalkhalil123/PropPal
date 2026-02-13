@@ -2,10 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useRouter } from "next/navigation"
 import { MapPinIcon, CheckCircleIcon } from "@heroicons/react/24/outline"
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid"
 import ImageLightbox from "./modals/ImageLightbox"
 import PropertyMap from "./PropertyMap"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { api } from "@/lib/api-client"
+import { useAuth, SignIn } from "@clerk/nextjs"
 
 type Property = {
   _id: string
@@ -27,6 +31,12 @@ type Property = {
 export default function PropertyDetailPage({ property }: { property: Property }) {
   const [current, setCurrent] = useState(0)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
+  const [isContacting, setIsContacting] = useState(false)
+  const [contactError, setContactError] = useState<string | null>(null)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const router = useRouter()
+  const { isAuthenticated, loading: authLoading } = useCurrentUser()
+  const { getToken } = useAuth()
   const images = property.images && property.images.length > 0 ? property.images : ["/placeholder.svg"]
 
   // Auto-slide every 5 seconds
@@ -39,6 +49,48 @@ export default function PropertyDetailPage({ property }: { property: Property })
 
   const next = () => setCurrent((prev) => (prev + 1) % images.length)
   const prev = () => setCurrent((prev) => (prev - 1 + images.length) % images.length)
+
+  const handleContactAgent = async () => {
+    // Check if user is authenticated
+    if (!isAuthenticated || authLoading) {
+      // Open in-page auth modal instead of redirecting
+      setShowAuthModal(true)
+      return
+    }
+
+    // User is authenticated, proceed with contact
+    setIsContacting(true)
+    setContactError(null)
+
+    try {
+      // Get Clerk token for authenticated request
+      const token = await getToken()
+      if (!token) {
+        throw new Error("Unable to get authentication token")
+      }
+
+      // Call the contact endpoint
+      const response = await api.properties.contactSeller(property._id, undefined, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      // Show success message and redirect to chat or show seller info
+      if (response.success) {
+        // Option 1: Redirect to chat with pre-filled message
+        const chatMessage = `Hi, I'm interested in ${property.title} (${property.city}). Can you tell me more about this property?`
+        router.push(`/chat?q=${encodeURIComponent(chatMessage)}`)
+      }
+    } catch (error: any) {
+      console.error("Error contacting seller:", error)
+      setContactError(
+        error.message || "Failed to contact seller. Please try again."
+      )
+    } finally {
+      setIsContacting(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[linear-gradient(to_bottom,rgba(249,249,249,0.85),rgba(237,236,232,0.9))] text-[color:var(--color-primary)]">
@@ -188,9 +240,16 @@ export default function PropertyDetailPage({ property }: { property: Property })
                 <p className="text-slate-600 mb-6">
                   Schedule a visit or connect with the builder today. Our team is available 24/7.
                 </p>
-                <button className="w-full py-3 rounded-xl font-semibold text-white bg-[linear-gradient(to_right,#f59e0b,var(--color-accent-gold))] hover:scale-[1.02] active:scale-95 transition-all shadow-md">
-                  Contact Agent
+                <button
+                  onClick={handleContactAgent}
+                  disabled={isContacting || authLoading}
+                  className="w-full py-3 rounded-xl font-semibold text-white bg-[linear-gradient(to_right,#f59e0b,var(--color-accent-gold))] hover:scale-[1.02] active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isContacting ? "Contacting..." : "Contact Agent"}
                 </button>
+                {contactError && (
+                  <p className="mt-2 text-sm text-red-600">{contactError}</p>
+                )}
                 <ul className="mt-6 space-y-3 text-sm text-slate-600">
                   <li className="flex items-center gap-2">
                     <CheckCircleIcon className="h-5 w-5 text-green-600" /> Verified Listing
@@ -247,6 +306,59 @@ export default function PropertyDetailPage({ property }: { property: Property })
           </a>
         </div>
       </section>
+      {/* Auth Modal for Contact Agent (shown when not logged in) */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+            <button
+              aria-label="Close"
+              onClick={() => setShowAuthModal(false)}
+              className="absolute right-4 top-4 p-1.5 rounded-full hover:bg-slate-100 text-slate-500"
+            >
+              ✕
+            </button>
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-slate-900">
+                Sign in to contact the agent
+              </h2>
+              <p className="text-sm text-slate-600 mt-1">
+                Please log in or sign up to send a message about this property.
+              </p>
+            </div>
+            <div className="flex justify-center">
+              <SignIn
+                routing="hash"
+                appearance={{
+                  variables: {
+                    colorPrimary: "var(--color-accent-gold)",
+                    colorText: "#111827",
+                    colorBackground: "#ffffff",
+                    borderRadius: "12px",
+                    fontSize: "15px",
+                  },
+                  elements: {
+                    card: "shadow-none border-0 p-0",
+                    headerTitle: "text-slate-900 text-lg font-semibold",
+                    headerSubtitle: "text-slate-600 text-sm",
+                    formButtonPrimary:
+                      "text-white rounded-xl hover:ring-2 hover:ring-[color:var(--color-accent-gold)] active:scale-95 transition-all bg-[linear-gradient(to_right,var(--color-primary),var(--color-accent-gold))]",
+                    formFieldInput:
+                      "rounded-lg border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[color:var(--color-accent-gold)] focus:border-[color:var(--color-accent-gold)]",
+                    formFieldLabel: "text-slate-900",
+                    dividerLine: "bg-slate-200",
+                    dividerText: "text-slate-600",
+                    footerActionText: "text-slate-700",
+                    footerActionLink:
+                      "text-[color:var(--color-accent-gold)] hover:text-amber-600",
+                    socialButtonsBlockButton:
+                      "rounded-lg border-slate-300 hover:bg-slate-50 text-slate-900",
+                  },
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

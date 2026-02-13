@@ -52,12 +52,6 @@ export default function BuyerPage() {
   const propertiesContainerRef = useRef<HTMLDivElement>(null)
   const hasLoadedRef = useRef(false)
 
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/sign-in')
-    }
-  }, [loading, isAuthenticated, router])
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
@@ -67,7 +61,8 @@ export default function BuyerPage() {
 
   // Lazy load recommended properties when component is visible
   useEffect(() => {
-    if (!isAuthenticated || loading || hasLoadedRef.current) {
+    // Always allow loading for unauthenticated users (they see popular properties)
+    if (loading || hasLoadedRef.current) {
       return
     }
 
@@ -170,8 +165,6 @@ export default function BuyerPage() {
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-[color:var(--color-primary)]"></div>
       </div>
     )
-
-  if (!isAuthenticated) return null
 
   return (
     <div

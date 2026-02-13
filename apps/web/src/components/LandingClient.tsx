@@ -54,16 +54,28 @@ export default function LandingClient() {
               <span className="text-2xl font-bold tracking-tight">PropPal</span>
             </div>
             <div className="hidden md:flex space-x-8 text-[color:var(--color-primary)]/90">
-              <Link href="#features" className="relative text-sm font-medium transition-colors hover:text-[color:var(--color-primary)] after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:bg-[color:var(--color-accent-gold)]/80 after:scale-x-0 after:origin-left hover:after:scale-x-100 after:transition-transform">
+              <Link
+                href="#features"
+                className="relative text-sm font-medium transition-colors hover:text-[color:var(--color-primary)] after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:bg-[color:var(--color-accent-gold)]/80 after:scale-x-0 after:origin-left hover:after:scale-x-100 after:transition-transform"
+              >
                 Features
               </Link>
-              <Link href="#" className="relative text-sm font-medium transition-colors hover:text-[color:var(--color-primary)] after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:bg-[color:var(--color-accent-gold)]/80 after:scale-x-0 after:origin-left hover:after:scale-x-100 after:transition-transform">
+              <Link
+                href="/buyer"
+                className="relative text-sm font-medium transition-colors hover:text-[color:var(--color-primary)] after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:bg-[color:var(--color-accent-gold)]/80 after:scale-x-0 after:origin-left hover:after:scale-x-100 after:transition-transform"
+              >
                 Properties
               </Link>
-              <Link href="#" className="relative text-sm font-medium transition-colors hover:text-[color:var(--color-primary)] after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:bg-[color:var(--color-accent-gold)]/80 after:scale-x-0 after:origin-left hover:after:scale-x-100 after:transition-transform">
+              <Link
+                href="#"
+                className="relative text-sm font-medium transition-colors hover:text-[color:var(--color-primary)] after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:bg-[color:var(--color-accent-gold)]/80 after:scale-x-0 after:origin-left hover:after:scale-x-100 after:transition-transform"
+              >
                 About
               </Link>
-              <Link href="#" className="relative text-sm font-medium transition-colors hover:text-[color:var(--color-primary)] after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:bg-[color:var(--color-accent-gold)]/80 after:scale-x-0 after:origin-left hover:after:scale-x-100 after:transition-transform">
+              <Link
+                href="#"
+                className="relative text-sm font-medium transition-colors hover:text-[color:var(--color-primary)] after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:bg-[color:var(--color-accent-gold)]/80 after:scale-x-0 after:origin-left hover:after:scale-x-100 after:transition-transform"
+              >
                 Contact
               </Link>
             </div>
