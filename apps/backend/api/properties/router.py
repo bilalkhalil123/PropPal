@@ -19,12 +19,16 @@ from models.properties import PropertyCreate, PropertyCreateRequest
 from models.users import User
 from agents.listing.create_listing_agent import _generate_description_with_llm
 from services.vector_search.qdrant_service import delete_embedding, upsert_property_embedding
+from api.properties.scraper.router import router as scraper_router
 from services.embeddings.service import embed_text
 from services.auth.utils import get_current_user
 from common.qdrant import PROPERTIES_COLLECTION
 
 
 router = APIRouter(prefix="/api/properties", tags=["properties"])
+
+# Include scraper-related routes
+router.include_router(scraper_router)
 
 
 @router.get("/{property_id}", summary="Get full property details by ID")

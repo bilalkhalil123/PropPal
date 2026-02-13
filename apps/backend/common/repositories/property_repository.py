@@ -132,6 +132,15 @@ class PropertyRepository:
         by_id = {r.id: self._row_to_dict(r) for r in rows}
         return [by_id[pid] for pid in property_ids if pid in by_id]
 
+    async def list_existing_source_urls(self, urls: List[str]) -> List[str]:
+        """Return the subset of source URLs that already exist in the database."""
+        if not urls:
+            return []
+        result = await self.session.execute(
+            select(PropertyModel.source_url).where(PropertyModel.source_url.in_(urls))
+        )
+        return [row[0] for row in result.all() if row[0]]
+
     async def list_ids_with_filters(
         self,
         city: Optional[str] = None,
