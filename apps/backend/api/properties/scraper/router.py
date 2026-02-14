@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 from common.repositories.property_repository import PropertyRepository, get_property_repository
 from common.repositories.user_repository import UserRepository, get_user_repository
 from services.embeddings.service import embed_text
+from services.embeddings.compose import compose_property_text
 from services.vector_search.qdrant_service import delete_embedding, upsert_property_embedding
 from common.qdrant import PROPERTIES_COLLECTION
 
@@ -552,9 +553,8 @@ async def ingest_property_urls(
 					row = await property_repo.create(payload_data)
 					stored.append(row.id)
 					if payload.upsert_embeddings:
-						text = f"Property: {row.title}. Description: {row.description}. Location: {row.city}, {row.area}. Type: {row.property_type}."
 						try:
-							embedding = embed_text(text)
+							embedding = embed_text(compose_property_text(property_repo._row_to_dict(row)))
 							await upsert_property_embedding(
 								property_id=row.id,
 								embedding=embedding,
