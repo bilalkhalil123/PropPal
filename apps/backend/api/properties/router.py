@@ -21,6 +21,7 @@ from agents.listing.create_listing_agent import _generate_description_with_llm
 from services.vector_search.qdrant_service import delete_embedding, upsert_property_embedding
 from api.properties.scraper.router import router as scraper_router
 from services.embeddings.service import embed_text
+from services.embeddings.compose import compose_property_text
 from services.auth.utils import get_current_user
 from common.qdrant import PROPERTIES_COLLECTION
 
@@ -102,9 +103,7 @@ async def create_property(
         "date_added": property_data.date_added,
     }
     row = await property_repo.create(data)
-    embedding = embed_text(
-        f"Property: {row.title}. Description: {row.description}. Location: {row.city}, {row.area}. Type: {row.property_type}."
-    )
+    embedding = embed_text(compose_property_text(property_repo._row_to_dict(row)))
     try:
         await upsert_property_embedding(
             property_id=row.id,
