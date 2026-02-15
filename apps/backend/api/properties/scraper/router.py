@@ -38,6 +38,8 @@ class IngestUrlsRequest(BaseModel):
 	seller_id: Optional[str] = Field(default=None, description="Seller UUID to assign to scraped listings")
 	upsert_embeddings: bool = Field(default=True, description="Whether to upsert embeddings to Qdrant")
 	max_concurrency: int = Field(default=6, ge=1, le=20)
+	max_retries: int = Field(default=2, ge=0, le=5)
+	request_timeout: float = Field(default=30.0, ge=5.0, le=120.0)
 
 
 DEFAULT_CITY_SLUGS = {
@@ -214,6 +216,12 @@ def _extract_listing_details(html: str) -> Dict[str, Optional[str]]:
 		details["title"] = title_tag.get_text(strip=True)
 	elif soup.title and soup.title.get_text(strip=True):
 		details["title"] = soup.title.get_text(strip=True)
+	if not details["title"]:
+		meta_title = soup.find("meta", attrs={"property": "og:title"}) or soup.find(
+			"meta", attrs={"name": "title"}
+		)
+		if meta_title and meta_title.get("content"):
+			details["title"] = meta_title.get("content")
 
 	desc_heading = soup.find(lambda tag: tag.name in ["h2", "h3", "h4"] and "description" in (tag.get_text() or "").lower())
 	description = None
@@ -228,6 +236,12 @@ def _extract_listing_details(html: str) -> Dict[str, Optional[str]]:
 		desc_div = soup.find("div", attrs={"class": re.compile(r"description|desc", re.I)})
 		if desc_div:
 			description = desc_div.get_text(separator=" ", strip=True)
+	if not description:
+		meta_desc = soup.find("meta", attrs={"name": "description"}) or soup.find(
+			"meta", attrs={"property": "og:description"}
+		)
+		if meta_desc and meta_desc.get("content"):
+			description = meta_desc.get("content")
 	if description:
 		details["description"] = description
 
@@ -298,13 +312,45 @@ def _build_property_payload(html: str, source_url: str, seller_id: str, source: 
 	parsed = _extract_listing_details(html)
 
 	price = _convert_price(parsed.get("price"))
+	if price is None:
+		price = _convert_price(data_layer.get("price") or data_layer.get("price_value"))
 	area_sqft = _convert_area(parsed.get("area"))
-	bedrooms = int(parsed["beds"]) if parsed.get("beds") and parsed["beds"].isdigit() else None
-	bathrooms = int(parsed["baths"]) if parsed.get("baths") and parsed["baths"].isdigit() else None
+	if area_sqft is None:
+		area_sqft = _convert_area(data_layer.get("area") or data_layer.get("land_area") or data_layer.get("size"))
 
-	property_type = parsed.get("type") or data_layer.get("property_type")
-	title = parsed.get("title")
-	description = parsed.get("description")
+	bedrooms = int(parsed["beds"]) if parsed.get("beds") and parsed["beds"].isdigit() else None
+	if bedrooms is None and data_layer.get("bedrooms") is not None:
+		try:
+			bedrooms = int(data_layer.get("bedrooms"))
+		except Exception:
+			bedrooms = None
+	if bedrooms is None:
+		beds_match = re.search(r"(\d+)\s*(bed|beds)", parsed.get("description") or "", re.I)
+		bedrooms = int(beds_match.group(1)) if beds_match else 0
+
+	bathrooms = int(parsed["baths"]) if parsed.get("baths") and parsed["baths"].isdigit() else None
+	if bathrooms is None and data_layer.get("bathrooms") is not None:
+		try:
+			bathrooms = int(data_layer.get("bathrooms"))
+		except Exception:
+			bathrooms = None
+	if bathrooms is None:
+		baths_match = re.search(r"(\d+)\s*(bath|baths)", parsed.get("description") or "", re.I)
+		bathrooms = int(baths_match.group(1)) if baths_match else 0
+
+	property_type = parsed.get("type") or data_layer.get("property_type") or data_layer.get("type")
+	if not property_type:
+		property_type = "unknown"
+
+	title = parsed.get("title") or data_layer.get("ad_title") or data_layer.get("title")
+	if title:
+		title = str(title).strip()[:200]
+	description = parsed.get("description") or data_layer.get("description")
+	if not description:
+		page_text, page_title = _extract_text_and_title(html)
+		description = " ".join(page_text.split()[:120]) if page_text else None
+		if not title and page_title:
+			title = page_title
 	date_added = _convert_relative_date(parsed.get("date"))
 
 	location_detail = data_layer.get("loc_neighbourhood_name") or data_layer.get("loc_name") or parsed.get("location")
@@ -339,8 +385,6 @@ def _build_property_payload(html: str, source_url: str, seller_id: str, source: 
 		required_missing.append("bedrooms")
 	if bathrooms is None:
 		required_missing.append("bathrooms")
-	if not property_type:
-		required_missing.append("property_type")
 	if not city:
 		required_missing.append("city")
 	if not area:
@@ -530,50 +574,81 @@ async def ingest_property_urls(
 	semaphore = asyncio.Semaphore(payload.max_concurrency)
 	errors: List[Dict[str, Any]] = []
 	stored: List[str] = []
+	fetched: List[Dict[str, Any]] = []
 
-	async with httpx.AsyncClient(timeout=30.0) as client:
-		async def _ingest_url(url: str) -> None:
+	async with httpx.AsyncClient(timeout=payload.request_timeout, headers=SCRAPER_HEADERS) as client:
+		async def _fetch_payload(url: str) -> Dict[str, Any]:
 			async with semaphore:
-				try:
-					response = await client.get(url, headers=SCRAPER_HEADERS, follow_redirects=True)
-				except httpx.RequestError as exc:
-					errors.append({"url": url, "reason": f"request_error: {exc}"})
-					return
+				response = None
+				for attempt in range(payload.max_retries + 1):
+					try:
+						response = await client.get(url, follow_redirects=True)
+					except httpx.RequestError as exc:
+						if attempt >= payload.max_retries:
+							return {"url": url, "error": f"request_error: {exc}"}
+						await asyncio.sleep(1.5 * (attempt + 1))
+						continue
 
-				if response.status_code >= 400:
-					errors.append({"url": url, "reason": f"http_{response.status_code}"})
-					return
+					if response.status_code in {403, 429, 500, 502, 503, 504}:
+						if attempt >= payload.max_retries:
+							return {"url": url, "error": f"http_{response.status_code}"}
+						await asyncio.sleep(1.5 * (attempt + 1))
+						continue
+					break
+
+				if response is None or response.status_code >= 400:
+					return {"url": url, "error": f"http_{response.status_code if response else 'unknown'}"}
 
 				payload_data, missing = _build_property_payload(response.text, url, seller_id, payload.source)
 				if not payload_data:
-					errors.append({"url": url, "reason": "missing_fields", "missing": missing})
-					return
+					return {"url": url, "error": "missing_fields", "missing": missing}
 
+				if payload.source == "zameen":
+					payload_data["last_checked"] = datetime.now(timezone.utc)
+
+				return {"url": url, "payload": payload_data}
+
+		fetched = await asyncio.gather(*[_fetch_payload(url) for url in new_urls])
+
+	for item in fetched:
+		if item.get("error"):
+			errors.append({
+				"url": item.get("url", ""),
+				"reason": item.get("error"),
+				"missing": item.get("missing"),
+			})
+			continue
+		payload_data = item.get("payload")
+		if not payload_data:
+			errors.append({"url": item.get("url", ""), "reason": "empty_payload"})
+			continue
+		try:
+			row = await property_repo.create(payload_data)
+			stored.append(row.id)
+			if payload.upsert_embeddings:
 				try:
-					row = await property_repo.create(payload_data)
-					stored.append(row.id)
-					if payload.upsert_embeddings:
-						try:
-							embedding = embed_text(compose_property_text(property_repo._row_to_dict(row)))
-							await upsert_property_embedding(
-								property_id=row.id,
-								embedding=embedding,
-								metadata={
-									"title": row.title,
-									"city": row.city,
-									"area": row.area,
-									"property_type": row.property_type,
-									"bedrooms": row.bedrooms,
-									"bathrooms": row.bathrooms,
-									"price": row.price,
-								},
-							)
-						except Exception:
-							pass
-				except Exception as exc:
-					errors.append({"url": url, "reason": f"db_error: {exc}"})
-
-		await asyncio.gather(*[_ingest_url(url) for url in new_urls])
+					embedding = embed_text(compose_property_text(property_repo._row_to_dict(row)))
+					await upsert_property_embedding(
+						property_id=row.id,
+						embedding=embedding,
+						metadata={
+							"title": row.title,
+							"city": row.city,
+							"area": row.area,
+							"property_type": row.property_type,
+							"bedrooms": row.bedrooms,
+							"bathrooms": row.bathrooms,
+							"price": row.price,
+						},
+					)
+				except Exception:
+					pass
+		except Exception as exc:
+			try:
+				await property_repo.session.rollback()
+			except Exception:
+				pass
+			errors.append({"url": item.get("url", ""), "reason": f"db_error: {exc}"})
 
 	return {
 		"submitted": len(urls),
@@ -625,6 +700,9 @@ async def cleanup_sold_properties(
 			async def _check_property(item: Dict[str, Any]) -> None:
 				url = (item.get("source_url") or "").strip()
 				if not url:
+					return
+				source = (item.get("source") or "").strip().lower()
+				if source != "zameen":
 					return
 				last_checked = _normalize_timestamp(item.get("last_checked") or item.get("updated_at"))
 				if last_checked and last_checked >= cutoff:

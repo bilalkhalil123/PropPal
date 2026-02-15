@@ -15,6 +15,11 @@ import asyncio
 import os
 from typing import List
 
+# Ensure common module import
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import httpx
 
 from common.config import get_settings
@@ -22,8 +27,10 @@ from common.config import get_settings
 
 async def run_weekly_scrape() -> None:
     settings = get_settings()
-    base_url = os.getenv("BACKEND_API_BASE_URL", f"http://{settings.HOST}:{settings.PORT}")
+    base_url = os.getenv("BACKEND_API_BASE_URL", 
+    f"http://localhost:{settings.PORT}")
 
+    cleanup_timeout = float(os.getenv("CLEANUP_SOLD_TIMEOUT", "11800"))
     async with httpx.AsyncClient(timeout=60.0) as client:
         print("[SCRAPE] Fetching URLs per city...")
         city_urls_response = await client.get(
@@ -36,11 +43,14 @@ async def run_weekly_scrape() -> None:
         all_urls: List[str] = [url for urls in urls_by_city.values() for url in urls]
         print(f"[SCRAPE] Collected {len(all_urls)} URLs from {len(urls_by_city)} cities")
 
-        print("[SCRAPE] Removing sold/expired properties...")
-        cleanup_response = await client.post(f"{base_url}/api/properties/scraper/cleanup-sold")
-        cleanup_response.raise_for_status()
-        cleanup_data = cleanup_response.json()
-        print(f"[SCRAPE] Removed {cleanup_data.get('removed', 0)} sold properties")
+        # print("[SCRAPE] Removing sold/expired properties...")
+        # cleanup_response = await client.post(
+        #     f"{base_url}/api/properties/scraper/cleanup-sold",
+        #     timeout=cleanup_timeout,
+        # )
+        # cleanup_response.raise_for_status()
+        # cleanup_data = cleanup_response.json()
+        # print(f"[SCRAPE] Removed {cleanup_data.get('removed', 0)} sold properties")
 
         print("[SCRAPE] Filtering existing URLs...")
         filter_response = await client.post(
@@ -63,6 +73,7 @@ async def run_weekly_scrape() -> None:
                 "urls": new_urls,
                 "source": "zameen",
             },
+            timeout = cleanup_timeout
         )
         ingest_response.raise_for_status()
         ingest_data = ingest_response.json()
