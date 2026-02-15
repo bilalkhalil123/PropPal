@@ -91,6 +91,7 @@ class Property(Base):
     source_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     date_added: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_indexed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_checked: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
