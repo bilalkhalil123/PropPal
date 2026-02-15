@@ -51,23 +51,17 @@ from services.vector_search.qdrant_service import (
 ALLOWED_CITIES = {"lahore", "karachi", "islamabad"}
 
 
-async def _drop_collections() -> None:
-    client = get_qdrant_client()
-    loop = asyncio.get_event_loop()
-    collections = [
-        PROPERTIES_COLLECTION,
-        BUILDER_PROFILES_COLLECTION,
-        BUILDER_SERVICES_COLLECTION,
-    ]
-    for name in collections:
-        try:
-            await loop.run_in_executor(None, lambda n=name: client.delete_collection(n))
-        except Exception:
-            pass
+def _mask_secret(value: str) -> str:
+    if not value:
+        return "<not set>"
+    if len(value) <= 10:
+        return "<hidden>"
+    return f"{value[:6]}...{value[-4:]}"
 
 
-async def _cleanup_sold_listings(base_url: str) -> None:
-    async with httpx.AsyncClient(timeout=60.0) as client:
+async def _cleanup_sold_listings(base_url: str, timeout_seconds: float) -> None:
+    async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+        print(f"{base_url}/api/properties/scraper/cleanup-sold")
         response = await client.post(f"{base_url}/api/properties/scraper/cleanup-sold")
         response.raise_for_status()
 
@@ -87,21 +81,67 @@ async def _prune_properties_by_city(repo: PropertyRepository) -> int:
                 if deleted:
                     removed += 1
         skip += batch_size
+        print(f"[RESET] Prune progress: scanned {skip} rows, removed {removed}")
     return removed
+
+
+def _raise_openai_auth_error() -> None:
+    raise RuntimeError(
+        "OpenAI embedding request failed with 401 Unauthorized. "
+        "Check OPENAI_API_KEY in apps/backend/.env and ensure it is valid."
+    )
+
+
+async def _fetch_existing_property_ids() -> set[str]:
+    client = get_qdrant_client()
+    loop = asyncio.get_event_loop()
+    existing: set[str] = set()
+    offset = None
+    while True:
+        def _scroll():
+            return client.scroll(
+                collection_name=PROPERTIES_COLLECTION,
+                limit=200,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+
+        points, next_offset = await loop.run_in_executor(None, _scroll)
+        for point in points or []:
+            payload = getattr(point, "payload", None) or {}
+            prop_id = payload.get("property_id") or payload.get("db_id")
+            if prop_id:
+                existing.add(str(prop_id))
+        if not next_offset:
+            break
+        offset = next_offset
+    return existing
 
 
 async def _backfill_properties(repo: PropertyRepository) -> int:
     processed = 0
     skip = 0
     batch_size = 100
+    existing_ids = await _fetch_existing_property_ids()
+    print(f"[RESET] Existing property embeddings in Qdrant: {len(existing_ids)}")
     while True:
         rows = await repo.list_all(skip=skip, limit=batch_size)
         if not rows:
             break
-        texts = [compose_property_text(row) for row in rows]
-        vectors = embed_batch(texts)
+        missing_rows = [row for row in rows if str(row.get("id")) not in existing_ids]
+        if not missing_rows:
+            skip += batch_size
+            continue
+        texts = [compose_property_text(row) for row in missing_rows]
+        try:
+            vectors = embed_batch(texts)
+        except httpx.HTTPStatusError as exc:
+            if exc.response is not None and exc.response.status_code == 401:
+                _raise_openai_auth_error()
+            raise
         items = []
-        for row, vector in zip(rows, vectors):
+        for row, vector in zip(missing_rows, vectors):
             items.append(
                 (
                     str(row["id"]),
@@ -115,8 +155,9 @@ async def _backfill_properties(repo: PropertyRepository) -> int:
                 )
             )
         await upsert_property_embeddings_batch(items)
-        processed += len(rows)
+        processed += len(missing_rows)
         skip += batch_size
+        print(f"[RESET] Property embeddings: {processed} processed")
     return processed
 
 
@@ -129,7 +170,12 @@ async def _backfill_builder_profiles(repo: BuilderProfileRepository) -> int:
         if not rows:
             break
         texts = [compose_builder_profile_text(row) for row in rows]
-        vectors = embed_batch(texts)
+        try:
+            vectors = embed_batch(texts)
+        except httpx.HTTPStatusError as exc:
+            if exc.response is not None and exc.response.status_code == 401:
+                _raise_openai_auth_error()
+            raise
         items = []
         for row, vector in zip(rows, vectors):
             city = (row.get("location") or {}).get("city") if isinstance(row.get("location"), dict) else None
@@ -147,6 +193,7 @@ async def _backfill_builder_profiles(repo: BuilderProfileRepository) -> int:
         await upsert_builder_profile_embeddings_batch(items)
         processed += len(rows)
         skip += batch_size
+        print(f"[RESET] Builder profiles embeddings: {processed} processed")
     return processed
 
 
@@ -159,7 +206,12 @@ async def _backfill_builder_services(repo: BuilderServiceRepository) -> int:
         if not rows:
             break
         texts = [compose_builder_services_text(row) for row in rows]
-        vectors = embed_batch(texts)
+        try:
+            vectors = embed_batch(texts)
+        except httpx.HTTPStatusError as exc:
+            if exc.response is not None and exc.response.status_code == 401:
+                _raise_openai_auth_error()
+            raise
         items = []
         for row, vector in zip(rows, vectors):
             items.append(
@@ -176,42 +228,42 @@ async def _backfill_builder_services(repo: BuilderServiceRepository) -> int:
         await upsert_builder_service_embeddings_batch(items)
         processed += len(rows)
         skip += batch_size
+        print(f"[RESET] Builder services embeddings: {processed} processed")
     return processed
 
 
 async def reset_and_backfill() -> None:
     settings = get_settings()
-    base_url = os.getenv("BACKEND_API_BASE_URL", f"http://{settings.HOST}:{settings.PORT}")
+    base_url = os.getenv("BACKEND_API_BASE_URL", "http://localhost:8000")
+    openai_key = settings.OPENAI_API_KEY or ""
 
-    print("[RESET] Dropping Qdrant collections...")
-    await _drop_collections()
+    if not openai_key:
+        raise RuntimeError(
+            "OPENAI_API_KEY is not set. Add it to apps/backend/.env before running this script."
+        )
+
     await ensure_collections_exist()
 
     async with get_db_session_ctx() as session:
         property_repo = PropertyRepository(session)
-        builder_profile_repo = BuilderProfileRepository(session)
-        builder_service_repo = BuilderServiceRepository(session)
+        # removed = await _prune_properties_by_city(property_repo)
+        # print(f"[RESET] Removed {removed} properties outside target cities")
 
-        removed = await _prune_properties_by_city(property_repo)
-        print(f"[RESET] Removed {removed} properties outside target cities")
-
-    print("[RESET] Calling cleanup-sold endpoint...")
-    await _cleanup_sold_listings(base_url)
+    skip_cleanup = os.getenv("SKIP_CLEANUP_SOLD", "false").lower() in {"1", "true", "yes"}
+    cleanup_timeout = float(os.getenv("CLEANUP_SOLD_TIMEOUT", "12000"))
+    if skip_cleanup:
+        print("[RESET] SKIP_CLEANUP_SOLD enabled. Skipping cleanup-sold call.")
+    else:
+        print(f"[RESET] Calling cleanup-sold endpoint (timeout={cleanup_timeout}s)...")
+        try:
+            await _cleanup_sold_listings(base_url, cleanup_timeout)
+        except Exception as exc:
+            print(f"[RESET] cleanup-sold failed or timed out: {exc}. Continuing...")
 
     async with get_db_session_ctx() as session:
         property_repo = PropertyRepository(session)
-        builder_profile_repo = BuilderProfileRepository(session)
-        builder_service_repo = BuilderServiceRepository(session)
 
-        print("[RESET] Backfilling builder profile embeddings...")
-        profiles_count = await _backfill_builder_profiles(builder_profile_repo)
-        print(f"[RESET] Builder profiles embedded: {profiles_count}")
-
-        print("[RESET] Backfilling builder service embeddings...")
-        services_count = await _backfill_builder_services(builder_service_repo)
-        print(f"[RESET] Builder services embedded: {services_count}")
-
-        print("[RESET] Backfilling property embeddings...")
+        print("[RESET] Backfilling property embeddings (missing only)...")
         properties_count = await _backfill_properties(property_repo)
         print(f"[RESET] Properties embedded: {properties_count}")
 

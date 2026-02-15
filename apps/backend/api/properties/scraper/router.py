@@ -5,7 +5,7 @@ import json
 import re
 from html.parser import HTMLParser
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Ensure common module import
 import sys
@@ -25,7 +25,7 @@ from services.vector_search.qdrant_service import delete_embedding, upsert_prope
 from common.qdrant import PROPERTIES_COLLECTION
 
 
-router = APIRouter(prefix="/api/properties/scraper", tags=["properties-scraper"])
+router = APIRouter(prefix="/scraper", tags=["properties-scraper"])
 
 
 class UrlCheckRequest(BaseModel):
@@ -595,47 +595,80 @@ async def cleanup_sold_properties(
 	- Sold/expired keywords are found
 	- Listing details cannot be extracted
 	"""
-	all_properties: List[Dict[str, Any]] = []
+	print("request recieved")
 	skip = 0
-	batch_size = 500
-	while True:
-		batch = await property_repo.list_all(skip=skip, limit=batch_size)
-		if not batch:
-			break
-		all_properties.extend(batch)
-		skip += batch_size
-
-	if not all_properties:
-		return {"checked": 0, "removed": 0, "removed_ids": [], "errors": []}
-
+	batch_size = 100
 	semaphore = asyncio.Semaphore(8)
 	removed_ids: List[str] = []
 	errors: List[Dict[str, str]] = []
+	skip_count = 0
+	checked_total = 0
+	cutoff = datetime.now(timezone.utc) - timedelta(days=5)
+
+	def _normalize_timestamp(value: Optional[datetime]) -> Optional[datetime]:
+		if not value:
+			return None
+		if value.tzinfo is None:
+			return value.replace(tzinfo=timezone.utc)
+		return value.astimezone(timezone.utc)
 
 	async with httpx.AsyncClient(timeout=30.0) as client:
-		async def _check_property(item: Dict[str, Any]) -> None:
-			url = (item.get("source_url") or "").strip()
-			if not url:
-				return
-			async with semaphore:
-				sold, reason = await _check_listing_status(url, client)
-			if not sold:
-				return
-			try:
-				deleted = await property_repo.delete(item["id"])
-				if deleted:
-					removed_ids.append(item["id"])
-					try:
-						await delete_embedding(collection_name=PROPERTIES_COLLECTION, point_id=item["id"])
-					except Exception:
-						pass
-			except Exception as exc:
-				errors.append({"id": item.get("id", ""), "url": url, "reason": str(exc), "status": reason})
+		while True:
+			batch = await property_repo.list_all_ordered_by_last_checked(skip=skip, limit=batch_size)
+			if not batch:
+				break
+			skip += batch_size
 
-		await asyncio.gather(*[_check_property(item) for item in all_properties])
+			sold_candidates: List[Dict[str, str]] = []
+			checked_results: List[Dict[str, str]] = []
+
+			async def _check_property(item: Dict[str, Any]) -> None:
+				url = (item.get("source_url") or "").strip()
+				if not url:
+					return
+				last_checked = _normalize_timestamp(item.get("last_checked") or item.get("updated_at"))
+				if last_checked and last_checked >= cutoff:
+					nonlocal skip_count
+					skip_count += 1
+					return
+				async with semaphore:
+					sold, reason = await _check_listing_status(url, client)
+				result = {"id": item.get("id", ""), "url": url, "status": reason}
+				checked_results.append(result)
+				if sold:
+					sold_candidates.append(result)
+
+			await asyncio.gather(*[_check_property(item) for item in batch])
+			checked_total += len(checked_results)
+			now = datetime.now(timezone.utc)
+			checked_ids = [item.get("id", "") for item in checked_results if item.get("id")]
+			sold_ids = [item.get("id", "") for item in sold_candidates if item.get("id")]
+
+			try:
+				if checked_ids:
+					await property_repo.bulk_update_last_checked(checked_ids, now)
+				if sold_ids:
+					await property_repo.bulk_delete_by_ids(sold_ids)
+				await property_repo.session.commit()
+			except Exception as exc:
+				await property_repo.session.rollback()
+				errors.append({
+					"id": "",
+					"url": "",
+					"reason": f"batch_commit_failed: {exc}",
+					"status": "commit_failed",
+				})
+
+			if sold_ids:
+				removed_ids.extend(sold_ids)
+				await asyncio.gather(*[
+					delete_embedding(collection_name=PROPERTIES_COLLECTION, point_id=property_id)
+					for property_id in sold_ids
+				])
 
 	return {
-		"checked": len(all_properties),
+		"checked": checked_total,
+		"skipped_recent": skip_count,
 		"removed": len(removed_ids),
 		"removed_ids": removed_ids,
 		"errors": errors,

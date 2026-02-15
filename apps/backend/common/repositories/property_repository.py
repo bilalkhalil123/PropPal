@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import Depends
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.db import get_db_session
@@ -42,6 +42,7 @@ class PropertyRepository:
             "source_url": row.source_url,
             "date_added": row.date_added,
             "last_indexed_at": row.last_indexed_at,
+            "last_checked": row.last_checked,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
@@ -100,6 +101,17 @@ class PropertyRepository:
         await self.session.flush()
         return True
 
+    async def update_last_checked(self, property_id: str, timestamp: datetime) -> bool:
+        result = await self.session.execute(
+            select(PropertyModel).where(PropertyModel.id == property_id)
+        )
+        row = result.scalar_one_or_none()
+        if not row:
+            return False
+        row.last_checked = timestamp
+        await self.session.flush()
+        return True
+
     async def list_recent(self, limit: int = 12) -> List[Dict[str, Any]]:
         """List most recent properties (for popular/fallback)."""
         result = await self.session.execute(
@@ -115,6 +127,22 @@ class PropertyRepository:
         result = await self.session.execute(
             select(PropertyModel)
             .order_by(PropertyModel.id)
+            .offset(skip)
+            .limit(limit)
+        )
+        rows = result.scalars().all()
+        return [self._row_to_dict(r) for r in rows]
+
+    async def list_all_ordered_by_last_checked(self, skip: int = 0, limit: int = 500) -> List[Dict[str, Any]]:
+        """List properties ordered by last_checked (NULLs first), then updated_at (oldest first)."""
+        result = await self.session.execute(
+            select(PropertyModel)
+            .order_by(
+                PropertyModel.last_checked.is_(None),
+                PropertyModel.last_checked.asc().nullsfirst(),
+                PropertyModel.updated_at.asc(),
+                PropertyModel.id,
+            )
             .offset(skip)
             .limit(limit)
         )
@@ -140,6 +168,23 @@ class PropertyRepository:
             select(PropertyModel.source_url).where(PropertyModel.source_url.in_(urls))
         )
         return [row[0] for row in result.all() if row[0]]
+
+    async def bulk_update_last_checked(self, ids: List[str], timestamp: datetime) -> None:
+        if not ids:
+            return
+        await self.session.execute(
+            update(PropertyModel)
+            .where(PropertyModel.id.in_(ids))
+            .values(last_checked=timestamp)
+        )
+
+    async def bulk_delete_by_ids(self, ids: List[str]) -> int:
+        if not ids:
+            return 0
+        result = await self.session.execute(
+            delete(PropertyModel).where(PropertyModel.id.in_(ids))
+        )
+        return result.rowcount or 0
 
     async def list_ids_with_filters(
         self,
