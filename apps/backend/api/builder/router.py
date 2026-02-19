@@ -19,7 +19,13 @@ from models.builder_services import BuilderServiceResponse
 from models.users import User
 from services.auth.utils import get_current_user
 from services.embeddings.service import embed_text
-from services.vector_search.qdrant_service import search_builder_profiles, search_builder_services as qdrant_search_builder_services
+from services.embeddings.compose import compose_builder_profile_text, compose_builder_services_text
+from services.vector_search.qdrant_service import (
+    search_builder_profiles,
+    search_builder_services as qdrant_search_builder_services,
+    upsert_builder_profile_embedding,
+    upsert_builder_service_embedding,
+)
 
 router = APIRouter(prefix="/api/builder", tags=["builder"])
 
@@ -101,6 +107,20 @@ async def create_builder_profile(
     profile = profile_repo._row_to_dict(row)
     if profile.get("portfolio_images") is None:
         profile["portfolio_images"] = []
+    try:
+        embedding = embed_text(compose_builder_profile_text(profile))
+        await upsert_builder_profile_embedding(
+            profile_id=profile["id"],
+            embedding=embedding,
+            metadata={
+                "db_id": profile["id"],
+                "company_name": profile.get("company_name"),
+                "city": (profile.get("location") or {}).get("city"),
+            },
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Failed to upsert builder profile embedding to Qdrant: %s", e)
     return profile
 
 
@@ -207,7 +227,26 @@ async def create_builder_service(
         "service_images": body.service_images or [],
     }
     row = await service_repo.create(service_doc)
-    return service_repo._row_to_dict(row)
+    service = service_repo._row_to_dict(row)
+    if service.get("service_images") is None:
+        service["service_images"] = []
+    if service.get("service_features") is None:
+        service["service_features"] = []
+    try:
+        embedding = embed_text(compose_builder_services_text(service))
+        await upsert_builder_service_embedding(
+            service_id=service["id"],
+            embedding=embedding,
+            metadata={
+                "db_id": service["id"],
+                "category": service.get("category"),
+                "base_price": service.get("base_price"),
+            },
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Failed to upsert builder service embedding to Qdrant: %s", e)
+    return service
 
 
 @router.delete(
