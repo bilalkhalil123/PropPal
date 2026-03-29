@@ -279,12 +279,9 @@ def _property_search_impl(query: str, filters: Optional[Dict[str, Any]] = None) 
 def property_search_tool(query: str) -> str:
     """
     Searches for properties based on a natural language query.
-    Extracts filters (city, area, price, bedrooms, property type, amenity/POI, distance) from the query.
-    Supports amenity-aware search:
-    - Generic amenity type (e.g. 'near a school') → semantic vector search
-    - Specific named place (e.g. 'near Centaurus Mall') → geocode + geo_radius filter
-    - Workplace (e.g. '10km from my office at Blue Area') → geocode + geo_radius filter
-    Returns top 8 properties.
+    Extracts filters like city, price, beds, property type from the query.
+    Supports amenity-aware search for generic amenities, specific places, or workplaces.
+    Pass the natural language query as the query parameter.
     """
     filters = None
     try:

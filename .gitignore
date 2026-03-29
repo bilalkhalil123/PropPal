@@ -54,6 +54,10 @@ instance/
 .env
 .env.*
 
+# Local ASR model files (large)
+apps/backend/services/asr/models/
+apps/backend/models/asr/
+
 # ----------------------------
 # Turborepo
 # ----------------------------
