@@ -1,6 +1,7 @@
 """
 Filter extraction utility for property searches.
 Uses LLM to extract structured filters from natural language queries.
+Supports amenity-aware queries (generic amenity type, specific named POI, distance constraints).
 """
 
 import os
@@ -33,6 +34,34 @@ class PropertyFilters(BaseModel):
     bathrooms_max: Optional[int] = Field(None, description="Maximum number of bathrooms")
     area_sqft_min: Optional[float] = Field(None, description="Minimum area in square feet")
     area_sqft_max: Optional[float] = Field(None, description="Maximum area in square feet")
+
+    # Amenity-aware fields
+    amenity_query_type: Optional[str] = Field(
+        None,
+        description=(
+            "Type of amenity requirement. One of: "
+            "'generic' (e.g., 'near a school'), "
+            "'specific_poi' (e.g., 'near Beaconhouse school', 'near Fast University', 'under 10km of FAST'), "
+            "'workplace' (e.g., '10km from my office at Blue Area'), "
+            "or null if no amenity/POI mentioned. IMPORTANT: If the user refers to a specific name or specific distance constraint in km/miles, ALWAYS select 'specific_poi' or 'workplace' instead of generic."
+        ),
+    )
+    poi_name: Optional[str] = Field(
+        None,
+        description=(
+            "The specific place/POI name mentioned by the user. "
+            "Examples: 'Centaurus Mall', 'Beaconhouse school', 'Shifa Hospital', 'FAST University'. "
+            "Only set when amenity_query_type is 'specific_poi' or 'workplace'."
+        ),
+    )
+    distance_km: Optional[float] = Field(
+        None,
+        description=(
+            "Maximum distance in kilometers from the specified POI. "
+            "Examples: 'under 10km' -> 10, 'within 5km' -> 5, 'nearby' -> 3. "
+            "Default to 5 if a POI is mentioned but no distance is specified."
+        ),
+    )
 
 
 def extract_property_filters(query: str) -> Dict[str, Any]:
@@ -72,6 +101,14 @@ def extract_property_filters(query: str) -> Dict[str, Any]:
             "  * '5 marla' -> area_sqft_min=1360, area_sqft_max=1360\n"
             "  * '5-10 marla' -> area_sqft_min=1360, area_sqft_max=2720\n"
             "  * '1 kanal' -> area_sqft_min=5445, area_sqft_max=5445\n\n"
+            "AMENITY / POI EXTRACTION:\n"
+            "- amenity_query_type: Classify the user's intent:\n"
+            "  * 'generic' — user mentions a TYPE of amenity without a specific name. E.g., 'near a good school', 'close to hospitals'\n"
+            "  * 'specific_poi' — user mentions a SPECIFIC named place. E.g., 'near Centaurus Mall', 'close to Beaconhouse', 'near Shifa Hospital'\n"
+            "  * 'workplace' — user mentions their workplace or office. E.g., '10km from my office at Blue Area', 'near where I work at PIMS'\n"
+            "  * null — no amenity or POI mentioned\n"
+            "- poi_name: The specific place or organization name (only for 'specific_poi' or 'workplace')\n"
+            "- distance_km: Distance in km from the named POI. 'under 10km' -> 10. Default 5 if POI is mentioned but no distance given.\n\n"
             "If a filter is not mentioned, set it to null. Be precise and only extract what is explicitly stated or clearly implied."
         )),
         ("human", "{query}")
@@ -108,6 +145,14 @@ def extract_property_filters(query: str) -> Dict[str, Any]:
             filters["area_sqft_min"] = result.area_sqft_min
         if result.area_sqft_max is not None:
             filters["area_sqft_max"] = result.area_sqft_max
+
+        # Amenity / POI fields
+        if result.amenity_query_type:
+            filters["amenity_query_type"] = result.amenity_query_type.strip().lower()
+        if result.poi_name:
+            filters["poi_name"] = result.poi_name.strip()
+        if result.distance_km is not None:
+            filters["distance_km"] = result.distance_km
             
         print(f"[DEBUG] Extracted property filters: {filters}")
         return filters

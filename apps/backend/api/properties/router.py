@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, UploadFile, File, Request, BackgroundTasks
 
 from common.uuid_utils import parse_uuid
 from common.repositories.user_repository import UserRepository, get_user_repository
@@ -67,6 +67,7 @@ async def get_properties_by_seller(
 @router.post("", summary="Create a new property listing")
 async def create_property(
     property_data: PropertyCreateRequest,
+    background_tasks: BackgroundTasks,
     clerk_id: str = Query(..., description="Clerk user ID"),
     user_repo: UserRepository = Depends(get_user_repository),
     property_repo: PropertyRepository = Depends(get_property_repository),
@@ -74,6 +75,7 @@ async def create_property(
     """
     Creates a new property listing in the database.
     The seller_id is derived from clerk_id. Embeds and upserts to Qdrant.
+    Queues a background task to fetch nearby amenities via Overpass API.
     """
     user = await user_repo.get_user_by_clerk_id(clerk_id)
     if not user:
@@ -121,6 +123,23 @@ async def create_property(
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning("Failed to upsert property embedding to Qdrant: %s", e)
+
+    # Schedule background task for amenity enrichment (fetches from Overpass, generates summary via Groq, updates Qdrant)
+    if row.lat is not None and row.lng is not None:
+        from services.amenities.service import enrich_property_amenities
+        import asyncio
+
+        async def _run_amenity_enrichment():
+            await enrich_property_amenities(
+                property_id=row.id,
+                lat=row.lat,
+                lon=row.lng,
+                city=row.city,
+                area=row.area,
+            )
+
+        background_tasks.add_task(asyncio.run, _run_amenity_enrichment())
+
     return property_repo._row_to_dict(row)
 
 

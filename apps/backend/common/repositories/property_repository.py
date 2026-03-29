@@ -43,6 +43,8 @@ class PropertyRepository:
             "date_added": row.date_added,
             "last_indexed_at": row.last_indexed_at,
             "last_checked": row.last_checked,
+            "nearby_amenities": row.nearby_amenities,
+            "amenity_summary": row.amenity_summary,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
@@ -200,6 +202,8 @@ class PropertyRepository:
         area_sqft_max: Optional[float] = None,
         area: Optional[str] = None,
         property_type: Optional[str] = None,
+        geo_center: Optional[Dict[str, float]] = None,
+        geo_radius_m: Optional[float] = None,
         limit: int = 1000,
     ) -> List[str]:
         """Return list of property IDs matching filters (for search/agent)."""
@@ -229,6 +233,18 @@ class PropertyRepository:
             q = q.where(PropertyModel.area_sqft >= area_sqft_min)
         if area_sqft_max is not None:
             q = q.where(PropertyModel.area_sqft <= area_sqft_max)
+        if geo_center and geo_radius_m is not None:
+            lat = geo_center.get("lat")
+            lon = geo_center.get("lon")
+            if lat is not None and lon is not None:
+                # Calculate distance in meters using the Haversine formula translated into PostgreSQL SQL functions
+                distance_expr = 6371000 * func.acos(
+                    func.cos(func.radians(lat)) * func.cos(func.radians(PropertyModel.lat)) *
+                    func.cos(func.radians(PropertyModel.lng) - func.radians(lon)) +
+                    func.sin(func.radians(lat)) * func.sin(func.radians(PropertyModel.lat))
+                )
+                q = q.where(distance_expr <= geo_radius_m)
+
         q = q.limit(limit)
         result = await self.session.execute(q)
         return list(result.scalars().all())

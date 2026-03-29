@@ -26,17 +26,26 @@ if (typeof window !== "undefined") {
   import("leaflet/dist/leaflet.css")
 }
 
+interface POI {
+  name?: string
+  lat?: number
+  lng?: number
+  lon?: number
+}
+
 interface PropertyMapProps {
   lat: number
   lng: number
   title: string
   city?: string
   area?: string
+  amenities?: Record<string, POI[]>
 }
 
-export default function PropertyMap({ lat, lng, title, city, area }: PropertyMapProps) {
+export default function PropertyMap({ lat, lng, title, city, area, amenities }: PropertyMapProps) {
   const [isClient, setIsClient] = useState(false)
   const [markerIcon, setMarkerIcon] = useState<any>(null)
+  const [amenityMarkerIcon, setAmenityMarkerIcon] = useState<any>(null)
 
   useEffect(() => {
     setIsClient(true)
@@ -62,10 +71,20 @@ export default function PropertyMap({ lat, lng, title, city, area }: PropertyMap
             shadowSize: [41, 41],
           })
           setMarkerIcon(icon)
+
+          const amIcon = new L.DivIcon({
+            className: "bg-transparent",
+            html: `<div class="w-5 h-5 rounded-full bg-white border-2 border-slate-700 shadow flex items-center justify-center text-[10px] items-center">📍</div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+            popupAnchor: [0, -10],
+          })
+          setAmenityMarkerIcon(amIcon)
         } catch (error) {
           console.error("Error setting up Leaflet icon:", error)
           // Fallback: use default icon
           setMarkerIcon(L.Icon.Default)
+          setAmenityMarkerIcon(L.Icon.Default)
         }
       })
     }
@@ -150,6 +169,28 @@ export default function PropertyMap({ lat, lng, title, city, area }: PropertyMap
                 </div>
               </Popup>
             </Marker>
+          )}
+          {amenities && amenityMarkerIcon && Object.entries(amenities).map(([category, pois]) =>
+            pois.map((poi, idx) => {
+              const poiLng = poi.lng || poi.lon
+              if (poi.lat && poiLng) {
+                return (
+                  <Marker
+                    key={`${category}-${idx}`}
+                    position={[poi.lat, poiLng]}
+                    icon={amenityMarkerIcon}
+                  >
+                    <Popup>
+                      <div className="text-center">
+                        <h4 className="font-semibold text-sm mb-1">{poi.name || "Amenity"}</h4>
+                        <p className="text-xs text-slate-500 capitalize">{category.replace('_', ' ')}</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )
+              }
+              return null
+            })
           )}
         </MapContainer>
       </div>

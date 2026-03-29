@@ -30,6 +30,43 @@ def _string_id_to_qdrant_id(id_str: str) -> int:
     return point_id % (2**63 - 1)
 
 
+async def recreate_properties_collection() -> None:
+    """
+    Delete and re-create the properties collection in Qdrant.
+    Ensures a fresh start for 100% data consistency.
+    """
+    import asyncio
+    from qdrant_client.models import Distance, VectorParams
+    from common.qdrant import VECTOR_DIMENSION
+
+    client = get_qdrant_client()
+    loop = asyncio.get_event_loop()
+
+    print(f"[QDRANT] Resetting collection: {PROPERTIES_COLLECTION}")
+    
+    # Delete if exists
+    try:
+        await loop.run_in_executor(
+            None,
+            lambda: client.delete_collection(PROPERTIES_COLLECTION)
+        )
+    except Exception:
+        pass
+
+    # Re-create
+    await loop.run_in_executor(
+        None,
+        lambda: client.create_collection(
+            collection_name=PROPERTIES_COLLECTION,
+            vectors_config=VectorParams(
+                size=VECTOR_DIMENSION,
+                distance=Distance.COSINE,
+            ),
+        )
+    )
+    print(f"[QDRANT] Collection '{PROPERTIES_COLLECTION}' re-created successfully.")
+
+
 async def upsert_property_embedding(
     property_id: str,
     embedding: List[float],
@@ -111,7 +148,11 @@ async def search_properties(
     Args:
         query_vector: Query embedding vector
         limit: Number of results to return
-        filters: Optional filters (e.g., {"city": "Lahore"})
+        filters: Optional filters. Supports:
+            - city: str — exact match on city payload field
+            - price_min / price_max: float — range filter on price
+            - geo_center: {"lat": float, "lon": float} — center for geo filter
+            - geo_radius_m: float — radius in meters for geo filter
         
     Returns:
         List of search results with scores and property IDs
@@ -141,6 +182,21 @@ async def search_properties(
         if conditions:
             qdrant_filter = Filter(must=conditions)
     
+    # Build geo_radius filter dict (handled separately for direct HTTP API)
+    geo_filter_dict = None
+    if filters and "geo_center" in filters and "geo_radius_m" in filters:
+        geo_center = filters["geo_center"]
+        geo_filter_dict = {
+            "key": "location",
+            "geo_radius": {
+                "center": {
+                    "lat": float(geo_center["lat"]),
+                    "lon": float(geo_center["lon"]),
+                },
+                "radius": float(filters["geo_radius_m"]),
+            },
+        }
+
     # Qdrant client is synchronous, run in thread pool for async compatibility
     loop = asyncio.get_event_loop()
     
@@ -160,16 +216,15 @@ async def search_properties(
         }
         
         # Add filter if provided - convert Filter object to dict for JSON
+        filter_dict = {}
         if qdrant_filter:
-            # Convert Filter object to dictionary for JSON serialization
             try:
                 if hasattr(qdrant_filter, 'model_dump'):
-                    payload["filter"] = qdrant_filter.model_dump(exclude_none=True)
+                    filter_dict = qdrant_filter.model_dump(exclude_none=True)
                 elif hasattr(qdrant_filter, 'dict'):
-                    payload["filter"] = qdrant_filter.dict(exclude_none=True)
+                    filter_dict = qdrant_filter.dict(exclude_none=True)
                 else:
                     # Manual serialization
-                    filter_dict = {}
                     if hasattr(qdrant_filter, 'must') and qdrant_filter.must:
                         filter_dict["must"] = []
                         for condition in qdrant_filter.must:
@@ -179,10 +234,17 @@ async def search_properties(
                                     "key": condition.key,
                                     "match": {"value": match_value}
                                 })
-                    if filter_dict:
-                        payload["filter"] = filter_dict
             except Exception as e:
                 print(f"[WARNING] Failed to serialize filter: {e}, continuing without filter")
+
+        # Merge geo_radius filter into the filter dict
+        if geo_filter_dict:
+            if "must" not in filter_dict:
+                filter_dict["must"] = []
+            filter_dict["must"].append(geo_filter_dict)
+
+        if filter_dict:
+            payload["filter"] = filter_dict
         
         # Prepare headers
         headers = {"Content-Type": "application/json"}

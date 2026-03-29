@@ -24,6 +24,8 @@ type Property = {
   images?: string[]
   property_type: string
   description?: string
+  amenity_summary?: string
+  nearby_amenities?: any
   lat?: number
   lng?: number
 }
@@ -34,10 +36,33 @@ export default function PropertyDetailPage({ property }: { property: Property })
   const [isContacting, setIsContacting] = useState(false)
   const [contactError, setContactError] = useState<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  
+  // State for interactive amenity chips
+  const [activeAmenityCategory, setActiveAmenityCategory] = useState<string | null>(null)
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false)
+
   const router = useRouter()
   const { isAuthenticated, loading: authLoading } = useCurrentUser()
   const { getToken } = useAuth()
   const images = property.images && property.images.length > 0 ? property.images : ["/placeholder.svg"]
+
+  // Calculate amenity counts from the raw JSON payload
+  const amenityCounts = property.nearby_amenities 
+    ? Object.entries(property.nearby_amenities).map(([category, items]: [string, any]) => ({
+        category,
+        count: Array.isArray(items) ? items.length : 0
+      })).filter(c => c.count > 0)
+    : []
+
+  // Helper to map categories to emojis/icons
+  const getCategoryIcon = (category: string) => {
+    const map: Record<string, string> = {
+      education: "🎓", healthcare: "🏥", transport: "🚉", 
+      shopping: "🛍️", food: "🍽️", entertainment: "🍿",
+      parks: "🌳", worship: "🕌", finance: "🏦"
+    }
+    return map[category] || "📍"
+  }
 
   // Auto-slide every 5 seconds
   useEffect(() => {
@@ -227,9 +252,111 @@ export default function PropertyDetailPage({ property }: { property: Property })
                     </div>
                   </div>
                 </div>
-                <p className="text-slate-700 leading-relaxed">
-                  {property.description || "No description provided for this property."}
-                </p>
+                <div className="relative">
+                  <div className={`text-slate-700 leading-relaxed overflow-hidden transition-all duration-300 ${!isDescriptionExpanded ? "max-h-24 line-clamp-3" : ""} relative`}>
+                    {property.description || "No description provided for this property."}
+                    {!isDescriptionExpanded && property.description && property.description.length > 150 && (
+                      <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-white/20 to-transparent" />
+                    )}
+                  </div>
+                  {property.description && property.description.length > 150 && (
+                    <button
+                      onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                      className="text-[color:var(--color-primary)] font-semibold mt-2 hover:underline text-sm hover:text-[color:var(--color-accent-gold)] transition-colors"
+                    >
+                      {isDescriptionExpanded ? "Show Less" : "Read More"}
+                    </button>
+                  )}
+                </div>
+
+                {/* 🌟 Neighborhood Highlights Section */}
+                {(property.amenity_summary || amenityCounts.length > 0) && (
+                  <div className="mt-10 pt-8 border-t border-slate-100">
+                    <h3 className="text-2xl font-bold mb-5 flex items-center gap-2 text-[color:var(--color-primary)]">
+                      <span className="text-3xl">🏘️</span> Neighborhood Highlights
+                    </h3>
+                    
+                    {/* Interactive Count Chips */}
+                    {amenityCounts.length > 0 && (
+                      <div className="flex flex-wrap gap-3 mb-6">
+                        {amenityCounts.map((amenity) => (
+                          <button
+                            key={amenity.category}
+                            onClick={() => setActiveAmenityCategory(
+                              activeAmenityCategory === amenity.category ? null : amenity.category
+                            )}
+                            className={`px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 shadow-sm border ${
+                              activeAmenityCategory === amenity.category
+                                ? "bg-[color:var(--color-primary)] text-white border-[color:var(--color-primary)] scale-105 shadow-md"
+                                : "bg-white text-slate-700 border-slate-200 hover:border-[color:var(--color-accent-gold)] hover:text-[color:var(--color-primary)]"
+                            }`}
+                          >
+                            <span className="mr-2 text-base">{getCategoryIcon(amenity.category)}</span>
+                            <span className="capitalize">{amenity.category.replace('_', ' ')}</span>
+                            <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                              activeAmenityCategory === amenity.category ? "bg-white/20" : "bg-slate-100 text-slate-500"
+                            }`}>
+                              {amenity.count}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Expandable POI details if a category is active */}
+                    <AnimatePresence>
+                      {activeAmenityCategory && property.nearby_amenities?.[activeAmenityCategory] && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden mb-6"
+                        >
+                          <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 text-sm grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-inner">
+                            {property.nearby_amenities[activeAmenityCategory].slice(0, 8).map((poi: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-slate-800 truncate">{poi.name || "Unnamed location"}</p>
+                                  {(poi.distance_m || poi.distance) ? (
+                                    <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[color:var(--color-accent-gold)]" />
+                                      {Math.round(poi.distance_m || poi.distance)} meters away
+                                    </p>
+                                  ) : null}
+                                </div>
+                                {poi.rating && (
+                                  <div className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2 py-1 rounded-md text-xs font-bold border border-yellow-200 shrink-0">
+                                    ★ {poi.rating.toFixed(1)}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                            {property.nearby_amenities[activeAmenityCategory].length > 8 && (
+                              <div className="text-slate-500 italic text-xs mt-1 col-span-full font-medium ml-2">
+                                + {property.nearby_amenities[activeAmenityCategory].length - 8} additional locations nearby
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* AI Groq Summary Prose */}
+                    {property.amenity_summary && (
+                      <div className="relative p-6 rounded-2xl bg-gradient-to-br from-indigo-50/50 to-white border border-indigo-100/50">
+                        <div className="absolute -top-3 -left-3 text-4xl opacity-20">✨</div>
+                        <p className="text-slate-700 leading-relaxed relative z-10 italic">
+                          &quot;{property.amenity_summary}&quot;
+                        </p>
+                        <div className="mt-3 text-right">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
+                            AI Generated Summary
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -278,6 +405,7 @@ export default function PropertyDetailPage({ property }: { property: Property })
               title={property.title}
               city={property.city}
               area={property.area}
+              amenities={property.nearby_amenities}
             />
           </div>
         </section>

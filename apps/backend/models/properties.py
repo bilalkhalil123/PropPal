@@ -125,6 +125,8 @@ class PropertyResponse(PropertyBase):
     source_url: Optional[str] = None
     date_added: Optional[datetime] = None
     last_indexed_at: Optional[datetime] = None
+    nearby_amenities: Optional[dict] = Field(default=None, description="Raw nearby amenities JSON from Overpass API")
+    amenity_summary: Optional[str] = Field(default=None, description="Groq-generated human-readable amenity summary")
     created_at: datetime
     updated_at: datetime
 

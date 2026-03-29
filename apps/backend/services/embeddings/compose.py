@@ -22,6 +22,11 @@ def compose_property_text(p: Dict) -> str:
         numeric_bits.append(f"area_sqft: {float(sqft)}")
     if numeric_bits:
         parts.append(", ".join(numeric_bits))
+    # Amenity summary (if available) — enriches the embedding so
+    # queries like "house near a good school" match naturally.
+    amenity_summary = p.get("amenity_summary")
+    if isinstance(amenity_summary, str) and amenity_summary.strip():
+        parts.append(f"Nearby amenities: {amenity_summary.strip()}")
     return "\n".join(parts)
 
 

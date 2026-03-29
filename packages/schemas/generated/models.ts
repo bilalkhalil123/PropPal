@@ -1,7 +1,7 @@
 /**
  * AUTO-GENERATED TypeScript interfaces from Pydantic models
  * DO NOT EDIT MANUALLY - Changes will be overwritten
- * Generated on: 2026-01-31T20:23:30.414622
+ * Generated on: 2026-03-29T20:57:10.104565
  */
 
 export interface UserResponse {
@@ -55,6 +55,10 @@ export interface PropertyResponse {
   source_url?: string | null;
   date_added?: string | null;
   last_indexed_at?: string | null;
+  /** Raw nearby amenities JSON from Overpass API */
+  nearby_amenities?: Record<string, any>;
+  /** Groq-generated human-readable amenity summary */
+  amenity_summary?: string | null;
   created_at: string;
   updated_at: string;
 }

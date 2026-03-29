@@ -92,6 +92,9 @@ class Property(Base):
     date_added: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_indexed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_checked: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Amenity data: raw JSON from Overpass API and Groq-generated summary text
+    nearby_amenities: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    amenity_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 

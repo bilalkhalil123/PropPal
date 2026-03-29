@@ -21,9 +21,11 @@ type Property = {
   title: string
   price: number
   city: string
+  area?: string
   bedrooms: number
   bathrooms: number
   area_sqft: number
+  amenity_summary?: string
   images?: string[]
   property_type: string
   score?: number
@@ -112,7 +114,7 @@ export default function PropertyModal({
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
       <div
-        className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in fade-in-50 slide-in-from-bottom-4"
+        className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden animate-in fade-in-50 slide-in-from-bottom-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -129,8 +131,10 @@ export default function PropertyModal({
           </button>
         </div>
 
-        {/* Image Section */}
-        <div className="relative">
+        {/* Scrollable Content Container */}
+        <div className="overflow-y-auto flex-1 min-h-0 custom-scrollbar">
+          {/* Image Section */}
+          <div className="relative shrink-0">
           <div
             className="relative h-80 sm:h-96 w-full overflow-hidden flex items-center justify-center cursor-zoom-in rounded-none"
             onClick={property?.images?.length ? onOpenLightbox : undefined}
@@ -208,7 +212,7 @@ export default function PropertyModal({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
             <div className="flex items-center gap-2">
               <MapPinIcon className="h-4 w-4 text-slate-500" />
-              <span>{property.city}</span>
+              <span>{property.area ? `${property.area}, ${property.city}` : property.city}</span>
             </div>
             <div className="flex items-center gap-3">
               <span>{property.bedrooms} bed</span>
@@ -224,14 +228,27 @@ export default function PropertyModal({
           </div>
 
           {property.score && (
-            <div className="bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg inline-block text-xs font-medium border border-indigo-100">
+            <div className="bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg inline-block text-xs font-medium border border-indigo-100 mt-2">
               Match Score: {Math.round(property.score * 100)}%
             </div>
           )}
+
+          {property.amenity_summary && (
+            <div className="mt-4 p-4 rounded-xl bg-gradient-to-br from-indigo-50/50 to-white border border-indigo-100/50">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">🏘️</span>
+                <h4 className="font-semibold text-sm text-[color:var(--color-primary)]">Neighborhood Highlights</h4>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed italic text-ellipsis overflow-hidden line-clamp-3">
+                &quot;{property.amenity_summary}&quot;
+              </p>
+            </div>
+          )}
+        </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 bg-white flex flex-wrap justify-end gap-3">
+        <div className="px-6 py-4 border-t border-slate-200 bg-white flex flex-wrap justify-end gap-3 shrink-0">
           <Link
             href={`/properties/${property._id}`}
             className="px-4 py-2.5 rounded-xl border border-indigo-600 text-indigo-700 hover:bg-indigo-50 transition-colors font-medium"

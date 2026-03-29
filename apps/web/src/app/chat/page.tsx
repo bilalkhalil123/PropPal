@@ -32,9 +32,11 @@ interface Property {
   title: string
   price: number
   city: string
+  area?: string
   bedrooms: number
   bathrooms: number
   area_sqft: number
+  amenity_summary?: string
   images?: string[]
   property_type: string
   score?: number
@@ -755,7 +757,7 @@ function ChatPageContent() {
                                       <div className="flex items-center mb-3">
                                         <MapPinIcon className="h-4 w-4 text-slate-500 mr-2" />
                                         <span className="text-sm text-slate-600">
-                                          {property.city}
+                                          {property.area ? `${property.area}, ${property.city}` : property.city}
                                         </span>
                                       </div>
 

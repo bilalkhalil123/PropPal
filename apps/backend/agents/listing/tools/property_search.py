@@ -53,6 +53,10 @@ def _filters_to_list_ids_params(filters: Optional[Dict[str, Any]]) -> Dict[str, 
         params["area_sqft_max"] = filters["area_sqft_max"]
     if filters.get("bedrooms") is not None:
         params["bedrooms"] = filters["bedrooms"]
+    if filters.get("geo_center"):
+        params["geo_center"] = filters["geo_center"]
+    if filters.get("geo_radius_m") is not None:
+        params["geo_radius_m"] = filters["geo_radius_m"]
     return params
 
 
@@ -111,7 +115,7 @@ def _calculate_cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
 
 
 # Top N properties to return (for cards); keep small to stay under LLM token limits
-PROPERTY_SEARCH_TOP_K = 8
+PROPERTY_SEARCH_TOP_K = 7
 
 
 async def _filter_then_search_async(query: str, k: int = PROPERTY_SEARCH_TOP_K, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -197,7 +201,8 @@ async def _filter_then_search_async(query: str, k: int = PROPERTY_SEARCH_TOP_K, 
                 title = (p.get("title") or p.get("property_title") or "Property")[:50]
                 price = p.get("price") or p.get("price_display") or "Price on request"
                 city = (p.get("city") or p.get("location", {}).get("city") or "")[:30]
-                summary_lines.append(f"{i}. {title} - {price} - {city}")
+                amenity_sum = p.get("amenity_summary") or "No amenity data."
+                summary_lines.append(f"{i}. {title} - {price} - {city} | Amenities: {amenity_sum}")
             summary_for_llm = "Found {} properties:\n".format(len(results)) + "\n".join(summary_lines) if results else "No properties found."
             return {
                 "success": True,
@@ -246,6 +251,25 @@ def _run_async_search(search_coro):
 def _property_search_impl(query: str, filters: Optional[Dict[str, Any]] = None) -> str:
     """Returns JSON string so ToolMessage content is valid JSON; agent will use summary_for_llm for LLM context."""
     import json
+
+    # If a specific POI or workplace is detected, geocode it and build geo_radius filter
+    if filters and filters.get("amenity_query_type") in ("specific_poi", "workplace"):
+        poi_name = filters.get("poi_name", "")
+        distance_km = filters.get("distance_km", 5)  # default 5km
+        if poi_name:
+            try:
+                from services.amenities.geocoding import geocode_place_with_candidates
+                geo_result = geocode_place_with_candidates(poi_name)
+                if geo_result["success"] and geo_result["result"]:
+                    loc = geo_result["result"]
+                    filters["geo_center"] = {"lat": loc.lat, "lon": loc.lon}
+                    filters["geo_radius_m"] = distance_km * 1000  # convert km to meters
+                    print(f"[PROPERTY_SEARCH] Geocoded POI '{poi_name}' → ({loc.lat}, {loc.lon}), radius={distance_km}km")
+                else:
+                    print(f"[PROPERTY_SEARCH] Geocoding failed for '{poi_name}': {geo_result.get('message')}")
+            except Exception as e:
+                print(f"[PROPERTY_SEARCH] Geocoding error for POI '{poi_name}': {e}")
+
     search_coro = _filter_then_search_async(query, k=PROPERTY_SEARCH_TOP_K, filters=filters)
     result = _run_async_search(search_coro)
     return json.dumps(result, default=str)
@@ -255,8 +279,12 @@ def _property_search_impl(query: str, filters: Optional[Dict[str, Any]] = None) 
 def property_search_tool(query: str) -> str:
     """
     Searches for properties based on a natural language query.
-    Extracts filters (city, area, price, bedrooms, property type, etc.) from the query.
-    Returns top 8 properties. Flow: extract filters -> filter in Postgres -> Qdrant similarity -> return top 8 from Postgres.
+    Extracts filters (city, area, price, bedrooms, property type, amenity/POI, distance) from the query.
+    Supports amenity-aware search:
+    - Generic amenity type (e.g. 'near a school') → semantic vector search
+    - Specific named place (e.g. 'near Centaurus Mall') → geocode + geo_radius filter
+    - Workplace (e.g. '10km from my office at Blue Area') → geocode + geo_radius filter
+    Returns top 8 properties.
     """
     filters = None
     try:
@@ -265,3 +293,4 @@ def property_search_tool(query: str) -> str:
     except Exception as e:
         print(f"Property filter extraction failed (continuing without filters): {e}")
     return _property_search_impl(query, filters)
+

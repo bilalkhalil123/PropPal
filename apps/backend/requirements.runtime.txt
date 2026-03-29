@@ -36,8 +36,8 @@ typing_extensions==4.15.0
 uvicorn==0.37.0
 watchfiles==1.1.0
 websockets==15.0.1
-sentence-transformers==3.2.1
-torch==2.8.0
+# sentence-transformers==3.2.1
+# torch==2.8.0
 
 # LangGraph and AI Agent Dependencies
 langgraph==1.0.0
