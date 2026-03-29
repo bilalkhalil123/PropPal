@@ -3,8 +3,10 @@ Chat API with RouterAgent integration.
 Provides conversational interface using the RouterAgent orchestrator.
 """
 
+from __future__ import annotations
+
 from typing import Dict, Any, Optional, List
-from fastapi import APIRouter, HTTPException, Depends, Query, status
+from fastapi import APIRouter, HTTPException, Depends, Query, status, UploadFile, File, Form
 from pydantic import BaseModel, Field
 import sys
 import os
@@ -25,6 +27,10 @@ from fastapi import WebSocket, WebSocketDisconnect
 import json
 import logging
 
+from services.asr.language import detect_language
+from services.asr.translation import translate_to_english, translate_to_urdu
+from services.asr.service import transcribe_audio_bytes
+
 logger = logging.getLogger(__name__)
 
 # Initialize the router
@@ -36,6 +42,116 @@ def get_router_agent():
     return RouterAgent()
 
 
+def _normalize_user_message(message: str, language_hint: Optional[str] = None) -> tuple[str, Dict[str, Any]]:
+    normalized = (message or "").strip()
+    if not normalized:
+        return "", {"input_language": language_hint or "unknown"}
+
+    input_language = (language_hint or detect_language(normalized)).lower()
+    translated = False
+    translation_error = None
+    output_message = normalized
+
+    if input_language == "ur":
+        output_message, translated, translation_error = translate_to_english(normalized, source_lang="ur")
+
+    metadata: Dict[str, Any] = {
+        "input_language": input_language,
+        "translated": translated,
+    }
+    if translation_error:
+        metadata["translation_error"] = translation_error
+    if output_message != normalized:
+        metadata["normalized_message"] = output_message
+
+    return output_message, metadata
+
+
+async def _handle_chat_request(
+    message: str,
+    original_message: str,
+    user_repo: UserRepository,
+    chat_repo: ChatHistoryRepository,
+    clerk_id: Optional[str],
+    user_id: Optional[str],
+    session_id: Optional[str],
+    extra_metadata: Optional[Dict[str, Any]] = None,
+) -> ChatResponse:
+    if not message or not message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    agent = get_router_agent()
+    result = agent.process_query(message.strip(), clerk_id=clerk_id)
+
+    if not result.get("success", False):
+        raise HTTPException(
+            status_code=500,
+            detail=f"Agent processing failed: {result.get('error', 'Unknown error')}",
+        )
+
+    resolved_user_id: Optional[str] = None
+    if clerk_id:
+        try:
+            user = await user_repo.get_user_by_clerk_id(clerk_id)
+            if user and getattr(user, "id", None):
+                resolved_user_id = str(user.id)
+        except Exception:
+            resolved_user_id = None
+    if not resolved_user_id and user_id:
+        resolved_user_id = user_id
+
+    metadata = {
+        "user_id": resolved_user_id,
+        "session_id": session_id,
+        "clerk_id": clerk_id,
+        "query_length": len(original_message),
+        "agent_type": result.get("classification", "unknown"),
+    }
+    if extra_metadata:
+        metadata.update({k: v for k, v in extra_metadata.items() if v is not None})
+
+    response_text = result.get("response", "No response generated")
+    if metadata.get("input_language") == "ur":
+        translated_response, did_translate, translation_error = translate_to_urdu(response_text, source_lang="en")
+        if did_translate:
+            response_text = translated_response
+        if translation_error:
+            metadata["response_translation_error"] = translation_error
+
+    try:
+        if resolved_user_id and session_id:
+            existing = await chat_repo.get_by_user_and_session(resolved_user_id, session_id)
+            now = datetime.utcnow()
+            user_msg = {"role": "user", "content": original_message.strip(), "timestamp": now.isoformat()}
+            ai_msg = {
+                "role": "assistant",
+                "content": result.get("response", ""),
+                "timestamp": now.isoformat(),
+                "_payload": {
+                    "classification": result.get("classification"),
+                    "properties": result.get("properties"),
+                    "builders": result.get("builders"),
+                    "services": result.get("services"),
+                    "metadata": extra_metadata or {},
+                },
+            }
+            messages = ((existing or {}).get("messages") or []) + [user_msg, ai_msg]
+            await chat_repo.upsert_messages(resolved_user_id, session_id, messages)
+    except Exception:
+        pass
+
+    return ChatResponse(
+        success=True,
+        response=response_text,
+        classification=result.get("classification", "unknown"),
+        properties=result.get("properties"),
+        builders=result.get("builders"),
+        services=result.get("services"),
+        error=None,
+        metadata=metadata,
+    )
+
+
 # --- Request/Response Models ---
 
 class ChatRequest(BaseModel):
@@ -44,6 +160,7 @@ class ChatRequest(BaseModel):
     user_id: Optional[str] = Field(None, description="Optional internal DB user ID for session tracking")
     clerk_id: Optional[str] = Field(None, description="Optional Clerk user ID for resolving internal user id")
     session_id: Optional[str] = Field(None, description="Optional session ID for conversation context")
+    language_hint: Optional[str] = Field(None, description="Optional language hint (ur or en)")
 
 
 class ChatResponse(BaseModel):
@@ -99,88 +216,78 @@ async def send_message(
         ChatResponse with the agent's response and classification
     """
     try:
-        # Validate input
-        if not request.message or not request.message.strip():
-            raise HTTPException(
-                status_code=400,
-                detail="Message cannot be empty"
-            )
-        
-        # Process the query through the RouterAgent
-        agent = get_router_agent()
-        result = agent.process_query(request.message.strip(), clerk_id=request.clerk_id)
-        
-        # Check if the agent processing was successful
-        if not result.get("success", False):
-            raise HTTPException(
-                status_code=500,
-                detail=f"Agent processing failed: {result.get('error', 'Unknown error')}"
-            )
-        
-        # Resolve internal user id from clerk_id if provided
-        resolved_user_id: Optional[str] = None
-        if request.clerk_id:
-            try:
-                user = await user_repo.get_user_by_clerk_id(request.clerk_id)
-                if user and getattr(user, "id", None):
-                    resolved_user_id = str(user.id)
-            except Exception:
-                resolved_user_id = None
-        if not resolved_user_id and request.user_id:
-            resolved_user_id = request.user_id
-
-        # Prepare metadata
-        metadata = {
-            "user_id": resolved_user_id,
-            "session_id": request.session_id,
-            "clerk_id": request.clerk_id,
-            "query_length": len(request.message),
-            "agent_type": result.get("classification", "unknown")
-        }
-
-        # --- Persist chat history (Postgres) per (user_id, session_id) ---
-        try:
-            if resolved_user_id and request.session_id:
-                existing = await chat_repo.get_by_user_and_session(resolved_user_id, request.session_id)
-                now = datetime.utcnow()
-                user_msg = {"role": "user", "content": request.message.strip(), "timestamp": now.isoformat()}
-                ai_msg = {
-                    "role": "assistant",
-                    "content": result.get("response", ""),
-                    "timestamp": now.isoformat(),
-                    "_payload": {
-                        "classification": result.get("classification"),
-                        "properties": result.get("properties"),
-                        "builders": result.get("builders"),
-                        "services": result.get("services"),
-                    },
-                }
-                messages = ((existing or {}).get("messages") or []) + [user_msg, ai_msg]
-                await chat_repo.upsert_messages(resolved_user_id, request.session_id, messages)
-        except Exception:
-            pass
-        
-        # Return the response with properties, builders, and services
-        return ChatResponse(
-            success=True,
-            response=result.get("response", "No response generated"),
-            classification=result.get("classification", "unknown"),
-            properties=result.get("properties"),
-            builders=result.get("builders"),
-            services=result.get("services"),
-            error=None,
-            metadata=metadata
+        normalized_message, language_metadata = _normalize_user_message(
+            request.message,
+            request.language_hint,
         )
-        
+        return await _handle_chat_request(
+            message=normalized_message,
+            original_message=request.message,
+            user_repo=user_repo,
+            chat_repo=chat_repo,
+            clerk_id=request.clerk_id,
+            user_id=request.user_id,
+            session_id=request.session_id,
+            extra_metadata=language_metadata,
+        )
     except HTTPException:
-        # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
-        # Handle unexpected errors
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.post("/message/audio", response_model=ChatResponse)
+async def send_audio_message(
+    audio: UploadFile = File(..., description="WAV/FLAC audio file"),
+    user_id: Optional[str] = Form(None),
+    clerk_id: Optional[str] = Form(None),
+    session_id: Optional[str] = Form(None),
+    language_hint: Optional[str] = Form(None),
+    user_repo: UserRepository = Depends(get_user_repository),
+    chat_repo: ChatHistoryRepository = Depends(get_chat_history_repository),
+):
+    """
+    Transcribe an audio clip and route it through the chat agent.
+
+    Accepts multipart/form-data with a single audio file.
+    """
+    try:
+        audio_bytes = await audio.read()
+        transcript, asr_metadata = transcribe_audio_bytes(audio_bytes)
+
+        if not transcript:
+            return ChatResponse(
+                success=False,
+                response="",
+                classification="unknown",
+                error="Unable to transcribe audio",
+                metadata={"asr": asr_metadata},
+            )
+
+        normalized_message, language_metadata = _normalize_user_message(
+            transcript,
+            language_hint,
         )
+        extra_metadata = {
+            **language_metadata,
+            "transcript": transcript,
+            "asr": asr_metadata,
+        }
+
+        return await _handle_chat_request(
+            message=normalized_message,
+            original_message=transcript,
+            user_repo=user_repo,
+            chat_repo=chat_repo,
+            clerk_id=clerk_id,
+            user_id=user_id,
+            session_id=session_id,
+            extra_metadata=extra_metadata,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 # =============================

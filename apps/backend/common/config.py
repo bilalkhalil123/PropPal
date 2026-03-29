@@ -147,6 +147,24 @@ class Settings(BaseSettings):
     )
     HF_TOKEN: Optional[str] = Field(default=None, description="Hugging Face token for Inference API (embedding provider=huggingface)")
     OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API key for embeddings (embedding provider=openai)")
+
+    # ASR Configuration
+    ASR_MODEL_PATH: str = Field(
+        default="services/asr/models/ur_en_whisper_ct2_int8",
+        description="Relative or absolute path to the local Whisper model directory",
+    )
+    ASR_DEVICE: str = Field(default="cpu", description="Device for ASR model: cpu | cuda")
+    ASR_COMPUTE_TYPE: str = Field(default="int8", description="Compute type for Whisper (e.g., int8, float16, float32)")
+    ASR_CPU_THREADS: int = Field(default=4, description="CPU threads for ASR model loading on Windows")
+    ASR_FEATURE_SIZE: int = Field(default=128, description="Number of mel bands for Whisper feature extraction")
+    ASR_SAMPLE_RATE: int = Field(default=16000, description="Target sample rate for ASR input audio")
+    ASR_VAD_FILTER: bool = Field(default=True, description="Enable VAD filter for ASR")
+    ASR_MIN_SILENCE_MS: int = Field(default=500, description="Minimum silence duration in ms for VAD")
+    ASR_BEAM_SIZE: int = Field(default=1, description="Beam size for ASR decoding")
+
+    # Groq (LLM) configuration for translation or chat augmentation
+    GROQ_API_KEY: Optional[str] = Field(default=None, description="Groq API key for translation")
+    GROQ_TRANSLATION_MODEL: str = Field(default="llama-3.1-8b-instant", description="Groq model for translation")
     
     # Model configuration for Pydantic v2
     model_config = SettingsConfigDict(

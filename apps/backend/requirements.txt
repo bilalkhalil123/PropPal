@@ -36,6 +36,10 @@ watchfiles==1.1.0
 websockets==15.0.1
 sentence-transformers==3.2.1
 torch==2.8.0
+faster-whisper==1.0.3
+numpy>=1.26.4
+soundfile
+ctranslate2
 
 # LangGraph and AI Agent Dependencies
 langgraph==1.0.0

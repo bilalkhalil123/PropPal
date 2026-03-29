@@ -19,6 +19,8 @@ import {
   CalendarIcon,
   PaperAirplaneIcon,
   SparklesIcon,
+  MicrophoneIcon,
+  PauseIcon,
 } from '@heroicons/react/24/outline'
 import PropertyModal from '@/components/modals/PropertyModal'
 import BuilderModal from '@/components/modals/BuilderModal'
@@ -110,6 +112,9 @@ function ChatPageContent() {
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [wsConnected, setWsConnected] = useState(false)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -587,6 +592,225 @@ function ChatPageContent() {
     // Send message via unified WebSocket (handles both normal and interactive modes)
     sendMessage(inputMessage, true)
   }
+
+  const sendAudioToBackend = async (audioBlob: Blob, filename: string) => {
+    if (!API_BASE_URL) return
+    setIsLoading(true)
+
+    const transcribingId = `${Date.now()}-transcribing`
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: transcribingId,
+        content: 'Transcribing audio…',
+        sender: 'user',
+        timestamp: new Date(),
+      },
+    ])
+
+    try {
+      const formData = new FormData()
+      formData.append('audio', audioBlob, filename)
+      if (dbUserId) formData.append('user_id', dbUserId)
+      if (sessionId) formData.append('session_id', sessionId)
+      if (clerkId) formData.append('clerk_id', clerkId)
+
+      const response = await fetch(`${API_BASE_URL}/api/chat/message/audio`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ detail: 'Unknown error' }))
+        throw new Error(errorPayload.detail || 'Failed to transcribe audio')
+      }
+
+      const data = (await response.json()) as {
+        success: boolean
+        response: string
+        properties?: Property[]
+        builders?: Builder[]
+        services?: ServiceResult[]
+        metadata?: { transcript?: string }
+        error?: string
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Unable to transcribe audio')
+      }
+
+      const transcript = data.metadata?.transcript || 'Voice message'
+      const thinkingId = `${Date.now()}-thinking`
+
+      setMessages((prev) => [
+        ...prev.map((msg) =>
+          msg.id === transcribingId
+            ? {
+                ...msg,
+                content: transcript,
+              }
+            : msg,
+        ),
+        {
+          id: thinkingId,
+          content: 'Thinking…',
+          sender: 'ai',
+          timestamp: new Date(),
+        },
+      ])
+
+      setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === thinkingId
+              ? {
+                  ...msg,
+                  content: data.response || 'No response generated',
+                  properties: data.properties,
+                  builders: data.builders,
+                  services: data.services,
+                }
+              : msg,
+          ),
+        )
+      }, 250)
+      setSidebarRefresh((v) => v + 1)
+    } catch (error) {
+      console.error('Audio chat error:', error)
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id === transcribingId) {
+            return { ...msg, content: 'Transcription failed. Please try again.' }
+          }
+          return msg
+        }),
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const convertToWav = async (inputBlob: Blob): Promise<Blob> => {
+    const arrayBuffer = await inputBlob.arrayBuffer()
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+
+    const numChannels = audioBuffer.numberOfChannels
+    const sampleRate = audioBuffer.sampleRate
+    const length = audioBuffer.length * numChannels * 2
+    const buffer = new ArrayBuffer(44 + length)
+    const view = new DataView(buffer)
+
+    const writeString = (offset: number, value: string) => {
+      for (let i = 0; i < value.length; i += 1) {
+        view.setUint8(offset + i, value.charCodeAt(i))
+      }
+    }
+
+    let offset = 0
+    writeString(offset, 'RIFF')
+    offset += 4
+    view.setUint32(offset, 36 + length, true)
+    offset += 4
+    writeString(offset, 'WAVE')
+    offset += 4
+    writeString(offset, 'fmt ')
+    offset += 4
+    view.setUint32(offset, 16, true)
+    offset += 4
+    view.setUint16(offset, 1, true)
+    offset += 2
+    view.setUint16(offset, numChannels, true)
+    offset += 2
+    view.setUint32(offset, sampleRate, true)
+    offset += 4
+    view.setUint32(offset, sampleRate * numChannels * 2, true)
+    offset += 4
+    view.setUint16(offset, numChannels * 2, true)
+    offset += 2
+    view.setUint16(offset, 16, true)
+    offset += 2
+    writeString(offset, 'data')
+    offset += 4
+    view.setUint32(offset, length, true)
+    offset += 4
+
+    const channels = []
+    for (let channel = 0; channel < numChannels; channel += 1) {
+      channels.push(audioBuffer.getChannelData(channel))
+    }
+
+    let sampleIndex = 0
+    while (sampleIndex < audioBuffer.length) {
+      for (let channel = 0; channel < numChannels; channel += 1) {
+        const sample = Math.max(-1, Math.min(1, channels[channel][sampleIndex]))
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true)
+        offset += 2
+      }
+      sampleIndex += 1
+    }
+
+    audioContext.close()
+    return new Blob([view], { type: 'audio/wav' })
+  }
+
+  const startRecording = async () => {
+    if (isRecording) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const preferredTypes = ['audio/wav', 'audio/webm;codecs=opus', 'audio/webm']
+      const mimeType = preferredTypes.find((type) => MediaRecorder.isTypeSupported(type))
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      audioChunksRef.current = []
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      recorder.onstop = async () => {
+        const recordedBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType })
+        stream.getTracks().forEach((track) => track.stop())
+        if (recordedBlob.size < 2000) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `${Date.now()}-audio-too-short`,
+              content: 'Recording was too short. Please try again.',
+              sender: 'ai',
+              timestamp: new Date(),
+            },
+          ])
+          return
+        }
+        const wavBlob = await convertToWav(recordedBlob)
+        await sendAudioToBackend(wavBlob, 'voice-message.wav')
+      }
+
+      recorder.start(250)
+      mediaRecorderRef.current = recorder
+      setIsRecording(true)
+    } catch (error) {
+      console.error('Microphone access error:', error)
+    }
+  }
+
+  const stopRecording = () => {
+    const recorder = mediaRecorderRef.current
+    if (!recorder || recorder.state === 'inactive') return
+    recorder.stop()
+    setIsRecording(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop()
+      }
+    }
+  }, [])
 
   const suggestedQuestions = [
     'Find houses in Islamabad',
@@ -1076,6 +1300,30 @@ function ChatPageContent() {
                       </span>
                     </div>
                   )}
+
+                  <Button
+                    type="button"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={isLoading}
+                    variant="outline"
+                    className={`border-slate-200 rounded-xl px-4 py-3 flex items-center gap-2 ${
+                      isRecording
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-white/80 text-slate-700'
+                    }`}
+                  >
+                    {isRecording ? (
+                      <>
+                        <PauseIcon className="w-4 h-4" />
+                        <span>Pause</span>
+                      </>
+                    ) : (
+                      <>
+                        <MicrophoneIcon className="w-4 h-4" />
+                        <span>Speak</span>
+                      </>
+                    )}
+                  </Button>
 
                   <Input
                     type="text"
