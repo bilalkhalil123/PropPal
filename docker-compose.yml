@@ -1,0 +1,48 @@
+# ---------------------------------------------------------------------------
+# PropPal — Local Dev Stack (Postgres + Qdrant)
+#
+# Usage:
+#   docker-compose up -d          # start both services
+#   docker-compose down           # stop (volumes persist)
+#   docker-compose down -v        # stop AND delete data volumes
+# ---------------------------------------------------------------------------
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────
+  db:
+    image: postgres:17-alpine
+    container_name: proppal_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: proppal
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d proppal"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Qdrant Vector DB ────────────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: proppal_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # REST API
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:
+  qdrant_data:

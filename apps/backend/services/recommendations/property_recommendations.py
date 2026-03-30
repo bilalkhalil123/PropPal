@@ -3,10 +3,21 @@ Property recommendation service based on user's chat history.
 Uses PostgreSQL (ChatHistoryRepository, PropertyRepository); IDs are UUID strings.
 """
 from typing import List, Dict, Any, Optional, Set
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from services.embeddings.service import embed_text
 from services.vector_search.qdrant_service import search_properties as qdrant_search_properties
+
+
+def _ensure_aware(dt: Any) -> Optional[datetime]:
+    """Return a timezone-aware UTC datetime, or None if dt is not a datetime."""
+    if dt is None:
+        return None
+    if not isinstance(dt, datetime):
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 async def get_recommended_properties(
@@ -21,10 +32,10 @@ async def get_recommended_properties(
     user_id: UUID string. Repos: Postgres ChatHistoryRepository and PropertyRepository.
     """
     try:
-        cutoff_date = datetime.utcnow() - timedelta(days=days_back)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_back)
         docs = await chat_repo.list_by_user_id(user_id)
-        docs = [d for d in docs if d.get("updated_at") and d["updated_at"] >= cutoff_date]
-        docs.sort(key=lambda d: d.get("updated_at") or datetime.min, reverse=True)
+        docs = [d for d in docs if d.get("updated_at") and _ensure_aware(d["updated_at"]) >= cutoff_date]
+        docs.sort(key=lambda d: _ensure_aware(d.get("updated_at")) or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
         docs = docs[:20]
 
         if not docs:
@@ -53,7 +64,7 @@ def _extract_search_data(
     docs: List[Dict[str, Any]],
     days_back: int = 30,
 ) -> Dict[str, Any]:
-    cutoff_date = datetime.utcnow() - timedelta(days=days_back)
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_back)
     queries: List[Dict[str, Any]] = []
     property_ids: Set[str] = set()
     cities: Set[str] = set()
@@ -71,6 +82,7 @@ def _extract_search_data(
                     timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
                 except Exception:
                     continue
+            timestamp = _ensure_aware(timestamp)
             if timestamp and timestamp < cutoff_date:
                 continue
             if i + 1 < len(messages):
@@ -79,7 +91,7 @@ def _extract_search_data(
                 if payload.get("classification") == "listing_agent":
                     query_text = msg.get("content", "").strip()
                     if query_text:
-                        queries.append({"query": query_text, "timestamp": timestamp or datetime.utcnow()})
+                        queries.append({"query": query_text, "timestamp": timestamp or datetime.now(timezone.utc)})
                     for prop in payload.get("properties", []):
                         prop_id = prop.get("_id") or prop.get("id")
                         if prop_id:
@@ -89,7 +101,7 @@ def _extract_search_data(
                         if prop.get("property_type"):
                             property_types.add(prop["property_type"])
 
-    queries.sort(key=lambda x: x.get("timestamp", datetime.min), reverse=True)
+    queries.sort(key=lambda x: x.get("timestamp", datetime.min.replace(tzinfo=timezone.utc)), reverse=True)
     return {
         "queries": queries[:10],
         "property_ids": list(property_ids),
@@ -146,7 +158,7 @@ async def _generate_recommendations(
 
     def _sort_key(result: Dict[str, Any]) -> tuple:
         score = result.get("score", 0.0)
-        ts = result.get("timestamp", datetime.min)
+        ts = result.get("timestamp", datetime.min.replace(tzinfo=timezone.utc))
         return (-score, ts.timestamp() if isinstance(ts, datetime) else 0)
 
     all_results.sort(key=_sort_key)

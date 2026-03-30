@@ -1,6 +1,3 @@
-# PropPal Backend Services Dockerfile
-# Used for: Gateway, Listing Agent, Builder Agent, NLP/RAG Module
-
 FROM python:3.13-slim
 
 # Set working directory
