@@ -86,8 +86,8 @@ interface Message {
 }
 
 function ChatPageContent() {
-  const { user, userId, clerkId } = useCurrentUser()
-  const dbUserId = (user as { _id?: string } | null)?._id ?? userId ?? null
+  const { user, userId, clerkId, isGuest } = useCurrentUser()
+  const dbUserId = (user as { _id?: string } | null)?._id ?? (userId !== 'guest' ? userId : null) ?? null
   const searchParams = useSearchParams()
   const router = useRouter()
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL as string | undefined
@@ -266,9 +266,9 @@ function ChatPageContent() {
 
   // Unified WebSocket connection setup
   useEffect(() => {
-    // Don't connect if no API URL or clerk ID
-    if (!API_BASE_URL || !clerkId) {
-      console.log('⏳ Waiting for API URL and Clerk ID...')
+    // Don't connect if no API URL
+    if (!API_BASE_URL) {
+      console.log('⏳ Waiting for API URL...')
       return
     }
 
@@ -289,7 +289,8 @@ function ChatPageContent() {
       wsOrigin = baseNoSlash.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:')
     }
 
-    const wsUrl = `${wsOrigin}/api/chat/ws?clerk_id=${encodeURIComponent(clerkId)}&session_id=${encodeURIComponent(sessionId)}`
+    const encodedClerkId = clerkId ? encodeURIComponent(clerkId) : 'guest'
+    const wsUrl = `${wsOrigin}/api/chat/ws?clerk_id=${encodedClerkId}&session_id=${encodeURIComponent(sessionId)}`
     console.log('🔌 Connecting to WebSocket:', wsUrl)
 
     const connectWebSocket = () => {
@@ -870,6 +871,23 @@ function ChatPageContent() {
               </div>
               <ScrollArea className="flex-1 h-full" viewportRef={scrollViewportRef}>
                 <div className="px-6 pb-6 pt-10 md:pt-12 space-y-5 bg-gradient-to-b from-white/70 via-white/60 to-white/70">
+                  {isGuest && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6 flex items-start space-x-3"
+                    >
+                      <SparklesIcon className="h-5 w-5 text-blue-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-blue-800">
+                          <strong>Chatting as Guest:</strong> Your conversation history won&apos;t be saved. 
+                          <Link href="/sign-up" className="ml-2 font-semibold underline hover:text-blue-900">
+                            Sign up
+                          </Link> to save chats and get personalized property matches.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
                   {messages.length === 0 && (
                     <div className="flex flex-col items-center justify-center text-center py-24 text-slate-600">
                       <SparklesIcon className="h-10 w-10 text-[color:var(--color-accent-gold)] mb-3" />

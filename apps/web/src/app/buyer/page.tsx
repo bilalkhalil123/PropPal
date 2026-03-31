@@ -26,6 +26,7 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import { Sheet, SheetTrigger, SheetContent } from '@/components/ui/sheet'
+import AuthRequired from '@/components/AuthRequired'
 
 interface Property {
   _id: string
@@ -40,7 +41,7 @@ interface Property {
 }
 
 export default function BuyerPage() {
-  const { user, loading, isAuthenticated, userId } = useCurrentUser()
+  const { user, loading, isAuthenticated, userId, isGuest } = useCurrentUser()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [priceRange, setPriceRange] = useState([0, 50000000])
@@ -48,7 +49,7 @@ export default function BuyerPage() {
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [properties, setProperties] = useState<Property[]>([])
   const [loadingProperties, setLoadingProperties] = useState(false)
-  const dbUserId = (user as any)?._id || userId || null
+  const dbUserId = isGuest ? null : ((user as any)?._id || userId || null)
   const propertiesContainerRef = useRef<HTMLDivElement>(null)
   const hasLoadedRef = useRef(false)
 
@@ -165,6 +166,18 @@ export default function BuyerPage() {
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-[color:var(--color-primary)]"></div>
       </div>
     )
+
+  if (isGuest) {
+    return (
+      <div className="min-h-screen bg-slate-50 py-12">
+        <AuthRequired 
+          title="Personalized Discovery" 
+          description="Sign in to unlock personalized property recommendations, save favorites, and track your property search journey."
+          role="buyer"
+        />
+      </div>
+    )
+  }
 
   return (
     <div

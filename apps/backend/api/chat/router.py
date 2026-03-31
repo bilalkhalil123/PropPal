@@ -95,7 +95,7 @@ async def _handle_chat_request(
         )
 
     resolved_user_id: Optional[str] = None
-    if clerk_id:
+    if clerk_id and clerk_id != 'guest':
         try:
             user = await user_repo.get_user_by_clerk_id(clerk_id)
             if user and getattr(user, "id", None):
@@ -374,6 +374,7 @@ async def unified_chat_websocket(
             # Extract message details (user_id from frontend so we can persist when clerk lookup fails)
             message_text = data.get("text", "").strip()
             msg_clerk_id = data.get("clerk_id") or clerk_id
+            if msg_clerk_id == 'guest': msg_clerk_id = None
             msg_session_id = data.get("session_id") or session_id
             msg_user_id = (data.get("user_id") or "").strip() or None
             

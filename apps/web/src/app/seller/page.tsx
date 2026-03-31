@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { HomeIcon, UserIcon, PlusCircleIcon, MicrophoneIcon, SparklesIcon, EyeIcon, EllipsisVerticalIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
 import RoleDropdown from '@/components/RoleDropdown'
+import AuthRequired from '@/components/AuthRequired'
 
 interface Property {
   _id: string
@@ -24,7 +25,7 @@ interface Property {
 }
 
 export default function SellerPage() {
-  const { user, loading, isAuthenticated, clerkId } = useCurrentUser()
+  const { user, loading, isAuthenticated, clerkId, isGuest } = useCurrentUser()
   const router = useRouter()
   const [currentRole, setCurrentRole] = useState<'buyer' | 'seller' | 'builder'>('seller')
   const [properties, setProperties] = useState<Property[]>([])
@@ -34,10 +35,10 @@ export default function SellerPage() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!loading && !isAuthenticated && !isGuest) {
       router.push('/sign-in')
     }
-  }, [loading, isAuthenticated, router])
+  }, [loading, isAuthenticated, isGuest, router])
 
   // Fetch user's properties
   useEffect(() => {
@@ -114,6 +115,18 @@ export default function SellerPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[color:var(--color-primary)] mx-auto mb-4"></div>
           <p className="text-[color:var(--color-primary)]">Loading...</p>
         </div>
+      </div>
+    )
+  }
+
+  if (isGuest) {
+    return (
+      <div className="min-h-screen bg-slate-50 py-12">
+        <AuthRequired 
+          title="Seller Dashboard" 
+          description="Sign in as a seller to list your properties, manage inquiries, and track your listing performance."
+          role="seller"
+        />
       </div>
     )
   }

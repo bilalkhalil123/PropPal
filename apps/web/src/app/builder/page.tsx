@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { api } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
+import AuthRequired from '@/components/AuthRequired'
 
 interface BuilderProfile {
   _id: string
@@ -43,7 +44,7 @@ interface BuilderService {
 }
 
 export default function BuilderPage() {
-  const { user, loading, isAuthenticated, clerkId } = useCurrentUser()
+  const { user, loading, isAuthenticated, clerkId, isGuest } = useCurrentUser()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [builderProfile, setBuilderProfile] = useState<BuilderProfile | null | undefined>(undefined)
@@ -93,10 +94,10 @@ export default function BuilderPage() {
   }, [isAuthenticated, loading, clerkId])
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!loading && !isAuthenticated && !isGuest) {
       router.push('/sign-in')
     }
-  }, [loading, isAuthenticated, router])
+  }, [loading, isAuthenticated, isGuest, router])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -114,6 +115,18 @@ export default function BuilderPage() {
   }
 
   // Show spinner while loading and have not received API result; but not after fetching null
+  if (isGuest) {
+    return (
+      <div className="min-h-screen bg-slate-50 py-12">
+        <AuthRequired 
+          title="Builder Console" 
+          description="Sign in as a builder to manage your company profile, showcase your services, and connect with potential homeowners."
+          role="builder"
+        />
+      </div>
+    )
+  }
+
   if ((dataLoading || loading) && typeof builderProfile === 'undefined') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -157,7 +170,7 @@ export default function BuilderPage() {
               </Button>
             </form>
             <p className="text-sm text-slate-500 mt-3">
-              💡 Try: "Update my profile", "Add new service", "View my ratings"
+              💡 Try: &quot;Update my profile&quot;, &quot;Add new service&quot;, &quot;View my ratings&quot;
             </p>
           </div>
 

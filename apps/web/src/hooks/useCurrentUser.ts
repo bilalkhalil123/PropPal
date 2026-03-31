@@ -45,6 +45,9 @@ export function useCurrentUser() {
     
     // Convenience helper to get user role
     userRole: context.user?.role,
+    
+    // Guest status
+    isGuest: context.isGuest,
   }
 }
 

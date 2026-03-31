@@ -11,6 +11,7 @@ interface UserContextType {
   refreshUser: () => Promise<void>
   isAuthenticated: boolean
   clerkId: string | null | undefined
+  isGuest: boolean
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
@@ -146,10 +147,18 @@ export function UserProvider({ children }: UserProviderProps) {
       console.log('🚀 [USER PROVIDER] Starting sync for user:', clerkUser.id)
       fetchUser()
     } else if (isClerkLoaded && !clerkUser) {
-      // User logged out
-      setUser(null)
+      // User logged out or guest session
+      console.log('👤 [USER PROVIDER] No Clerk user found, treating as Guest')
+      setUser({
+        id: 'guest',
+        name: 'Guest',
+        email: 'guest@proppal.ai',
+        role: 'buyer',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as UserResponse)
       setLoading(false)
-      setIsSynced(false)
+      setIsSynced(true) // Treat guest as "synced" to allow apps to proceed
     }
   }, [isClerkLoaded, clerkUser, isSynced, fetchUser])
 
@@ -164,8 +173,9 @@ export function UserProvider({ children }: UserProviderProps) {
     loading: loading || !isClerkLoaded,
     error,
     refreshUser,
-    isAuthenticated: !!user && !!clerkUser,
+    isAuthenticated: !!user && !!clerkUser && user.id !== 'guest',
     clerkId: clerkUser?.id,
+    isGuest: user?.id === 'guest',
   }
 
   // Show sync status during development (optional - for debugging)

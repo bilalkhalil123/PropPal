@@ -113,10 +113,10 @@ export default function LandingClient() {
 
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
               <Link
-                href="/sign-up"
+                href="/chat"
                 className="px-8 py-4 rounded-2xl text-lg font-semibold transition-all duration-200 active:scale-95 transform hover:scale-105 shadow-cta text-[var(--color-primary-contrast)] hover:ring-2 hover:ring-[color:var(--color-accent-gold)] bg-[linear-gradient(to_right,#f59e0b,var(--color-accent-gold))]"
               >
-                Get Started
+                Get Started as Guest
               </Link>
               {!loading && !isAuthenticated && (
                 <Link
@@ -236,10 +236,10 @@ export default function LandingClient() {
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
           >
             <Link
-              href="/sign-up"
+              href="/chat"
               className="inline-block px-10 py-4 rounded-xl text-lg font-semibold transition-all duration-200 active:scale-95 transform hover:scale-105 shadow-xl hover:shadow-2xl bg-white text-[color:var(--color-primary)] hover:bg-slate-50"
             >
-              Start Your Journey Today
+              Get Started as Guest
             </Link>
           </motion.div>
         </div>
