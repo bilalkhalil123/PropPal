@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "dev": "turbo run dev",
+    "dev:backend": ".\\.venv\\Scripts\\python -m uvicorn apps.backend.services.main:app --host 0.0.0.0 --port 8000 --reload",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "lint:js": "eslint \"apps/**/*.{js,jsx,ts,tsx}\" \"packages/**/*.{js,jsx,ts,tsx}\"",
