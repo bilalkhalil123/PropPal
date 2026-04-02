@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { motion } from 'framer-motion'
@@ -10,6 +11,13 @@ import { HomeIcon, SparklesIcon, UsersIcon, ChatBubbleLeftIcon, ChevronDownIcon 
 export default function LandingClient() {
   const [scrolled, setScrolled] = useState(false)
   const { isAuthenticated, loading } = useCurrentUser()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      router.push('/buyer')
+    }
+  }, [isAuthenticated, loading, router])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
