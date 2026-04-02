@@ -314,3 +314,23 @@ class Visit(Base):
     agent_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# ---------------------------------------------------------------------------
+# User Favorites (Shortlisted Properties)
+# ---------------------------------------------------------------------------
+
+
+class UserFavorite(Base):
+    __tablename__ = 'user_favorites'
+
+    user_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey('users.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    property_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey('properties.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)

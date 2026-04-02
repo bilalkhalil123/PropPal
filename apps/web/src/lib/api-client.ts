@@ -185,6 +185,12 @@ export const api = {
     getById: (id: string) => apiClient.get(`/api/properties/${id}`),
     contactSeller: (propertyId: string, message?: string, options?: RequestInit) =>
       apiClient.post(`/api/properties/${propertyId}/contact-seller`, { message }, options),
+    favorite: (propertyId: string, options?: RequestInit) =>
+      apiClient.post(`/api/properties/${propertyId}/favorite`, undefined, options),
+    unfavorite: (propertyId: string, options?: RequestInit) =>
+      apiClient.delete(`/api/properties/${propertyId}/favorite`, options),
+    getFavorites: (options?: RequestInit) =>
+      apiClient.get('/api/properties/user/favorites', options),
   },
 
   /**
