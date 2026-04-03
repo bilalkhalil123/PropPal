@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
-import { UserButton } from '@clerk/nextjs'
+import { UserButton, useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
-import { HomeIcon, UserIcon, PlusCircleIcon, MicrophoneIcon, SparklesIcon, EyeIcon, EllipsisVerticalIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { HomeIcon, UserIcon, PlusCircleIcon, MicrophoneIcon, SparklesIcon, EyeIcon, EllipsisVerticalIcon, TrashIcon, CalendarDaysIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
 import RoleDropdown from '@/components/RoleDropdown'
 import AuthRequired from '@/components/AuthRequired'
+import { api, type VisitApiRow } from '@/lib/api-client'
 
 interface Property {
   _id: string
@@ -26,12 +27,15 @@ interface Property {
 
 export default function SellerPage() {
   const { user, loading, isAuthenticated, clerkId, isGuest } = useCurrentUser()
+  const { getToken } = useAuth()
   const router = useRouter()
   const [currentRole, setCurrentRole] = useState<'buyer' | 'seller' | 'builder'>('seller')
   const [properties, setProperties] = useState<Property[]>([])
   const [loadingProperties, setLoadingProperties] = useState(true)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [sellerVisits, setSellerVisits] = useState<VisitApiRow[]>([])
+  const [visitsLoading, setVisitsLoading] = useState(false)
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
@@ -67,6 +71,30 @@ export default function SellerPage() {
       fetchProperties()
     }
   }, [isAuthenticated, clerkId, API_BASE_URL])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        setVisitsLoading(true)
+        const token = await getToken()
+        if (!token) return
+        const res = await api.visits.sellerUpcoming({
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!cancelled) setSellerVisits(res.visits || [])
+      } catch (e) {
+        console.error('Failed to load seller visits', e)
+      } finally {
+        if (!cancelled) setVisitsLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, getToken])
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -143,6 +171,57 @@ export default function SellerPage() {
           <h1 className="text-4xl font-bold mb-2 text-[color:var(--color-primary)]">Seller Dashboard</h1>
           <p className="text-slate-700">Manage your property listings and reach potential buyers</p>
         </div>
+
+        {(sellerVisits.length > 0 || visitsLoading) && (
+          <div className="mb-10 rounded-3xl bg-white/80 backdrop-blur-xl border border-slate-200 shadow-lg p-6 md:p-8">
+            <h2 className="text-xl font-bold text-[color:var(--color-primary)] flex items-center gap-2 mb-4">
+              <CalendarDaysIcon className="h-6 w-6 text-[color:var(--color-accent-gold)]" />
+              Upcoming visits to your listings
+            </h2>
+            {visitsLoading ? (
+              <p className="text-sm text-slate-500">Loading…</p>
+            ) : (
+              <ul className="space-y-3">
+                {sellerVisits.map((v) => {
+                  const when = v.confirmed_time
+                    ? new Date(v.confirmed_time).toLocaleString(undefined, {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
+                    : '—'
+                  const pid = v.property_id || ''
+                  return (
+                    <li
+                      key={v.id}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm"
+                    >
+                      <div>
+                        <p className="font-semibold text-slate-900">{v.property_title || 'Property'}</p>
+                        <p className="text-slate-600">{when}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Buyer: {v.buyer_name || '—'} ·{' '}
+                          <span className="capitalize">{v.status || 'pending'}</span>
+                        </p>
+                      </div>
+                      {pid ? (
+                        <Link
+                          href={`/properties/${pid}`}
+                          className="text-sm font-semibold text-[color:var(--color-primary)] hover:underline shrink-0"
+                        >
+                          View listing
+                        </Link>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* My Listings Section */}
         <div className="mt-12 bg-white/70 backdrop-blur-xl border border-slate-200 shadow-lg rounded-3xl p-8 md:p-12">

@@ -1,7 +1,7 @@
 /**
  * AUTO-GENERATED TypeScript interfaces from Pydantic models
  * DO NOT EDIT MANUALLY - Changes will be overwritten
- * Generated on: 2026-04-03T03:08:36.118402
+ * Generated on: 2026-04-03T04:38:51.803963
  */
 
 export interface UserResponse {
@@ -246,9 +246,12 @@ export interface VisitResponse {
   /** Array of ISO timestamp strings */
   proposed_time_slots?: string[];
   confirmed_time?: string | null;
-  /** pending, confirmed, cancelled, completed */
+  /** pending, confirmed, cancelled, completed, rescheduled */
   status?: string;
   agent_notes?: string | null;
+  seller_id?: string | null;
+  cancelled_by?: string | null;
+  cancellation_reason?: string | null;
   _id: string;
   buyer_id: string;
   property_id?: string | null;
@@ -261,9 +264,12 @@ export interface VisitCreate {
   /** Array of ISO timestamp strings */
   proposed_time_slots?: string[];
   confirmed_time?: string | null;
-  /** pending, confirmed, cancelled, completed */
+  /** pending, confirmed, cancelled, completed, rescheduled */
   status?: string;
   agent_notes?: string | null;
+  seller_id?: string | null;
+  cancelled_by?: string | null;
+  cancellation_reason?: string | null;
   property_id?: string | null;
   builder_id?: string | null;
 }

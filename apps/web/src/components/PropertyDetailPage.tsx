@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useRouter } from "next/navigation"
 import { MapPinIcon, CheckCircleIcon, HeartIcon as HeartOutline } from "@heroicons/react/24/outline"
 import { ChevronLeftIcon, ChevronRightIcon, HeartIcon as HeartSolid } from "@heroicons/react/24/solid"
 import ImageLightbox from "./modals/ImageLightbox"
 import PropertyMap from "./PropertyMap"
+import PropertyBookingChat from "./PropertyBookingChat"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { api } from "@/lib/api-client"
 import { useAuth, SignIn } from "@clerk/nextjs"
@@ -33,9 +33,8 @@ type Property = {
 export default function PropertyDetailPage({ property }: { property: Property }) {
   const [current, setCurrent] = useState(0)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
-  const [isContacting, setIsContacting] = useState(false)
-  const [contactError, setContactError] = useState<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [bookingChatOpen, setBookingChatOpen] = useState(false)
   
   const [isShortlisted, setIsShortlisted] = useState(false)
   const [toastMsg, setToastMsg] = useState("")
@@ -44,7 +43,6 @@ export default function PropertyDetailPage({ property }: { property: Property })
   const [activeAmenityCategory, setActiveAmenityCategory] = useState<string | null>(null)
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false)
 
-  const router = useRouter()
   const { isAuthenticated, loading: authLoading } = useCurrentUser()
   const { getToken } = useAuth()
   const images = property.images && property.images.length > 0 ? property.images : ["/placeholder.svg"]
@@ -126,46 +124,12 @@ export default function PropertyDetailPage({ property }: { property: Property })
     }
   }
 
-  const handleContactAgent = async () => {
-    // Check if user is authenticated
+  const handleContactAgent = () => {
     if (!isAuthenticated || authLoading) {
-      // Open in-page auth modal instead of redirecting
       setShowAuthModal(true)
       return
     }
-
-    // User is authenticated, proceed with contact
-    setIsContacting(true)
-    setContactError(null)
-
-    try {
-      // Get Clerk token for authenticated request
-      const token = await getToken()
-      if (!token) {
-        throw new Error("Unable to get authentication token")
-      }
-
-      // Call the contact endpoint
-      const response = await api.properties.contactSeller(property._id, undefined, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      // Show success message and redirect to chat or show seller info
-      if (response.success) {
-        // Option 1: Redirect to chat with pre-filled message
-        const chatMessage = `Hi, I'm interested in ${property.title} (${property.city}). Can you tell me more about this property?`
-        router.push(`/chat?q=${encodeURIComponent(chatMessage)}`)
-      }
-    } catch (error: any) {
-      console.error("Error contacting seller:", error)
-      setContactError(
-        error.message || "Failed to contact seller. Please try again."
-      )
-    } finally {
-      setIsContacting(false)
-    }
+    setBookingChatOpen(true)
   }
 
   return (
@@ -428,10 +392,10 @@ export default function PropertyDetailPage({ property }: { property: Property })
                 <div className="flex gap-3">
                   <button
                     onClick={handleContactAgent}
-                    disabled={isContacting || authLoading}
+                    disabled={authLoading}
                     className="flex-1 py-3 rounded-xl font-semibold text-white bg-[linear-gradient(to_right,#f59e0b,var(--color-accent-gold))] hover:scale-[1.02] active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isContacting ? "Contacting..." : "Contact Agent"}
+                    Contact Agent
                   </button>
                   <button
                     onClick={toggleShortlist}
@@ -445,9 +409,6 @@ export default function PropertyDetailPage({ property }: { property: Property })
                     )}
                   </button>
                 </div>
-                {contactError && (
-                  <p className="mt-2 text-sm text-red-600">{contactError}</p>
-                )}
                 <ul className="mt-6 space-y-3 text-sm text-slate-600">
                   <li className="flex items-center gap-2">
                     <CheckCircleIcon className="h-5 w-5 text-green-600" /> Verified Listing
@@ -464,6 +425,15 @@ export default function PropertyDetailPage({ property }: { property: Property })
           </div>
         </div>
       </section>
+
+      <PropertyBookingChat
+        propertyId={property._id}
+        propertyName={property.title}
+        isAuthenticated={isAuthenticated}
+        authLoading={authLoading}
+        open={bookingChatOpen}
+        onOpenChange={setBookingChatOpen}
+      />
 
       {/* Map Section */}
       {property.lat && property.lng && (

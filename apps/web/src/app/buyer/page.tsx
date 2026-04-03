@@ -6,7 +6,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { api } from '@/lib/api-client'
+import { api, type VisitApiRow } from '@/lib/api-client'
 import {
   MagnifyingGlassIcon,
   MapPinIcon,
@@ -16,6 +16,7 @@ import {
   HomeModernIcon,
   BanknotesIcon,
   HeartIcon as HeartOutline,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import { Input } from '@/components/ui/input'
@@ -57,6 +58,8 @@ export default function BuyerPage() {
   const [activeTab, setActiveTab] = useState<'recommendations' | 'shortlist'>('recommendations')
   const [loadingProperties, setLoadingProperties] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
+  const [upcomingVisits, setUpcomingVisits] = useState<VisitApiRow[]>([])
+  const [visitsLoading, setVisitsLoading] = useState(false)
   const dbUserId = isGuest ? null : ((user as any)?._id || userId || null)
   const propertiesContainerRef = useRef<HTMLDivElement>(null)
   const hasLoadedRef = useRef(false)
@@ -168,6 +171,30 @@ export default function BuyerPage() {
       loadFavorites()
     }
   }, [dbUserId, isAuthenticated, isGuest, getToken])
+
+  useEffect(() => {
+    if (!isAuthenticated || isGuest) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        setVisitsLoading(true)
+        const token = await getToken()
+        if (!token) return
+        const res = await api.visits.myUpcoming({
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!cancelled) setUpcomingVisits(res.visits || [])
+      } catch (e) {
+        console.error('Failed to load visits', e)
+      } finally {
+        if (!cancelled) setVisitsLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, isGuest, getToken])
 
   const showToast = (msg: string) => {
     setToastMsg(msg)
@@ -308,6 +335,58 @@ export default function BuyerPage() {
           </Button>
           </form>
       </section>
+
+      {upcomingVisits.length > 0 && (
+        <section className="border-b border-slate-200/60 bg-white/60 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <h2 className="text-lg font-semibold text-[color:var(--foreground)] flex items-center gap-2 mb-3">
+              <CalendarDaysIcon className="h-5 w-5 text-[color:var(--color-accent-gold)]" />
+              Your upcoming visits
+            </h2>
+            {visitsLoading ? (
+              <p className="text-sm text-slate-500">Loading…</p>
+            ) : (
+              <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {upcomingVisits.map((v) => {
+                  const pid = v.property_id || ''
+                  const when = v.confirmed_time
+                    ? new Date(v.confirmed_time).toLocaleString(undefined, {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
+                    : '—'
+                  return (
+                    <li
+                      key={v.id}
+                      className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm text-sm"
+                    >
+                      <p className="font-medium text-slate-900 line-clamp-2">
+                        {v.property_title || 'Property'}
+                      </p>
+                      <p className="text-slate-600 mt-1">{when}</p>
+                      <p className="text-xs text-slate-500 mt-1 capitalize">
+                        {v.status || 'pending'}
+                      </p>
+                      {pid ? (
+                        <Link
+                          href={`/properties/${pid}`}
+                          className="inline-block mt-2 text-xs font-semibold text-[color:var(--color-primary)] hover:underline"
+                        >
+                          View listing
+                        </Link>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-[280px_1fr] gap-8">

@@ -165,6 +165,20 @@ class Settings(BaseSettings):
     # Groq (LLM) configuration for translation or chat augmentation
     GROQ_API_KEY: Optional[str] = Field(default=None, description="Groq API key for translation")
     GROQ_TRANSLATION_MODEL: str = Field(default="llama-3.1-8b-instant", description="Groq model for translation")
+
+    # Booking assistant: optional anchor date (YYYY-MM-DD) for demo / wrong system clock
+    BOOKING_CALENDAR_ANCHOR_DATE: Optional[str] = Field(
+        default=None,
+        description="If set, booking prompt 'today' + 14-day map use this date instead of real clock.",
+    )
+    BOOKING_SLOT_FOCUS_WEEK_START: Optional[str] = Field(
+        default="2026-04-20",
+        description="Inclusive start (YYYY-MM-DD) for default tour week hint in booking prompt.",
+    )
+    BOOKING_SLOT_FOCUS_WEEK_END: Optional[str] = Field(
+        default="2026-04-26",
+        description="Inclusive end (YYYY-MM-DD) for default tour week hint in booking prompt.",
+    )
     
     # Model configuration for Pydantic v2
     model_config = SettingsConfigDict(

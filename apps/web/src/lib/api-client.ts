@@ -122,6 +122,20 @@ class ApiClient {
 // Export singleton instance
 export const apiClient = new ApiClient(API_BASE_URL)
 
+/** Visit row from GET /api/visits/* */
+export type VisitApiRow = {
+  id: string
+  _id?: string
+  buyer_id?: string
+  property_id?: string | null
+  seller_id?: string | null
+  confirmed_time?: string | null
+  status?: string
+  property_title?: string
+  buyer_name?: string
+  agent_notes?: string | null
+}
+
 // Export convenience methods
 export const api = {
   /**
@@ -168,6 +182,21 @@ export const api = {
       apiClient.get(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`),
     deleteSession: (userId: string, sessionId: string) =>
       apiClient.delete(`/api/chat/sessions/${encodeURIComponent(sessionId)}?user_id=${encodeURIComponent(userId)}`),
+    booking: (
+      body: {
+        message: string
+        property_id: string
+        conversation_history: Array<{ role: string; content: string }>
+      },
+      options?: RequestInit
+    ) => apiClient.post<{
+      success: boolean
+      agent_response: string
+      updated_history: Array<{ role: string; content: string }>
+      visit_object?: Record<string, unknown> | null
+      metadata?: Record<string, unknown>
+      error?: string | null
+    }>('/api/chat/booking', body, options),
   },
 
   /**
@@ -199,6 +228,16 @@ export const api = {
   recommendations: {
     properties: (userId: string, limit: number = 12) =>
       apiClient.get(`/api/recommendations/properties?user_id=${encodeURIComponent(userId)}&limit=${limit}`),
+  },
+
+  /**
+   * Property visits (booking)
+   */
+  visits: {
+    myUpcoming: (options?: RequestInit) =>
+      apiClient.get<{ visits: VisitApiRow[] }>('/api/visits/me/upcoming', options),
+    sellerUpcoming: (options?: RequestInit) =>
+      apiClient.get<{ visits: VisitApiRow[] }>('/api/visits/seller/upcoming', options),
   },
 }
 
