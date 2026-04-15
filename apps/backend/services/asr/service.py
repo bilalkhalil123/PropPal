@@ -8,6 +8,7 @@ from typing import Any, Dict, Tuple
 
 import numpy as np
 import soundfile as sf
+import av
 from faster_whisper import WhisperModel
 
 from common.config import get_settings
@@ -30,6 +31,42 @@ def _resample_audio(audio: np.ndarray, original_sr: int, target_sr: int) -> np.n
     new_positions = np.linspace(0.0, duration, num=target_len, endpoint=False)
     resampled = np.interp(new_positions, old_positions, audio).astype(np.float32)
     return resampled
+
+
+def _decode_audio_with_pyav(audio_bytes: bytes) -> Tuple[np.ndarray, int]:
+    """
+    Fallback decoder for compressed containers/codecs (e.g. m4a/aac from mobile).
+    Returns mono float32 waveform and sample rate.
+    """
+    container = av.open(io.BytesIO(audio_bytes))
+    stream = next((s for s in container.streams if s.type == "audio"), None)
+    if stream is None:
+        raise ValueError("No audio stream found in uploaded file")
+
+    audio_chunks: list[np.ndarray] = []
+    sample_rate: int | None = None
+
+    for frame in container.decode(stream):
+        sample_rate = frame.sample_rate or sample_rate
+        frame_array = frame.to_ndarray()
+        # frame shape is typically (channels, samples)
+        if frame_array.ndim == 2:
+            mono = frame_array.mean(axis=0)
+        else:
+            mono = frame_array
+
+        if np.issubdtype(mono.dtype, np.integer):
+            max_val = max(np.iinfo(mono.dtype).max, 1)
+            mono = mono.astype(np.float32) / float(max_val)
+        else:
+            mono = mono.astype(np.float32)
+
+        audio_chunks.append(mono)
+
+    if not audio_chunks or sample_rate is None:
+        raise ValueError("Could not decode audio frames from uploaded file")
+
+    return np.concatenate(audio_chunks), int(sample_rate)
 
 
 @lru_cache(maxsize=1)
@@ -99,9 +136,13 @@ def transcribe_audio_bytes(audio_bytes: bytes) -> Tuple[str, Dict[str, Any]]:
         return "", {"error": "empty_audio"}
 
     settings = get_settings()
-    with sf.SoundFile(io.BytesIO(audio_bytes)) as sound_file:
-        audio = sound_file.read(dtype="float32")
-        sample_rate = sound_file.samplerate
+    try:
+        with sf.SoundFile(io.BytesIO(audio_bytes)) as sound_file:
+            audio = sound_file.read(dtype="float32")
+            sample_rate = sound_file.samplerate
+    except Exception:
+        # Mobile clients often upload m4a/aac which libsndfile may not recognize.
+        audio, sample_rate = _decode_audio_with_pyav(audio_bytes)
 
     if audio.ndim > 1:
         audio = np.mean(audio, axis=1)

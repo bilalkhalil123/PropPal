@@ -93,3 +93,4 @@ htmlcov/
 Thumbs.db
 
 db-Backup/
+apps/backend/venv310/
