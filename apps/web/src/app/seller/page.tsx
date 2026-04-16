@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { UserButton, useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
-import { HomeIcon, UserIcon, PlusCircleIcon, MicrophoneIcon, SparklesIcon, EyeIcon, EllipsisVerticalIcon, TrashIcon, CalendarDaysIcon } from '@heroicons/react/24/outline'
+import { HomeIcon, UserIcon, PlusCircleIcon, SparklesIcon, EyeIcon, EllipsisVerticalIcon, TrashIcon, CalendarDaysIcon, MapPinIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
 import RoleDropdown from '@/components/RoleDropdown'
 import AuthRequired from '@/components/AuthRequired'
@@ -390,8 +390,8 @@ export default function SellerPage() {
             </motion.div>
             <h2 className="text-3xl font-bold mb-4 text-[color:var(--color-primary)]">Create Your Property Listing</h2>
             <p className="text-lg text-slate-700 max-w-2xl mx-auto mb-8">
-              List your properties quickly and easily. Use our AI-powered voice input to describe your property,
-              or fill out the form manually. Watch as your listing comes to life in real-time!
+              List your properties quickly and easily. Pin your location on the map and we&apos;ll
+              automatically detect nearby amenities. Use AI to generate professional descriptions!
             </p>
           </div>
 
@@ -417,11 +417,11 @@ export default function SellerPage() {
               className="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:shadow-md transition-all"
             >
               <div className="w-12 h-12 rounded-xl bg-[color:var(--color-primary)]/10 flex items-center justify-center mb-4">
-                <MicrophoneIcon className="h-6 w-6 text-[color:var(--color-primary)]" />
+                <MapPinIcon className="h-6 w-6 text-[color:var(--color-primary)]" />
               </div>
-              <h3 className="text-xl font-bold mb-2 text-[color:var(--color-primary)]">Voice Input</h3>
+              <h3 className="text-xl font-bold mb-2 text-[color:var(--color-primary)]">Smart Location</h3>
               <p className="text-slate-600 text-sm">
-                Describe your property naturally using voice. Our AI will extract all the details automatically.
+                Pin your property on the map. Nearby schools, hospitals, and amenities are detected automatically.
               </p>
             </motion.div>
 
@@ -434,9 +434,9 @@ export default function SellerPage() {
               <div className="w-12 h-12 rounded-xl bg-[color:var(--color-primary)]/10 flex items-center justify-center mb-4">
                 <SparklesIcon className="h-6 w-6 text-[color:var(--color-primary)]" />
               </div>
-              <h3 className="text-xl font-bold mb-2 text-[color:var(--color-primary)]">Real-Time Updates</h3>
+              <h3 className="text-xl font-bold mb-2 text-[color:var(--color-primary)]">AI Descriptions</h3>
               <p className="text-slate-600 text-sm">
-                Watch as your form fields are filled in real-time as you speak. See progress and missing information instantly.
+                Fill in the details and let AI generate a professional, compelling property description for you.
               </p>
             </motion.div>
 
@@ -459,8 +459,8 @@ export default function SellerPage() {
           {/* Quick Info */}
           <div className="mt-8 p-6 rounded-xl bg-blue-50 border border-blue-200">
             <p className="text-blue-800 text-sm text-center">
-              <strong>💡 Tip:</strong> You can use either voice input or manual form filling, or both together!
-              The form supports real-time updates from voice input while you can still edit fields manually.
+              <strong>💡 Tip:</strong> Pin your location on the map to automatically discover nearby amenities!
+              Fill in the details and let AI generate the description for you.
             </p>
           </div>
         </div>

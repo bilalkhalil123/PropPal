@@ -126,19 +126,17 @@ async def create_property(
 
     # Schedule background task for amenity enrichment (fetches from Overpass, generates summary via Groq, updates Qdrant)
     if row.lat is not None and row.lng is not None:
+        await property_repo.session.commit()
         from services.amenities.service import enrich_property_amenities
-        import asyncio
 
-        async def _run_amenity_enrichment():
-            await enrich_property_amenities(
-                property_id=row.id,
-                lat=row.lat,
-                lon=row.lng,
-                city=row.city,
-                area=row.area,
-            )
-
-        background_tasks.add_task(asyncio.run, _run_amenity_enrichment())
+        background_tasks.add_task(
+            enrich_property_amenities,
+            property_id=row.id,
+            lat=row.lat,
+            lon=row.lng,
+            city=row.city,
+            area=row.area,
+        )
 
     return property_repo._row_to_dict(row)
 
