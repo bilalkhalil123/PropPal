@@ -233,6 +233,41 @@ export default function BuyerPage() {
               <Text className="text-white text-base font-semibold">AI Search</Text>
             </TouchableOpacity>
           </View>
+          
+          {/* Amenity-focused quick prompts */}
+          <View className="mt-4 mb-2">
+            <Text className="text-xs font-semibold text-slate-600 mb-2">
+              Try these smart searches
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingVertical: 4, columnGap: 8 }}
+            >
+              {[
+                'Houses near FAST University in Islamabad',
+                'Show me a house near a good school in Lahore',
+                'Apartments near hospitals in Karachi',
+                'Homes near parks and playgrounds',
+              ].map((q) => (
+                <TouchableOpacity
+                  key={q}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/chat',
+                      params: { query: q },
+                    } as any)
+                  }
+                  className="bg-slate-50 border border-slate-200 rounded-full px-3 py-1.5 mr-2"
+                  activeOpacity={0.8}
+                >
+                  <Text className="text-xs text-slate-700" numberOfLines={1}>
+                    {q}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </View>
 
 
