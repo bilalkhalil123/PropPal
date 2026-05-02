@@ -13,9 +13,10 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn, useSharedValue, useAnimatedStyle, withTiming, interpolate } from 'react-native-reanimated';
-import { api } from '@/lib/api-client';
+import { api, API_URL } from '@/lib/api-client';
 import { getUser, isAuthenticated } from '@/lib/auth';
 import Constants from 'expo-constants';
 import Navbar from '@/components/Navbar';
@@ -28,12 +29,14 @@ interface Property {
   title: string;
   price: number;
   city: string;
+  area?: string;
   bedrooms: number;
   bathrooms: number;
   area_sqft: number;
   images?: string[];
   property_type: string;
   score?: number;
+  amenity_summary?: string;
 }
 
 interface Builder {
@@ -112,6 +115,8 @@ export default function ChatPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sessions, setSessions] = useState<Array<{ session_id: string; last_message: string; updated_at: string }>>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
   // Check authentication
   useEffect(() => {
@@ -419,6 +424,156 @@ export default function ChatPage() {
       transform: [{ translateX: sidebarTranslateX.value }],
     };
   });
+
+  const startRecording = async () => {
+    if (isRecording) return;
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-mic-permission`,
+            content: 'Microphone permission is required to use voice search.',
+            sender: 'ai',
+            timestamp: new Date(),
+          },
+        ]);
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
+      recordingRef.current = recording;
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      setIsRecording(false);
+    }
+  };
+
+  const sendAudioToBackend = async (uri: string) => {
+    if (!API_URL || !user?.id || !sessionId) {
+      return;
+    }
+
+    setIsLoading(true);
+    const transcribingId = `${Date.now()}-transcribing`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: transcribingId,
+        content: 'Transcribing audio…',
+        sender: 'user',
+        timestamp: new Date(),
+      },
+    ]);
+
+    try {
+      const formData = new FormData();
+      formData.append('audio', {
+        uri,
+        name: 'voice-message.m4a',
+        type: 'audio/m4a',
+      } as any);
+      formData.append('user_id', user.id);
+      formData.append('session_id', sessionId);
+
+      const response = await fetch(`${API_URL.replace(/\/$/, '')}/api/chat/message/audio`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to transcribe audio');
+      }
+
+      const data = await response.json();
+      const transcript: string =
+        data?.metadata?.transcript || 'Voice message';
+
+      // Replace the placeholder message with the transcript
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === transcribingId
+            ? {
+                ...msg,
+                content: transcript,
+              }
+            : msg,
+        ),
+      );
+
+      const aiMessage: Message = {
+        id: `${Date.now()}-ai-audio`,
+        content: data.response || data.message || 'I received your voice message.',
+        sender: 'ai',
+        timestamp: new Date(),
+        properties: data.properties || [],
+        builders: data.builders || [],
+        services: data.services || [],
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+      setSidebarRefresh((v) => v + 1);
+    } catch (error: any) {
+      console.error('Error sending audio message:', error);
+      const message = error?.message || 'Transcription failed. Please try again.';
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === transcribingId
+            ? {
+                ...msg,
+                content: `Error: ${message}`,
+              }
+            : msg,
+        ),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!isRecording || !recordingRef.current) return;
+    try {
+      const recording = recordingRef.current;
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setIsRecording(false);
+      recordingRef.current = null;
+      if (uri) {
+        await sendAudioToBackend(uri);
+      }
+    } catch (error) {
+      console.error('Error stopping recording:', error);
+      setIsRecording(false);
+    }
+  };
+
+  const cancelRecording = async () => {
+    if (!isRecording || !recordingRef.current) return;
+    try {
+      const recording = recordingRef.current;
+      await recording.stopAndUnloadAsync();
+    } catch (error) {
+      console.error('Error cancelling recording:', error);
+    } finally {
+      recordingRef.current = null;
+      setIsRecording(false);
+    }
+  };
 
   const overlayAnimatedStyle = useAnimatedStyle(() => {
     const opacity = interpolate(sidebarTranslateX.value, [-320, 0], [0, 0.6]);
@@ -793,9 +948,11 @@ export default function ChatPage() {
                               </View>
 
                               {/* Location */}
-                              <View className="flex-row items-center gap-1.5 mb-3">
+                              <View className="flex-row items-center gap-1.5 mb-2">
                                 <Ionicons name="location" size={14} color="#94a3b8" />
-                                <Text className="text-sm text-slate-700">{property.city}</Text>
+                                <Text className="text-sm text-slate-700" numberOfLines={1}>
+                                  {property.area ? `${property.area}, ${property.city}` : property.city}
+                                </Text>
                               </View>
 
                               {/* Property Stats */}
@@ -806,6 +963,15 @@ export default function ChatPage() {
                                 <Text className="text-xs text-slate-300">•</Text>
                                 <Text className="text-xs text-slate-700">{property.area_sqft} sqft</Text>
                               </View>
+
+                              {/* Amenity summary */}
+                              {property.amenity_summary && (
+                                <View className="mb-2">
+                                  <Text className="text-[11px] text-slate-600 italic" numberOfLines={2}>
+                                    {property.amenity_summary}
+                                  </Text>
+                                </View>
+                              )}
 
                               {/* Property Type & Score */}
                               <View className="flex-row items-center justify-between">
@@ -1069,6 +1235,28 @@ export default function ChatPage() {
                   returnKeyType="send"
                 />
               </View>
+              {isRecording && (
+                <TouchableOpacity
+                  onPress={() => cancelRecording()}
+                  disabled={isLoading}
+                  className="w-12 h-12 rounded-full items-center justify-center bg-slate-300"
+                >
+                  <Ionicons name="close" size={20} color="#0f172a" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                onPress={isRecording ? () => stopRecording() : () => startRecording()}
+                disabled={isLoading}
+                className={`w-12 h-12 rounded-full items-center justify-center ${
+                  isRecording ? 'bg-emerald-600' : 'bg-slate-200'
+                }`}
+              >
+                <Ionicons
+                  name={isRecording ? 'checkmark' : 'mic'}
+                  size={20}
+                  color={isRecording ? '#ffffff' : '#0f172a'}
+                />
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => sendMessage()}
                 disabled={!inputMessage.trim() || isLoading}

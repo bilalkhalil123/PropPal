@@ -3,9 +3,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { api } from '@/lib/api-client'
+import { api, type VisitApiRow } from '@/lib/api-client'
 import {
   MagnifyingGlassIcon,
   MapPinIcon,
@@ -14,7 +15,10 @@ import {
   SparklesIcon,
   HomeModernIcon,
   BanknotesIcon,
+  HeartIcon as HeartOutline,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline'
+import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -42,13 +46,20 @@ interface Property {
 
 export default function BuyerPage() {
   const { user, loading, isAuthenticated, userId, isGuest } = useCurrentUser()
+  const { getToken } = useAuth()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [priceRange, setPriceRange] = useState([0, 50000000])
   const [selectedCity, setSelectedCity] = useState<string | null>(null)
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [properties, setProperties] = useState<Property[]>([])
+  const [shortlistedProperties, setShortlistedProperties] = useState<Property[]>([])
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
+  const [activeTab, setActiveTab] = useState<'recommendations' | 'shortlist'>('recommendations')
   const [loadingProperties, setLoadingProperties] = useState(false)
+  const [toastMsg, setToastMsg] = useState('')
+  const [upcomingVisits, setUpcomingVisits] = useState<VisitApiRow[]>([])
+  const [visitsLoading, setVisitsLoading] = useState(false)
   const dbUserId = isGuest ? null : ((user as any)?._id || userId || null)
   const propertiesContainerRef = useRef<HTMLDivElement>(null)
   const hasLoadedRef = useRef(false)
@@ -140,7 +151,107 @@ export default function BuyerPage() {
     }
   }, [dbUserId, isAuthenticated, loading])
 
-  const filteredProperties = properties.filter((property) => {
+  // Load favorites
+  useEffect(() => {
+    if (dbUserId && isAuthenticated && !isGuest) {
+      const loadFavorites = async () => {
+        try {
+          const token = await getToken()
+          const res = (await api.properties.getFavorites({
+            headers: { Authorization: `Bearer ${token}` }
+          })) as any
+          if (res.properties) {
+            setShortlistedProperties(res.properties)
+            setFavoriteIds(new Set(res.properties.map((p: Property) => p._id || (p as any).id)))
+          }
+        } catch (error) {
+          console.error('Error loading favorites:', error)
+        }
+      }
+      loadFavorites()
+    }
+  }, [dbUserId, isAuthenticated, isGuest, getToken])
+
+  useEffect(() => {
+    if (!isAuthenticated || isGuest) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        setVisitsLoading(true)
+        const token = await getToken()
+        if (!token) return
+        const res = await api.visits.myUpcoming({
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!cancelled) setUpcomingVisits(res.visits || [])
+      } catch (e) {
+        console.error('Failed to load visits', e)
+      } finally {
+        if (!cancelled) setVisitsLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, isGuest, getToken])
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(''), 3000)
+  }
+
+  const toggleFavorite = async (property: Property, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isGuest || !isAuthenticated) {
+      showToast('Please sign in to shortlist properties!')
+      return
+    }
+
+    const propId = property._id || (property as any).id
+    if (!propId) return
+
+    const isFav = favoriteIds.has(propId)
+
+    // Optimistic update
+    const newFavs = new Set(favoriteIds)
+    if (isFav) {
+      newFavs.delete(propId)
+      setShortlistedProperties((prev) => prev.filter((p) => (p._id || (p as any).id) !== propId))
+    } else {
+      newFavs.add(propId)
+      setShortlistedProperties((prev) => [property, ...prev])
+    }
+    setFavoriteIds(newFavs)
+
+    try {
+      const token = await getToken()
+      const options = { headers: { Authorization: `Bearer ${token}` } }
+      
+      if (isFav) {
+        await api.properties.unfavorite(propId, options)
+      } else {
+        await api.properties.favorite(propId, options)
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error)
+      // Revert on failure
+      showToast('Failed to update shortlist. Please try again.')
+      const revertedFavs = new Set(favoriteIds)
+      if (isFav) {
+        revertedFavs.add(propId)
+        setShortlistedProperties((prev) => [property, ...prev])
+      } else {
+        revertedFavs.delete(propId)
+        setShortlistedProperties((prev) => prev.filter((p) => (p._id || (p as any).id) !== propId))
+      }
+      setFavoriteIds(revertedFavs)
+    }
+  }
+
+  const baseProperties = activeTab === 'shortlist' ? shortlistedProperties : properties
+  
+  const filteredProperties = baseProperties.filter((property) => {
     const matchesCity = selectedCity ? property.city === selectedCity : true
     const matchesType = selectedType ? property.property_type === selectedType : true
     const matchesPrice = property.price >= priceRange[0] && property.price <= priceRange[1]
@@ -186,6 +297,13 @@ export default function BuyerPage() {
         background: 'linear-gradient(to bottom right, var(--background), #f8f6f3)',
       }}
     >
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-lg text-sm font-medium animate-in fade-in slide-in-from-top-5">
+          {toastMsg}
+        </div>
+      )}
+
       {/* Hero Section with AI Search */}
       <section className="border-b border-slate-200/50 bg-white/70 backdrop-blur-md py-16 text-center">
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-[color:var(--foreground)] mb-4">
@@ -217,6 +335,58 @@ export default function BuyerPage() {
           </Button>
           </form>
       </section>
+
+      {upcomingVisits.length > 0 && (
+        <section className="border-b border-slate-200/60 bg-white/60 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <h2 className="text-lg font-semibold text-[color:var(--foreground)] flex items-center gap-2 mb-3">
+              <CalendarDaysIcon className="h-5 w-5 text-[color:var(--color-accent-gold)]" />
+              Your upcoming visits
+            </h2>
+            {visitsLoading ? (
+              <p className="text-sm text-slate-500">Loading…</p>
+            ) : (
+              <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {upcomingVisits.map((v) => {
+                  const pid = v.property_id || ''
+                  const when = v.confirmed_time
+                    ? new Date(v.confirmed_time).toLocaleString(undefined, {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
+                    : '—'
+                  return (
+                    <li
+                      key={v.id}
+                      className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm text-sm"
+                    >
+                      <p className="font-medium text-slate-900 line-clamp-2">
+                        {v.property_title || 'Property'}
+                      </p>
+                      <p className="text-slate-600 mt-1">{when}</p>
+                      <p className="text-xs text-slate-500 mt-1 capitalize">
+                        {v.status || 'pending'}
+                      </p>
+                      {pid ? (
+                        <Link
+                          href={`/properties/${pid}`}
+                          className="inline-block mt-2 text-xs font-semibold text-[color:var(--color-primary)] hover:underline"
+                        >
+                          View listing
+                        </Link>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-[280px_1fr] gap-8">
@@ -301,9 +471,34 @@ export default function BuyerPage() {
           </Sheet>
                 </div>
                 
-        {/* Property Cards */}
+        {/* Property Cards & Tabs */}
         <div ref={propertiesContainerRef}>
-        {loadingProperties ? (
+          {/* Tabs */}
+          <div className="flex space-x-2 mb-6 border-b border-slate-200">
+            <button
+              onClick={() => setActiveTab('recommendations')}
+              className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
+                activeTab === 'recommendations'
+                  ? 'border-[color:var(--color-primary)] text-[color:var(--color-primary)]'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Recommendations
+            </button>
+            <button
+              onClick={() => setActiveTab('shortlist')}
+              className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 flex items-center gap-1 ${
+                activeTab === 'shortlist'
+                  ? 'border-[color:var(--color-primary)] text-[color:var(--color-primary)]'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <HeartSolid className={`h-4 w-4 ${activeTab === 'shortlist' ? 'text-[color:var(--color-primary)]' : 'text-slate-400'}`} />
+              My Shortlist ({shortlistedProperties.length})
+            </button>
+          </div>
+
+        {loadingProperties && activeTab === 'recommendations' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(6)].map((_, idx) => (
               <div
@@ -348,6 +543,8 @@ export default function BuyerPage() {
             <p className="text-slate-500 mb-4">
               {searchQuery || selectedCity || selectedType
                 ? 'Try adjusting your filters or search query.'
+                : activeTab === 'shortlist' 
+                ? "You haven't shortlisted any properties yet."
                 : dbUserId
                 ? "We couldn't find any recommendations. Start searching to get personalized recommendations!"
                 : 'Sign in to see personalized property recommendations based on your search history.'}
@@ -398,6 +595,17 @@ export default function BuyerPage() {
                     >
                       <HomeModernIcon className="h-12 w-12 text-slate-400" />
                     </div>
+                    {/* Favorite Button */}
+                    <button
+                      onClick={(e) => toggleFavorite(property, e)}
+                      className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:scale-110 hover:bg-white transition-all z-10"
+                    >
+                      {favoriteIds.has(property._id || (property as any).id) ? (
+                        <HeartSolid className="h-5 w-5 text-rose-500" />
+                      ) : (
+                        <HeartOutline className="h-5 w-5 text-slate-600" />
+                      )}
+                    </button>
                   </div>
 
                   {/* Property Details */}

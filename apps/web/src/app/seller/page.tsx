@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
-import { UserButton } from '@clerk/nextjs'
+import { UserButton, useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
-import { HomeIcon, UserIcon, PlusCircleIcon, MicrophoneIcon, SparklesIcon, EyeIcon, EllipsisVerticalIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { HomeIcon, UserIcon, PlusCircleIcon, SparklesIcon, EyeIcon, EllipsisVerticalIcon, TrashIcon, CalendarDaysIcon, MapPinIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
 import RoleDropdown from '@/components/RoleDropdown'
 import AuthRequired from '@/components/AuthRequired'
+import { api, type VisitApiRow } from '@/lib/api-client'
 
 interface Property {
   _id: string
@@ -26,12 +27,15 @@ interface Property {
 
 export default function SellerPage() {
   const { user, loading, isAuthenticated, clerkId, isGuest } = useCurrentUser()
+  const { getToken } = useAuth()
   const router = useRouter()
   const [currentRole, setCurrentRole] = useState<'buyer' | 'seller' | 'builder'>('seller')
   const [properties, setProperties] = useState<Property[]>([])
   const [loadingProperties, setLoadingProperties] = useState(true)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [sellerVisits, setSellerVisits] = useState<VisitApiRow[]>([])
+  const [visitsLoading, setVisitsLoading] = useState(false)
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
@@ -67,6 +71,30 @@ export default function SellerPage() {
       fetchProperties()
     }
   }, [isAuthenticated, clerkId, API_BASE_URL])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        setVisitsLoading(true)
+        const token = await getToken()
+        if (!token) return
+        const res = await api.visits.sellerUpcoming({
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!cancelled) setSellerVisits(res.visits || [])
+      } catch (e) {
+        console.error('Failed to load seller visits', e)
+      } finally {
+        if (!cancelled) setVisitsLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, getToken])
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -143,6 +171,57 @@ export default function SellerPage() {
           <h1 className="text-4xl font-bold mb-2 text-[color:var(--color-primary)]">Seller Dashboard</h1>
           <p className="text-slate-700">Manage your property listings and reach potential buyers</p>
         </div>
+
+        {(sellerVisits.length > 0 || visitsLoading) && (
+          <div className="mb-10 rounded-3xl bg-white/80 backdrop-blur-xl border border-slate-200 shadow-lg p-6 md:p-8">
+            <h2 className="text-xl font-bold text-[color:var(--color-primary)] flex items-center gap-2 mb-4">
+              <CalendarDaysIcon className="h-6 w-6 text-[color:var(--color-accent-gold)]" />
+              Upcoming visits to your listings
+            </h2>
+            {visitsLoading ? (
+              <p className="text-sm text-slate-500">Loading…</p>
+            ) : (
+              <ul className="space-y-3">
+                {sellerVisits.map((v) => {
+                  const when = v.confirmed_time
+                    ? new Date(v.confirmed_time).toLocaleString(undefined, {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
+                    : '—'
+                  const pid = v.property_id || ''
+                  return (
+                    <li
+                      key={v.id}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm"
+                    >
+                      <div>
+                        <p className="font-semibold text-slate-900">{v.property_title || 'Property'}</p>
+                        <p className="text-slate-600">{when}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Buyer: {v.buyer_name || '—'} ·{' '}
+                          <span className="capitalize">{v.status || 'pending'}</span>
+                        </p>
+                      </div>
+                      {pid ? (
+                        <Link
+                          href={`/properties/${pid}`}
+                          className="text-sm font-semibold text-[color:var(--color-primary)] hover:underline shrink-0"
+                        >
+                          View listing
+                        </Link>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* My Listings Section */}
         <div className="mt-12 bg-white/70 backdrop-blur-xl border border-slate-200 shadow-lg rounded-3xl p-8 md:p-12">
@@ -311,8 +390,8 @@ export default function SellerPage() {
             </motion.div>
             <h2 className="text-3xl font-bold mb-4 text-[color:var(--color-primary)]">Create Your Property Listing</h2>
             <p className="text-lg text-slate-700 max-w-2xl mx-auto mb-8">
-              List your properties quickly and easily. Use our AI-powered voice input to describe your property,
-              or fill out the form manually. Watch as your listing comes to life in real-time!
+              List your properties quickly and easily. Pin your location on the map and we&apos;ll
+              automatically detect nearby amenities. Use AI to generate professional descriptions!
             </p>
           </div>
 
@@ -338,11 +417,11 @@ export default function SellerPage() {
               className="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:shadow-md transition-all"
             >
               <div className="w-12 h-12 rounded-xl bg-[color:var(--color-primary)]/10 flex items-center justify-center mb-4">
-                <MicrophoneIcon className="h-6 w-6 text-[color:var(--color-primary)]" />
+                <MapPinIcon className="h-6 w-6 text-[color:var(--color-primary)]" />
               </div>
-              <h3 className="text-xl font-bold mb-2 text-[color:var(--color-primary)]">Voice Input</h3>
+              <h3 className="text-xl font-bold mb-2 text-[color:var(--color-primary)]">Smart Location</h3>
               <p className="text-slate-600 text-sm">
-                Describe your property naturally using voice. Our AI will extract all the details automatically.
+                Pin your property on the map. Nearby schools, hospitals, and amenities are detected automatically.
               </p>
             </motion.div>
 
@@ -355,9 +434,9 @@ export default function SellerPage() {
               <div className="w-12 h-12 rounded-xl bg-[color:var(--color-primary)]/10 flex items-center justify-center mb-4">
                 <SparklesIcon className="h-6 w-6 text-[color:var(--color-primary)]" />
               </div>
-              <h3 className="text-xl font-bold mb-2 text-[color:var(--color-primary)]">Real-Time Updates</h3>
+              <h3 className="text-xl font-bold mb-2 text-[color:var(--color-primary)]">AI Descriptions</h3>
               <p className="text-slate-600 text-sm">
-                Watch as your form fields are filled in real-time as you speak. See progress and missing information instantly.
+                Fill in the details and let AI generate a professional, compelling property description for you.
               </p>
             </motion.div>
 
@@ -380,8 +459,8 @@ export default function SellerPage() {
           {/* Quick Info */}
           <div className="mt-8 p-6 rounded-xl bg-blue-50 border border-blue-200">
             <p className="text-blue-800 text-sm text-center">
-              <strong>💡 Tip:</strong> You can use either voice input or manual form filling, or both together!
-              The form supports real-time updates from voice input while you can still edit fields manually.
+              <strong>💡 Tip:</strong> Pin your location on the map to automatically discover nearby amenities!
+              Fill in the details and let AI generate the description for you.
             </p>
           </div>
         </div>

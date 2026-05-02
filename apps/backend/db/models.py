@@ -5,7 +5,7 @@ One table per former MongoDB collection. UUID primary keys; FKs as UUID.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, time
 from typing import Optional
 
 from sqlalchemy import (
@@ -15,8 +15,10 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    SmallInteger,
     String,
     Text,
+    Time,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -280,6 +282,44 @@ class Availability(Base):
 
 
 # ---------------------------------------------------------------------------
+# Seller availability (recurring weekly windows per property)
+# day_of_week: 0 = Monday .. 6 = Sunday (matches datetime.weekday())
+# ---------------------------------------------------------------------------
+
+
+class SellerAvailability(Base):
+    __tablename__ = "seller_availability"
+
+    id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False), primary_key=True, default=uuid_default
+    )
+    seller_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    property_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("properties.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    day_of_week: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    start_time: Mapped[time] = mapped_column(Time, nullable=False)
+    end_time: Mapped[time] = mapped_column(Time, nullable=False)
+
+    __table_args__ = (
+        Index(
+            "ix_seller_availability_seller_property_dow",
+            "seller_id",
+            "property_id",
+            "day_of_week",
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Visits
 # ---------------------------------------------------------------------------
 
@@ -312,5 +352,37 @@ class Visit(Base):
     confirmed_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
     agent_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    seller_id: Mapped[Optional[str]] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    cancelled_by: Mapped[Optional[str]] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    cancellation_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# ---------------------------------------------------------------------------
+# User Favorites (Shortlisted Properties)
+# ---------------------------------------------------------------------------
+
+
+class UserFavorite(Base):
+    __tablename__ = 'user_favorites'
+
+    user_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey('users.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    property_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey('properties.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)

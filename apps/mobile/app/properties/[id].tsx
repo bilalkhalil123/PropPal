@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { WebView } from 'react-native-webview';
 import { api } from '@/lib/api-client';
 import Constants from 'expo-constants';
 import Navbar from '@/components/Navbar';
@@ -34,8 +35,20 @@ interface Property {
   images?: string[];
   property_type: string;
   description?: string;
+  amenity_summary?: string;
+  nearby_amenities?: Record<string, POI[]>;
   lat?: number;
   lng?: number;
+}
+
+interface POI {
+  name?: string;
+  lat?: number;
+  lng?: number;
+  lon?: number;
+  distance_m?: number;
+  distance?: number;
+  rating?: number;
 }
 
 // Helper function to get full image URL
@@ -61,6 +74,8 @@ export default function PropertyDetailPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [activeAmenityCategory, setActiveAmenityCategory] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('PropertyDetailPage mounted with id:', id);
@@ -102,23 +117,26 @@ export default function PropertyDetailPage() {
 
   // Auto-slide images every 10 seconds
   useEffect(() => {
-    if (!property?.images || property.images.length <= 1) return;
+    const count = property?.images?.length ?? 0;
+    if (count <= 1) return;
 
     const timer = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % property.images!.length);
+      setCurrentImageIndex((prev) => (prev + 1) % count);
     }, 10000);
 
     return () => clearInterval(timer);
   }, [property?.images]);
 
   const nextImage = () => {
-    if (!property?.images) return;
-    setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
+    const count = property?.images?.length ?? 0;
+    if (count === 0) return;
+    setCurrentImageIndex((prev) => (prev + 1) % count);
   };
 
   const prevImage = () => {
-    if (!property?.images) return;
-    setCurrentImageIndex((prev) => (prev - 1 + property.images!.length) % property.images!.length);
+    const count = property?.images?.length ?? 0;
+    if (count === 0) return;
+    setCurrentImageIndex((prev) => (prev - 1 + count) % count);
   };
 
   const openDirections = () => {
@@ -159,6 +177,83 @@ export default function PropertyDetailPage() {
   const images = property.images && property.images.length > 0 
     ? property.images 
     : [];
+  const descriptionText = property.description || 'No description provided for this property.';
+  const canCollapseDescription = descriptionText.length > 150;
+  const amenityEntries = Object.entries(property.nearby_amenities || {}).filter(
+    ([, items]) => Array.isArray(items) && items.length > 0,
+  );
+
+  const getAmenityIcon = (category: string) => {
+    const icons: Record<string, string> = {
+      education: 'school',
+      schools: 'school',
+      healthcare: 'medkit',
+      hospitals: 'medkit',
+      transport: 'train',
+      shopping: 'cart',
+      food: 'restaurant',
+      entertainment: 'film',
+      parks: 'leaf',
+      worship: 'business',
+      place_of_worships: 'business',
+      police: 'shield',
+      pharmacies: 'medical',
+    };
+    return icons[category] || 'pin';
+  };
+
+  const mapHtml = (() => {
+    if (!property.lat || !property.lng) return '';
+    const amenityMarkers = amenityEntries.flatMap(([, pois]) =>
+      pois
+        .map((poi) => {
+          const poiLng = poi.lng ?? poi.lon;
+          if (!poi.lat || !poiLng) return null;
+          const safeName = (poi.name || 'Amenity').replace(/"/g, '&quot;');
+          return `L.marker([${poi.lat}, ${poiLng}], {icon: amenityIcon}).addTo(map).bindPopup("${safeName}");`;
+        })
+        .filter(Boolean)
+        .join('\n'),
+    );
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([${property.lat}, ${property.lng}], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const homeIcon = L.icon({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41]
+    });
+    const amenityIcon = L.divIcon({
+      html: '<div style="width:20px;height:20px;border-radius:999px;background:#fff;border:2px solid #1f2937;display:flex;align-items:center;justify-content:center;font-size:10px;">📍</div>',
+      className: '',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+
+    L.marker([${property.lat}, ${property.lng}], {icon: homeIcon}).addTo(map).bindPopup('Property Location');
+    ${amenityMarkers}
+  </script>
+</body>
+</html>`;
+  })();
 
   return (
     <View className="flex-1 bg-[#f8f6f3]">
@@ -329,9 +424,103 @@ export default function PropertyDetailPage() {
             </View>
 
             {/* Description */}
-            <Text className="text-slate-700 leading-relaxed">
-              {property.description || 'No description provided for this property.'}
+            <Text className="text-slate-700 leading-relaxed mb-2">
+              {isDescriptionExpanded || !canCollapseDescription
+                ? descriptionText
+                : `${descriptionText.slice(0, 170)}...`}
             </Text>
+            {canCollapseDescription && (
+              <TouchableOpacity onPress={() => setIsDescriptionExpanded((v) => !v)}>
+                <Text className="text-[#0a7ea4] font-semibold text-sm mb-3">
+                  {isDescriptionExpanded ? 'Show Less' : 'Read More'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Neighborhood / amenities summary */}
+            {property.amenity_summary && (
+              <View className="mt-2 bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                <View className="flex-row items-center mb-2">
+                  <Ionicons name="map" size={18} color="#0a7ea4" />
+                  <Text className="ml-2 text-base font-semibold text-slate-900">
+                    Neighborhood Highlights
+                  </Text>
+                </View>
+                <Text className="text-sm text-slate-700 leading-5">
+                  {property.amenity_summary}
+                </Text>
+                <View className="items-end mt-3">
+                  <View className="bg-slate-200 rounded-full px-3 py-1">
+                    <Text className="text-[10px] font-semibold text-slate-600">AI GENERATED SUMMARY</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Amenities chips and details */}
+            {amenityEntries.length > 0 && (
+              <View className="mt-4">
+                <Text className="text-xl font-bold text-[#0a7ea4] mb-3">Neighborhood Highlights</Text>
+                <View className="flex-row flex-wrap gap-2 mb-3">
+                  {amenityEntries.map(([category, items]) => {
+                    const isActive = activeAmenityCategory === category;
+                    return (
+                      <TouchableOpacity
+                        key={category}
+                        onPress={() =>
+                          setActiveAmenityCategory((prev) => (prev === category ? null : category))
+                        }
+                        className={`flex-row items-center rounded-full px-3 py-2 border ${
+                          isActive ? 'bg-[#123e4a] border-[#123e4a]' : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        <Ionicons
+                          name={getAmenityIcon(category) as any}
+                          size={15}
+                          color={isActive ? '#fff' : '#334155'}
+                        />
+                        <Text
+                          className={`ml-2 font-semibold capitalize ${
+                            isActive ? 'text-white' : 'text-slate-700'
+                          }`}
+                        >
+                          {category.replace('_', ' ')}
+                        </Text>
+                        <View className={`ml-2 rounded-full px-2 py-0.5 ${isActive ? 'bg-white/20' : 'bg-slate-100'}`}>
+                          <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-slate-500'}`}>
+                            {items.length}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {activeAmenityCategory && property.nearby_amenities?.[activeAmenityCategory] && (
+                  <View className="bg-slate-100 rounded-2xl p-3 border border-slate-200">
+                    <View className="flex-row flex-wrap gap-2">
+                      {property.nearby_amenities[activeAmenityCategory].slice(0, 8).map((poi, idx) => (
+                        <View key={`${activeAmenityCategory}-${idx}`} className="w-[48%] bg-white rounded-2xl p-3 border border-slate-200">
+                          <Text className="text-base font-bold text-slate-800" numberOfLines={1}>
+                            {poi.name || 'Unknown'}
+                          </Text>
+                          {(poi.distance_m || poi.distance) ? (
+                            <Text className="text-sm text-slate-500 mt-1">
+                              {Math.round(Number(poi.distance_m || poi.distance))} meters away
+                            </Text>
+                          ) : null}
+                          {poi.rating ? (
+                            <View className="self-start mt-2 bg-amber-100 border border-amber-300 rounded-lg px-2 py-0.5">
+                              <Text className="text-xs font-bold text-amber-700">★ {Number(poi.rating).toFixed(1)}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Contact Card */}
@@ -376,19 +565,24 @@ export default function PropertyDetailPage() {
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={() => {
-                  const url = `https://www.google.com/maps?q=${property.lat},${property.lng}`;
-                  Linking.openURL(url);
+              <View
+                style={{
+                  height: 300,
+                  width: '100%',
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  backgroundColor: '#e2e8f0',
                 }}
-                activeOpacity={0.9}
-                style={{ height: 300, width: '100%', backgroundColor: '#e2e8f0', borderRadius: 12, overflow: 'hidden' }}
               >
-                <View className="flex-1 justify-center items-center bg-slate-200">
-                  <Ionicons name="map" size={64} color="#94a3b8" />
-                  <Text className="text-slate-600 mt-4 font-medium">Tap to view on map</Text>
-                </View>
-              </TouchableOpacity>
+                <WebView
+                  originWhitelist={['*']}
+                  source={{ html: mapHtml }}
+                  style={{ flex: 1 }}
+                  javaScriptEnabled
+                  domStorageEnabled
+                  setSupportMultipleWindows={false}
+                />
+              </View>
               <View className="p-6 pt-4">
                 <TouchableOpacity
                   onPress={openDirections}

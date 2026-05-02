@@ -126,19 +126,17 @@ async def create_property(
 
     # Schedule background task for amenity enrichment (fetches from Overpass, generates summary via Groq, updates Qdrant)
     if row.lat is not None and row.lng is not None:
+        await property_repo.session.commit()
         from services.amenities.service import enrich_property_amenities
-        import asyncio
 
-        async def _run_amenity_enrichment():
-            await enrich_property_amenities(
-                property_id=row.id,
-                lat=row.lat,
-                lon=row.lng,
-                city=row.city,
-                area=row.area,
-            )
-
-        background_tasks.add_task(asyncio.run, _run_amenity_enrichment())
+        background_tasks.add_task(
+            enrich_property_amenities,
+            property_id=row.id,
+            lat=row.lat,
+            lon=row.lng,
+            city=row.city,
+            area=row.area,
+        )
 
     return property_repo._row_to_dict(row)
 
@@ -373,3 +371,45 @@ async def contact_seller(
 
 
 
+
+@router.post('/{property_id}/favorite', summary='Add property to shortlist')
+async def add_favorite_property(
+    property_id: str,
+    current_user: User = Depends(get_current_user),
+    property_repo: PropertyRepository = Depends(get_property_repository),
+):
+    """Adds a property to the current user's shortlist/favorites."""
+    pid = parse_uuid(property_id, 'property_id')
+    prop = await property_repo.get_by_id(pid)
+    if not prop:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='Property not found'
+        )
+    
+    await property_repo.add_favorite(current_user.id, pid)
+    return {'success': True, 'message': 'Property added to favorites'}
+
+
+@router.delete('/{property_id}/favorite', summary='Remove property from shortlist')
+async def remove_favorite_property(
+    property_id: str,
+    current_user: User = Depends(get_current_user),
+    property_repo: PropertyRepository = Depends(get_property_repository),
+):
+    """Removes a property from the current user's shortlist/favorites."""
+    pid = parse_uuid(property_id, 'property_id')
+    success = await property_repo.remove_favorite(current_user.id, pid)
+    if not success:
+        return {'success': False, 'message': 'Property was not in favorites'}
+    return {'success': True, 'message': 'Property removed from favorites'}
+
+
+@router.get('/user/favorites', summary='Get user''s shortlisted properties')
+async def get_favorite_properties(
+    current_user: User = Depends(get_current_user),
+    property_repo: PropertyRepository = Depends(get_property_repository),
+):
+    """Returns all properties shortlisted by the current user."""
+    favorites = await property_repo.get_favorites(current_user.id)
+    return {'success': True, 'properties': favorites, 'count': len(favorites)}

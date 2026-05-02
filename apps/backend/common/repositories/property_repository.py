@@ -10,7 +10,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.db import get_db_session
-from db.models import Property as PropertyModel
+from db.models import Property as PropertyModel, UserFavorite
 
 
 class PropertyRepository:
@@ -248,6 +248,50 @@ class PropertyRepository:
         q = q.limit(limit)
         result = await self.session.execute(q)
         return list(result.scalars().all())
+
+    async def add_favorite(self, user_id: str, property_id: str) -> bool:
+        result = await self.session.execute(
+            select(UserFavorite).where(
+                UserFavorite.user_id == user_id,
+                UserFavorite.property_id == property_id
+            )
+        )
+        if result.scalar_one_or_none():
+            return True
+
+        fav = UserFavorite(user_id=user_id, property_id=property_id)
+        self.session.add(fav)
+        await self.session.flush()
+        return True
+
+    async def remove_favorite(self, user_id: str, property_id: str) -> bool:
+        result = await self.session.execute(
+            delete(UserFavorite).where(
+                UserFavorite.user_id == user_id,
+                UserFavorite.property_id == property_id
+            )
+        )
+        await self.session.flush()
+        return result.rowcount > 0
+
+    async def get_favorites(self, user_id: str) -> List[Dict[str, Any]]:
+        result = await self.session.execute(
+            select(PropertyModel)
+            .join(UserFavorite, PropertyModel.id == UserFavorite.property_id)
+            .where(UserFavorite.user_id == user_id)
+            .order_by(UserFavorite.created_at.desc())
+        )
+        rows = result.scalars().all()
+        return [self._row_to_dict(r) for r in rows]
+
+    async def is_favorited(self, user_id: str, property_id: str) -> bool:
+        result = await self.session.execute(
+            select(UserFavorite).where(
+                UserFavorite.user_id == user_id,
+                UserFavorite.property_id == property_id
+            )
+        )
+        return result.scalar_one_or_none() is not None
 
 
 async def get_property_repository(session: AsyncSession = Depends(get_db_session)) -> PropertyRepository:

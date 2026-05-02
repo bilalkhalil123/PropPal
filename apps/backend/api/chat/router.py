@@ -18,7 +18,15 @@ from agents import RouterAgent
 from agents.builder.create_service_agent import BuilderServiceCreationAgent
 from agents.builder.create_profile_agent import BuilderProfileCreationAgent
 from agents.listing.agent import ListingAgent
-from common.db import get_db_session_ctx
+from agents.booking.agent import BookingAgent, build_booking_system_prompt
+from services.booking.calendar_context import format_booking_calendar_context
+from agents.booking.tools import build_booking_tools
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from common.db import get_db_session_ctx, get_db_session
+from common.config import get_settings
+from common.repositories.property_repository import PropertyRepository
+from common.repositories.visit_repository import VisitRepository
 from common.repositories.user_repository import UserRepository, get_user_repository
 from common.repositories.chat_history_repository import ChatHistoryRepository, get_chat_history_repository
 from common.uuid_utils import parse_uuid
@@ -27,6 +35,8 @@ from fastapi import WebSocket, WebSocketDisconnect
 import json
 import logging
 
+from services.auth.utils import get_current_user
+from models.users import User
 from services.asr.language import detect_language
 from services.asr.translation import translate_to_english, translate_to_urdu
 from services.asr.service import transcribe_audio_bytes
@@ -180,6 +190,38 @@ class ChatResponse(BaseModel):
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata about the response")
 
 
+class BookingHistoryTurn(BaseModel):
+    role: str
+    content: str
+
+
+class BookingChatRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=4000)
+    property_id: str = Field(..., description="Property UUID string")
+    conversation_history: List[BookingHistoryTurn] = Field(default_factory=list)
+
+
+class BookingChatResponse(BaseModel):
+    success: bool
+    agent_response: str
+    updated_history: List[BookingHistoryTurn]
+    visit_object: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
+def _visit_object_for_api(raw: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not raw:
+        return None
+    out: Dict[str, Any] = {}
+    for k, v in raw.items():
+        if hasattr(v, "isoformat"):
+            out[k] = v.isoformat()
+        else:
+            out[k] = v
+    return out
+
+
 class HealthResponse(BaseModel):
     """Health check response model."""
     status: str = Field(..., description="Service status")
@@ -239,6 +281,76 @@ async def send_message(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.post("/booking", response_model=BookingChatResponse)
+async def booking_chat(
+    request: BookingChatRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Property-scoped visit booking assistant (Groq + tools). Requires Clerk JWT.
+    """
+    prop_repo = PropertyRepository(session)
+    prop = await prop_repo.get_by_id(request.property_id.strip())
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    buyer_id = current_user.id
+    seller_id = prop.get("seller_id")
+    if not seller_id:
+        raise HTTPException(status_code=400, detail="Property has no seller")
+
+    settings = get_settings()
+    calendar_block = format_booking_calendar_context(settings)
+    visit_repo = VisitRepository(session)
+    existing = await visit_repo.find_active_visit_for_buyer_on_property(
+        buyer_id, str(prop.get("id") or request.property_id)
+    )
+    existing_block = ""
+    if existing:
+        ct = existing.get("confirmed_time")
+        ct_s = ct.isoformat() if hasattr(ct, "isoformat") else str(ct)
+        existing_block = (
+            "=== EXISTING VISIT ON THIS LISTING ===\n"
+            f"visit_id={existing.get('id')} status={existing.get('status')} "
+            f"scheduled={ct_s}\n"
+            "Do not call create_visit_booking. Offer to reschedule_visit or confirm_visit / cancel_visit as appropriate.\n"
+        )
+
+    system_prompt = build_booking_system_prompt(
+        property_title=prop.get("title") or "Property",
+        property_id=str(prop.get("id") or request.property_id),
+        seller_id=str(seller_id),
+        city=prop.get("city") or "",
+        area=prop.get("area") or "",
+        calendar_context=calendar_block,
+        existing_visit_context=existing_block,
+    )
+    tools = build_booking_tools(buyer_id, str(prop.get("id")), str(seller_id))
+    agent = BookingAgent(system_prompt=system_prompt, tools=tools)
+
+    history = [t.model_dump() for t in request.conversation_history]
+    result = agent.process(
+        user_message=request.message.strip(),
+        conversation_history=history,
+    )
+
+    updated: List[BookingHistoryTurn] = list(request.conversation_history)
+    updated.append(BookingHistoryTurn(role="user", content=request.message.strip()))
+    updated.append(
+        BookingHistoryTurn(role="assistant", content=result.get("agent_response") or "")
+    )
+
+    return BookingChatResponse(
+        success=bool(result.get("success")),
+        agent_response=result.get("agent_response") or "",
+        updated_history=updated,
+        visit_object=_visit_object_for_api(result.get("last_visit")),
+        metadata={"property_id": str(prop.get("id")), "buyer_id": buyer_id},
+        error=result.get("error"),
+    )
 
 
 @router.post("/message/audio", response_model=ChatResponse)

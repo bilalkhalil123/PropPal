@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useRouter } from "next/navigation"
-import { MapPinIcon, CheckCircleIcon } from "@heroicons/react/24/outline"
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid"
+import { MapPinIcon, CheckCircleIcon, HeartIcon as HeartOutline } from "@heroicons/react/24/outline"
+import { ChevronLeftIcon, ChevronRightIcon, HeartIcon as HeartSolid } from "@heroicons/react/24/solid"
 import ImageLightbox from "./modals/ImageLightbox"
 import PropertyMap from "./PropertyMap"
+import PropertyBookingChat from "./PropertyBookingChat"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { api } from "@/lib/api-client"
 import { useAuth, SignIn } from "@clerk/nextjs"
@@ -33,15 +33,16 @@ type Property = {
 export default function PropertyDetailPage({ property }: { property: Property }) {
   const [current, setCurrent] = useState(0)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
-  const [isContacting, setIsContacting] = useState(false)
-  const [contactError, setContactError] = useState<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [bookingChatOpen, setBookingChatOpen] = useState(false)
+  
+  const [isShortlisted, setIsShortlisted] = useState(false)
+  const [toastMsg, setToastMsg] = useState("")
   
   // State for interactive amenity chips
   const [activeAmenityCategory, setActiveAmenityCategory] = useState<string | null>(null)
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false)
 
-  const router = useRouter()
   const { isAuthenticated, loading: authLoading } = useCurrentUser()
   const { getToken } = useAuth()
   const images = property.images && property.images.length > 0 ? property.images : ["/placeholder.svg"]
@@ -75,50 +76,71 @@ export default function PropertyDetailPage({ property }: { property: Property })
   const next = () => setCurrent((prev) => (prev + 1) % images.length)
   const prev = () => setCurrent((prev) => (prev - 1 + images.length) % images.length)
 
-  const handleContactAgent = async () => {
-    // Check if user is authenticated
+  // Check shortlist status
+  useEffect(() => {
+    if (isAuthenticated) {
+      const loadStatus = async () => {
+        try {
+          const token = await getToken()
+          const res = (await api.properties.getFavorites({
+            headers: { Authorization: `Bearer ${token}` }
+          })) as any
+          const isFav = res.properties?.some((p: any) => (p._id || p.id) === property._id)
+          setIsShortlisted(!!isFav)
+        } catch (error) {
+          console.error('Error loading fallback status:', error)
+        }
+      }
+      loadStatus()
+    }
+  }, [isAuthenticated, property._id, getToken])
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(""), 3000)
+  }
+
+  const toggleShortlist = async () => {
     if (!isAuthenticated || authLoading) {
-      // Open in-page auth modal instead of redirecting
-      setShowAuthModal(true)
+      showToast("Please sign in to shortlist properties!")
       return
     }
 
-    // User is authenticated, proceed with contact
-    setIsContacting(true)
-    setContactError(null)
-
+    const newFav = !isShortlisted
+    setIsShortlisted(newFav) // optimistic
     try {
-      // Get Clerk token for authenticated request
       const token = await getToken()
-      if (!token) {
-        throw new Error("Unable to get authentication token")
+      const options = { headers: { Authorization: `Bearer ${token}` } }
+      
+      if (newFav) {
+        await api.properties.favorite(property._id, options)
+      } else {
+        await api.properties.unfavorite(property._id, options)
       }
-
-      // Call the contact endpoint
-      const response = await api.properties.contactSeller(property._id, undefined, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      // Show success message and redirect to chat or show seller info
-      if (response.success) {
-        // Option 1: Redirect to chat with pre-filled message
-        const chatMessage = `Hi, I'm interested in ${property.title} (${property.city}). Can you tell me more about this property?`
-        router.push(`/chat?q=${encodeURIComponent(chatMessage)}`)
-      }
-    } catch (error: any) {
-      console.error("Error contacting seller:", error)
-      setContactError(
-        error.message || "Failed to contact seller. Please try again."
-      )
-    } finally {
-      setIsContacting(false)
+    } catch (error) {
+      console.error("Failed to update shortlist:", error)
+      showToast("Failed to update shortlist.")
+      setIsShortlisted(!newFav) // revert
     }
+  }
+
+  const handleContactAgent = () => {
+    if (!isAuthenticated || authLoading) {
+      setShowAuthModal(true)
+      return
+    }
+    setBookingChatOpen(true)
   }
 
   return (
     <div className="min-h-screen bg-[linear-gradient(to_bottom,rgba(249,249,249,0.85),rgba(237,236,232,0.9))] text-[color:var(--color-primary)]">
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-lg text-sm font-medium animate-in fade-in slide-in-from-top-5">
+          {toastMsg}
+        </div>
+      )}
+
       {/* ImageLightbox - for fullscreen gallery */}
       <ImageLightbox
         isOpen={isLightboxOpen}
@@ -367,16 +389,26 @@ export default function PropertyDetailPage({ property }: { property: Property })
                 <p className="text-slate-600 mb-6">
                   Schedule a visit or connect with the builder today. Our team is available 24/7.
                 </p>
-                <button
-                  onClick={handleContactAgent}
-                  disabled={isContacting || authLoading}
-                  className="w-full py-3 rounded-xl font-semibold text-white bg-[linear-gradient(to_right,#f59e0b,var(--color-accent-gold))] hover:scale-[1.02] active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isContacting ? "Contacting..." : "Contact Agent"}
-                </button>
-                {contactError && (
-                  <p className="mt-2 text-sm text-red-600">{contactError}</p>
-                )}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleContactAgent}
+                    disabled={authLoading}
+                    className="flex-1 py-3 rounded-xl font-semibold text-white bg-[linear-gradient(to_right,#f59e0b,var(--color-accent-gold))] hover:scale-[1.02] active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Contact Agent
+                  </button>
+                  <button
+                    onClick={toggleShortlist}
+                    className="w-14 shrink-0 flex items-center justify-center rounded-xl font-semibold border shadow-sm hover:scale-[1.02] active:scale-95 transition-all bg-white hover:bg-slate-50 border-slate-200"
+                    aria-label="Toggle Shortlist"
+                  >
+                    {isShortlisted ? (
+                      <HeartSolid className="h-6 w-6 text-rose-500 hover:text-rose-600 transition-colors" />
+                    ) : (
+                      <HeartOutline className="h-6 w-6 text-slate-400 hover:text-rose-400 transition-colors" />
+                    )}
+                  </button>
+                </div>
                 <ul className="mt-6 space-y-3 text-sm text-slate-600">
                   <li className="flex items-center gap-2">
                     <CheckCircleIcon className="h-5 w-5 text-green-600" /> Verified Listing
@@ -393,6 +425,15 @@ export default function PropertyDetailPage({ property }: { property: Property })
           </div>
         </div>
       </section>
+
+      <PropertyBookingChat
+        propertyId={property._id}
+        propertyName={property.title}
+        isAuthenticated={isAuthenticated}
+        authLoading={authLoading}
+        open={bookingChatOpen}
+        onOpenChange={setBookingChatOpen}
+      />
 
       {/* Map Section */}
       {property.lat && property.lng && (

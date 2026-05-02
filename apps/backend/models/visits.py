@@ -15,9 +15,12 @@ class VisitBase(BaseModel):
     confirmed_time: Optional[datetime] = None
     status: str = Field(
         default="pending",
-        description="pending, confirmed, cancelled, completed",
+        description="pending, confirmed, cancelled, completed, rescheduled",
     )
     agent_notes: Optional[str] = None
+    seller_id: Optional[str] = None
+    cancelled_by: Optional[str] = None
+    cancellation_reason: Optional[str] = None
 
 
 class Visit(VisitBase):
