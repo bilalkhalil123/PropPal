@@ -9,6 +9,7 @@ get their own engine and avoid "Future attached to a different loop".
 import asyncio
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, Optional
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -27,11 +28,36 @@ def _make_async_url(url: str) -> str:
         raise ValueError("DATABASE_URL or POSTGRES_URL must be set for PostgreSQL.")
     url = url.strip()
     if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return _normalize_asyncpg_params(url.replace("postgresql://", "postgresql+asyncpg://", 1))
     if url.startswith("postgresql+asyncpg://"):
-        return url
-    return "postgresql+asyncpg://" + (url.split("://", 1)[-1] if "://" in url else url)
+        return _normalize_asyncpg_params(url)
+    return _normalize_asyncpg_params(
+        "postgresql+asyncpg://" + (url.split("://", 1)[-1] if "://" in url else url)
+    )
 
+
+def _normalize_asyncpg_params(url: str) -> str:
+    """Convert sslmode query param to asyncpg-compatible ssl flag."""
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    
+    # Remove channel_binding if present
+    query.pop("channel_binding", None)
+    
+    # Extract existing sslmode
+    sslmode = query.pop("sslmode", None)
+    
+    if sslmode and "ssl" not in query:
+        # asyncpg expects specific strings like 'require' or 'disable', NOT 'true' or 'false'
+        if sslmode.lower() in {"require", "verify-full", "verify-ca"}:
+            query["ssl"] = "require"
+        elif sslmode.lower() in {"disable", "allow", "prefer"}:
+            query["ssl"] = "disable"
+        else:
+            query["ssl"] = sslmode
+            
+    new_query = urlencode(query)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, new_query, parts.fragment))
 
 def get_async_session_factory(loop: Optional[asyncio.AbstractEventLoop] = None) -> async_sessionmaker[AsyncSession]:
     """

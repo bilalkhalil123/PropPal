@@ -3,51 +3,67 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-from datetime import datetime
-from typing import Optional
-
-from motor.motor_asyncio import AsyncIOMotorClient
-from bson import ObjectId
-
-# Add parent directory to path to import common and models
 import sys
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common.config import get_settings
-from common.db import DatabaseClient
-from models.builder_services import BuilderService
-from services.embeddings.service import embed_batch
+from common.db import get_db_session_ctx
+from common.qdrant import ensure_collections_exist
+from common.repositories.builder_profile_repository import BuilderProfileRepository
+from common.repositories.builder_service_repository import BuilderServiceRepository
 from services.embeddings.compose import compose_builder_services_text
-from services.vector_search.qdrant_service import upsert_builder_service_embedding
+from services.embeddings.service import embed_batch
+from services.vector_search.qdrant_service import upsert_builder_service_embeddings_batch
 
 
-async def populate_builder_services(file_path: str) -> None:
+async def _fetch_builder_profiles(profile_repo: BuilderProfileRepository, page_size: int = 500) -> Dict[str, str]:
+    company_to_builder_id: Dict[str, str] = {}
+    skip = 0
+    while True:
+        rows = await profile_repo.list_all(skip=skip, limit=page_size)
+        if not rows:
+            break
+        for row in rows:
+            company_name = row.get("company_name")
+            if not company_name:
+                continue
+            if company_name not in company_to_builder_id:
+                company_to_builder_id[company_name] = row.get("id") or row.get("_id")
+        skip += page_size
+        if len(rows) < page_size:
+            break
+    return company_to_builder_id
+
+
+def _clean_service_data(service_data: Dict[str, Any]) -> Dict[str, Any]:
+    allowed_keys = {
+        "title",
+        "service_name",
+        "description",
+        "category",
+        "base_price",
+        "price_unit",
+        "estimated_duration",
+        "service_features",
+        "service_images",
+        "company_name",
+    }
+    clean = {k: v for k, v in service_data.items() if k in allowed_keys}
+    if not clean.get("title") and clean.get("service_name"):
+        clean["title"] = clean.get("service_name")
+    return clean
+
+
+async def populate_builder_services(file_path: str, batch_size: int, limit: Optional[int]) -> None:
     """
-    Populates the 'builder_services' collection with data from a JSON file,
-    linking services to builders using their company_name.
+    Populates Postgres builder_services with data from a JSON file,
+    linking services to builders using their company_name, and upserts embeddings to Qdrant.
     """
-    settings = get_settings()
-    if DatabaseClient.client is None:
-        print(f"[POPULATE] Connecting to MongoDB at {settings.MONGODB_URL[:20]}...")
-        DatabaseClient.client = AsyncIOMotorClient(settings.MONGODB_URL)
-        DatabaseClient.database = DatabaseClient.client[settings.MONGODB_DB_NAME]
+    await ensure_collections_exist()
 
-    db = DatabaseClient.database
-    assert db is not None
-
-    builder_profiles_collection = db["builder_profiles"]
-    builder_services_collection = db["builder_services"]
-
-    # 1. Fetch all builder profiles to map company_name to builder_id
-    builder_cursor = builder_profiles_collection.find({}, {"_id": 1, "company_name": 1})
-    builder_profiles = await builder_cursor.to_list(length=None)
-    company_to_builder_id = {profile["company_name"]: profile["_id"] for profile in builder_profiles}
-
-    print(f"[POPULATE] Found {len(company_to_builder_id)} builder profiles.")
-
-    # 2. Read builder services from JSON file
+    # 1. Read builder services from JSON file
     print(f"[POPULATE] Reading builder services from {file_path}...")
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -59,65 +75,104 @@ async def populate_builder_services(file_path: str) -> None:
         print(f"[ERROR] Could not decode JSON from file: {file_path}")
         return
 
-    services_to_insert = []
+    if limit is not None:
+        services_data = services_data[: max(limit, 0)]
 
-    for service_data in services_data:
-        company_name = service_data.get("company_name")
-        builder_id = company_to_builder_id.get(company_name)
+    processed = 0
+    created = 0
+    pending_services: List[Dict[str, Any]] = []
 
-        if not builder_id:
-            print(f"[WARNING] No builder profile found for company_name: {company_name}. Skipping.")
-            continue
+    async with get_db_session_ctx() as session:
+        profile_repo = BuilderProfileRepository(session)
+        service_repo = BuilderServiceRepository(session)
 
-        # Prepare the service data
-        clean_data = service_data.copy()
-        clean_data.pop("_id", None)
-        clean_data.pop("created_at", None)
-        clean_data.pop("updated_at", None)
-        
-        builder_id_obj = ObjectId(builder_id)
-        clean_data["builder_id"] = builder_id_obj
-        clean_data["created_at"] = datetime.utcnow()
-        clean_data["updated_at"] = datetime.utcnow()
+        company_to_builder_id = await _fetch_builder_profiles(profile_repo)
+        print(f"[POPULATE] Found {len(company_to_builder_id)} builder profiles.")
 
-        # Generate embeddings for the service
-        text_to_embed = compose_builder_services_text(clean_data)
-        embedding_vector = embed_batch([text_to_embed])[0]
-        clean_data["embeddings"] = embedding_vector
+        if not company_to_builder_id:
+            print("[ERROR] No builder profiles found in Postgres. Cannot create services.")
+            return
 
-        # Validate using the BuilderService model
-        service = BuilderService(**clean_data)
-        
-        # Dump the model to a dictionary for insertion
-        service_dict = service.model_dump(by_alias=True, exclude=["id"])
-        
-        # Overwrite the stringified builder_id from model_dump with the original ObjectId
-        service_dict["builder_id"] = builder_id_obj
-        
-        services_to_insert.append((service_dict, embedding_vector, clean_data))
+        for service_data in services_data:
+            if limit is not None and created >= limit:
+                break
 
-    if services_to_insert:
-        # Separate service dicts and embeddings for insertion
-        service_dicts = [item[0] for item in services_to_insert]
-        result = await builder_services_collection.insert_many(service_dicts)
-        print(f"[POPULATE] Inserted {len(result.inserted_ids)} new builder services.")
-        
-        # Store embeddings in Qdrant
-        for idx, (service_dict, embedding_vector, clean_data) in enumerate(services_to_insert):
-            service_id = str(result.inserted_ids[idx])
-            metadata = {
-                "service_name": clean_data.get("service_name", ""),
+            clean_data = _clean_service_data(service_data)
+            company_name = clean_data.get("company_name")
+            if not company_name:
+                print("[WARNING] Skipping service with missing company_name.")
+                continue
+
+            builder_id = company_to_builder_id.get(company_name)
+            if not builder_id:
+                print(f"[WARNING] No builder profile found for company_name: {company_name}. Skipping.")
+                continue
+
+            if not clean_data.get("title") or not clean_data.get("description"):
+                print("[WARNING] Skipping service with missing title or description.")
+                continue
+
+            if clean_data.get("base_price") is None or not clean_data.get("price_unit"):
+                print("[WARNING] Skipping service with missing base_price or price_unit.")
+                continue
+
+            create_data = {
+                "builder_id": builder_id,
+                "title": clean_data.get("title"),
+                "description": clean_data.get("description"),
                 "category": clean_data.get("category", ""),
-                "builder_id": str(clean_data.get("builder_id", builder_id_obj)),
+                "base_price": clean_data.get("base_price"),
+                "price_unit": clean_data.get("price_unit"),
+                "estimated_duration": clean_data.get("estimated_duration"),
+                "service_features": clean_data.get("service_features"),
+                "service_images": clean_data.get("service_images"),
             }
-            await upsert_builder_service_embedding(
-                service_id=service_id,
-                embedding=embedding_vector,
-                metadata=metadata,
-            )
-        print(f"[POPULATE] Stored {len(services_to_insert)} builder service embeddings in Qdrant.")
-    else:
-        print("[POPULATE] No new builder services to insert.")
+            row = await service_repo.create(create_data)
+            created += 1
+
+            pending_services.append({
+                "service_id": row.id,
+                "data": create_data,
+            })
+
+            if len(pending_services) >= batch_size:
+                texts = [compose_builder_services_text(s["data"]) for s in pending_services]
+                vectors = embed_batch(texts)
+                items = []
+                for pending, vec in zip(pending_services, vectors):
+                    items.append((
+                        pending["service_id"],
+                        vec,
+                        {
+                            "title": pending["data"].get("title", ""),
+                            "category": pending["data"].get("category", ""),
+                            "builder_id": str(pending["data"].get("builder_id", "")),
+                        },
+                    ))
+                await upsert_builder_service_embeddings_batch(items)
+                processed += len(pending_services)
+                print(f"[POPULATE] Builder services: {processed} embeddings upserted to Qdrant")
+                pending_services = []
+
+        if pending_services:
+            texts = [compose_builder_services_text(s["data"]) for s in pending_services]
+            vectors = embed_batch(texts)
+            items = []
+            for pending, vec in zip(pending_services, vectors):
+                items.append((
+                    pending["service_id"],
+                    vec,
+                    {
+                        "title": pending["data"].get("title", ""),
+                        "category": pending["data"].get("category", ""),
+                        "builder_id": str(pending["data"].get("builder_id", "")),
+                    },
+                ))
+            await upsert_builder_service_embeddings_batch(items)
+            processed += len(pending_services)
+            print(f"[POPULATE] Builder services: {processed} embeddings upserted to Qdrant")
+
+    print(f"[POPULATE] Done. Created {created} builder services.")
 
 
 def main() -> None:
@@ -126,15 +181,17 @@ def main() -> None:
     parser.add_argument(
         "--file",
         type=str,
-        default="../../../data/builder_services.json",
+        default="../../../data/builder_services_extended.json",
         help="Path to the builder services data JSON file relative to the jobs directory.",
     )
+    parser.add_argument("--batch-size", type=int, default=100)
+    parser.add_argument("--limit", type=int, default=None)
     args = parser.parse_args()
 
     jobs_dir = Path(__file__).resolve().parent
     file_path = (jobs_dir / args.file).resolve()
 
-    asyncio.run(populate_builder_services(str(file_path)))
+    asyncio.run(populate_builder_services(str(file_path), args.batch_size, args.limit))
 
 
 if __name__ == "__main__":
