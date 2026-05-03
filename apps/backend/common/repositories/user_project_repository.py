@@ -54,6 +54,16 @@ class UserProjectRepository:
         rows = result.scalars().all()
         return [self._row_to_dict(r) for r in rows]
 
+    async def list_open(self, limit: int = 50, exclude_user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List open projects (optionally excluding a user)."""
+        query = select(UserProjectModel).where(UserProjectModel.status == "open")
+        if exclude_user_id:
+            query = query.where(UserProjectModel.user_id != exclude_user_id)
+        query = query.order_by(UserProjectModel.created_at.desc()).limit(limit)
+        result = await self.session.execute(query)
+        rows = result.scalars().all()
+        return [self._row_to_dict(r) for r in rows]
+
     async def create(self, data: Dict[str, Any]) -> UserProjectModel:
         """Create a user project. Returns the row (with id set)."""
         row = UserProjectModel(

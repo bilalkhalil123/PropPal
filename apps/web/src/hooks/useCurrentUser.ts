@@ -41,7 +41,7 @@ export function useCurrentUser() {
     clerkId: context.clerkId,
     
     // Convenience helper to get user ID
-    userId: context.user?.id,
+    userId: context.user?.id || (context.user as any)?._id,
     
     // Convenience helper to get user role
     userRole: context.user?.role,

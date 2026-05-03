@@ -1,8 +1,9 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { useUser as useClerkUser } from '@clerk/nextjs'
+import { useUser as useClerkUser, useAuth } from '@clerk/nextjs'
 import { UserResponse } from '@/lib/types/user'
+import apiClient from '@/lib/api-client'
 
 interface UserContextType {
   user: UserResponse | null
@@ -22,10 +23,15 @@ interface UserProviderProps {
 
 export function UserProvider({ children }: UserProviderProps) {
   const { user: clerkUser, isLoaded: isClerkLoaded } = useClerkUser()
+  const { getToken } = useAuth()
   const [user, setUser] = useState<UserResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSynced, setIsSynced] = useState(false)
+
+  useEffect(() => {
+    apiClient.setGetToken(getToken)
+  }, [getToken])
 
   const fetchUser = useCallback(async () => {
     if (!clerkUser?.id) {
