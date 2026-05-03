@@ -109,6 +109,16 @@ class BuilderProfileRepository:
         rows = result.scalars().all()
         return [self._row_to_dict(r) for r in rows]
 
+    async def list_by_user_ids(self, user_ids: List[str]) -> List[Dict[str, Any]]:
+        """Get builder profiles by a list of user UUIDs (single query)."""
+        if not user_ids:
+            return []
+        result = await self.session.execute(
+            select(BuilderProfileModel).where(BuilderProfileModel.user_id.in_(user_ids))
+        )
+        rows = result.scalars().all()
+        return [self._row_to_dict(r) for r in rows]
+
     async def list_all(self, skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
         """List all builder profiles with pagination."""
         result = await self.session.execute(

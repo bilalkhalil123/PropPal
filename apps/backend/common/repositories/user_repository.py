@@ -151,6 +151,19 @@ class UserRepository:
         )
         return result.scalar_one_or_none() is not None
 
+    async def get_users_by_ids(self, user_ids: List[str]) -> List[User]:
+        """Batch fetch users by a list of UUID strings (single query)."""
+        if not user_ids:
+            return []
+        result = await self.session.execute(
+            select(UserModel).where(
+                UserModel.id.in_(user_ids),
+                UserModel.deleted_at.is_(None),
+            )
+        )
+        rows = result.scalars().all()
+        return [self._row_to_user(r) for r in rows]
+
     # Aliases for plan: same method names (get_by_id, get_by_email, get_by_clerk_id, create)
     async def get_by_id(self, user_id: str) -> Optional[User]:
         return await self.get_user_by_id(user_id)
