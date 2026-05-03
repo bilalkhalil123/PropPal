@@ -122,5 +122,33 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+async def ensure_conversation_tables(loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+    """Ensure all database tables exist (idempotent).
+
+    Uses Base.metadata.create_all with checkfirst=True so it only creates
+    tables that are missing. This handles foreign-key dependency ordering
+    automatically (unlike creating individual tables one by one).
+    """
+    if loop is None:
+        loop = asyncio.get_running_loop()
+    key = id(loop)
+    # Ensure factory + engine exist for this loop
+    get_async_session_factory(loop)
+    engine = _engines_by_loop.get(key)
+    if engine is None:
+        print("[DB] No engine found for current event loop; skipping table creation")
+        return
+
+    from db.models import Base  # imports ALL table definitions
+
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all, checkfirst=True)
+        print("[DB] All tables verified / created successfully")
+    except Exception as e:
+        print(f"[DB] [ERROR] Failed to create tables: {e}")
+        raise
+
+
 # Alias for repository code: use Depends(get_db) or Depends(get_db_session).
 get_db = get_db_session

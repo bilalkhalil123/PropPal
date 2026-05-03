@@ -63,6 +63,18 @@ class BuilderBidRepository:
         rows = result.scalars().all()
         return [self._row_to_dict(r) for r in rows]
 
+    async def get_by_project_and_builder(self, project_id: str, builder_id: str) -> Optional[Dict[str, Any]]:
+        """Get a builder bid by project and builder."""
+        result = await self.session.execute(
+            select(BuilderBidModel)
+            .where(
+                BuilderBidModel.project_id == project_id,
+                BuilderBidModel.builder_id == builder_id,
+            )
+        )
+        row = result.scalar_one_or_none()
+        return self._row_to_dict(row) if row else None
+
     async def create(self, data: Dict[str, Any]) -> BuilderBidModel:
         """Create a builder bid. Returns the row (with id set)."""
         row = BuilderBidModel(

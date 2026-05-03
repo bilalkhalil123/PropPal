@@ -9,6 +9,12 @@ from .builder_profiles import BuilderProfile, BuilderProfileCreate, BuilderProfi
 from .builder_services import BuilderService, BuilderServiceCreate, BuilderServiceResponse
 from .user_projects import UserProject, UserProjectCreate, UserProjectResponse
 from .builder_bids import BuilderBid, BuilderBidCreate, BuilderBidResponse
+from .conversations import (
+    ConversationCreate,
+    ConversationMessageCreate,
+    ConversationMessageResponse,
+    ConversationResponse,
+)
 from .visits import Visit, VisitCreate, VisitResponse
 from .projects import Project, ProjectCreate, ProjectResponse
 from .query_logs import QueryLog, QueryLogCreate, QueryLogResponse
@@ -44,6 +50,11 @@ __all__ = [
     "BuilderBid",
     "BuilderBidCreate",
     "BuilderBidResponse",
+    # Conversations
+    "ConversationCreate",
+    "ConversationMessageCreate",
+    "ConversationMessageResponse",
+    "ConversationResponse",
     # Visits
     "Visit",
     "VisitCreate",

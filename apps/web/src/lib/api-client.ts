@@ -10,9 +10,14 @@ if (!API_BASE_URL) {
  */
 class ApiClient {
   private baseUrl: string
+  private getToken?: () => Promise<string | null>
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl
+  }
+
+  setGetToken(getTokenFn: () => Promise<string | null>) {
+    this.getToken = getTokenFn
   }
 
   /**
@@ -28,6 +33,26 @@ class ApiClient {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
+    }
+
+    if (this.getToken) {
+      try {
+        const token = await this.getToken()
+        if (token) {
+          (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+        }
+      } catch (e) {
+        console.error('Failed to get auth token', e)
+      }
+    } else if (typeof window !== 'undefined' && (window as any).Clerk?.session) {
+       try {
+         const token = await (window as any).Clerk.session.getToken()
+         if (token) {
+           (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+         }
+       } catch (e) {
+         console.error('Failed to get Clerk token from window', e)
+       }
     }
 
     let response: Response
@@ -238,6 +263,45 @@ export const api = {
       apiClient.get<{ visits: VisitApiRow[] }>('/api/visits/me/upcoming', options),
     sellerUpcoming: (options?: RequestInit) =>
       apiClient.get<{ visits: VisitApiRow[] }>('/api/visits/seller/upcoming', options),
+  },
+
+  /**
+   * Projects & bidding endpoints
+   */
+  projects: {
+    open: (excludeUserId?: string) => {
+      const ts = new Date().getTime()
+      const url = excludeUserId 
+        ? `/api/projects/open?exclude_user_id=${encodeURIComponent(excludeUserId)}&_t=${ts}` 
+        : `/api/projects/open?_t=${ts}`
+      return apiClient.get<{ projects: any[] }>(url)
+    },
+    mine: () => apiClient.get<{ projects: any[] }>('/api/projects/me'),
+    create: (data: Record<string, unknown>, options?: RequestInit) =>
+      apiClient.post<any>('/api/projects', data, options),
+    getById: (id: string) => apiClient.get<any>(`/api/projects/${id}`),
+    delete: (id: string) => apiClient.delete<{ deleted: boolean }>(`/api/projects/${id}`),
+    listBids: (projectId: string) => apiClient.get<{ bids: any[] }>(`/api/projects/${projectId}/bids`),
+    createBid: (projectId: string, data: Record<string, unknown>, options?: RequestInit) =>
+      apiClient.post<any>(`/api/projects/${projectId}/bids`, { ...data, project_id: projectId }, options),
+    myBids: () => apiClient.get<{ bids: any[] }>('/api/projects/bids/me'),
+    updateBid: (bidId: string, data: Record<string, unknown>, options?: RequestInit) =>
+      apiClient.patch<any>(`/api/projects/bids/${bidId}`, data, options),
+    deleteBid: (bidId: string) =>
+      apiClient.delete<{ deleted: boolean }>(`/api/projects/bids/${bidId}`),
+  },
+
+  /**
+   * Conversations endpoints
+   */
+  conversations: {
+    list: (clerkId: string) => apiClient.get<{ conversations: any[] }>(`/api/conversations?clerk_id=${encodeURIComponent(clerkId)}`),
+    start: (clerkId: string, data: Record<string, unknown>) =>
+      apiClient.post<{ conversation: any }>(`/api/conversations?clerk_id=${encodeURIComponent(clerkId)}`, data),
+    messages: (clerkId: string, conversationId: string) =>
+      apiClient.get<{ messages: any[] }>(`/api/conversations/${conversationId}/messages?clerk_id=${encodeURIComponent(clerkId)}`),
+    sendMessage: (clerkId: string, conversationId: string, data: Record<string, unknown>) =>
+      apiClient.post<{ message: any }>(`/api/conversations/${conversationId}/messages?clerk_id=${encodeURIComponent(clerkId)}`, data),
   },
 }
 

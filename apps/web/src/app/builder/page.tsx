@@ -114,6 +114,10 @@ export default function BuilderPage() {
     router.push('/builder/service/create')
   }
 
+  const handleBrowseProjects = () => {
+    router.push('/projects?role=builder')
+  }
+
   // Show spinner while loading and have not received API result; but not after fetching null
   if (isGuest) {
     return (
@@ -169,6 +173,14 @@ export default function BuilderPage() {
                 Chat
               </Button>
             </form>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Button onClick={handleBrowseProjects} variant="outline">
+                Browse Open Projects
+              </Button>
+              <Button onClick={handleAddService} variant="ghost">
+                Add New Service
+              </Button>
+            </div>
             <p className="text-sm text-slate-500 mt-3">
               💡 Try: &quot;Update my profile&quot;, &quot;Add new service&quot;, &quot;View my ratings&quot;
             </p>

@@ -105,3 +105,19 @@ async def get_current_user(
             detail=f"User with Clerk ID {clerk_id} not found in the database.",
         )
     return user
+
+async def get_optional_current_user(
+    request: Request,
+    creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> Optional[User]:
+    """
+    FastAPI dependency to optionally authenticate a user.
+    Returns None if no credentials are provided or if validation fails.
+    """
+    if creds is None:
+        return None
+    try:
+        return await get_current_user(request, creds, user_repo)
+    except HTTPException:
+        return None

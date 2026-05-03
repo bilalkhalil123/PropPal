@@ -334,6 +334,23 @@ export default function BuyerPage() {
             AI Search
           </Button>
           </form>
+          
+          <div className="mt-8 flex justify-center gap-3 px-6">
+            <Button
+              onClick={() => router.push('/projects/my')}
+              variant="outline"
+              className="rounded-xl border-slate-300 bg-white/60 hover:bg-white/80 transition-colors shadow-sm"
+            >
+              Manage My Projects
+            </Button>
+            <Button
+              onClick={() => router.push('/projects/create')}
+              variant="outline"
+              className="rounded-xl border-slate-300 bg-white/60 hover:bg-white/80 transition-colors shadow-sm"
+            >
+              Post New Project
+            </Button>
+          </div>
       </section>
 
       {upcomingVisits.length > 0 && (

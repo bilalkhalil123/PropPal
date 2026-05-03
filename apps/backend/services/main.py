@@ -23,6 +23,7 @@ from common.db import (  # noqa: E402
     get_async_session_factory,
     dispose_async_engine,
     get_db_session,
+    ensure_conversation_tables,
 )
 from common.errors import register_exception_handlers, DatabaseConnectionException  # noqa: E402
 from api.users.router import router as users_router  # noqa: E402
@@ -33,6 +34,8 @@ from api.builder.router import router as builder_router
 from api.properties.router import router as properties_router
 from api.recommendations.router import router as recommendations_router
 from api.visits.router import router as visits_router
+from api.projects.router import router as projects_router
+from api.conversations.router import router as conversations_router
 
 
 @asynccontextmanager
@@ -48,7 +51,9 @@ async def lifespan(app: FastAPI):
         postgres_url = settings.get_postgres_url()
         if postgres_url:
             # Create engine and session factory for the main event loop
-            get_async_session_factory(asyncio.get_running_loop())
+            loop = asyncio.get_running_loop()
+            get_async_session_factory(loop)
+            await ensure_conversation_tables(loop)
             db_name = _db_name_from_url(postgres_url)
             print(f"[STARTUP] PostgreSQL engine ready (database: {db_name})")
         else:
@@ -102,6 +107,8 @@ app.include_router(builder_router)
 app.include_router(properties_router)
 app.include_router(recommendations_router)
 app.include_router(visits_router)
+app.include_router(projects_router)
+app.include_router(conversations_router)
 
 # Import and include storage router
 from api.storage.router import router as storage_router

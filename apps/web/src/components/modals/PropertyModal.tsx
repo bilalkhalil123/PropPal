@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import {
   XMarkIcon,
@@ -11,10 +10,10 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   BuildingOffice2Icon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
-import { api } from "@/lib/api-client"
-import { useAuth, SignIn } from "@clerk/nextjs"
+import { startAndNavigateToConversation } from "@/lib/conversation-utils"
 
 type Property = {
   _id: string
@@ -29,6 +28,8 @@ type Property = {
   images?: string[]
   property_type: string
   score?: number
+  user_id?: string
+  owner_id?: string
 }
 
 interface PropertyModalProps {
@@ -52,55 +53,37 @@ export default function PropertyModal({
   onDotClick,
   onOpenLightbox,
 }: PropertyModalProps) {
-  const router = useRouter()
-  const { isAuthenticated, loading: authLoading } = useCurrentUser()
-  const { getToken } = useAuth()
-  const [isContacting, setIsContacting] = useState(false)
-  const [contactError, setContactError] = useState<string | null>(null)
-  const [showAuthModal, setShowAuthModal] = useState(false)
+  const { clerkId, isAuthenticated } = useCurrentUser()
+  const [isStartingChat, setIsStartingChat] = useState(false)
 
   if (!isOpen || !property) return null
 
   const handleContactAgent = async () => {
-    // Check if user is authenticated
-    if (!isAuthenticated || authLoading) {
-      // Open in-page auth modal instead of redirecting
-      setShowAuthModal(true)
+    if (!isAuthenticated || !clerkId) {
+      window.location.href = '/sign-in?redirect=/chat'
       return
     }
-
-    // User is authenticated, proceed with contact
-    setIsContacting(true)
-    setContactError(null)
-
+    const ownerId = property.user_id || property.owner_id
+    if (!ownerId) {
+      alert('Unable to contact property owner. Owner information not available.')
+      return
+    }
+    setIsStartingChat(true)
     try {
-      // Get Clerk token for authenticated request
-      const token = await getToken()
-      if (!token) {
-        throw new Error("Unable to get authentication token")
-      }
-
-      // Call the contact endpoint
-      const response = await api.properties.contactSeller(property._id, undefined, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const result = await startAndNavigateToConversation({
+        clerkId,
+        participantId: ownerId,
+        conversationType: 'direct',
+        initialMessage: `Hi, I'm interested in your property: ${property.title}`,
       })
-
-      // Show success message and redirect to chat or show seller info
-      if (response.success) {
-        // Option 1: Redirect to chat with pre-filled message
-        const chatMessage = `Hi, I'm interested in ${property.title} (${property.city}). Can you tell me more about this property?`
-        onClose() // Close modal first
-        router.push(`/chat?q=${encodeURIComponent(chatMessage)}`)
+      if (!result.success) {
+        alert(result.error || 'Failed to start conversation')
       }
-    } catch (error: any) {
-      console.error("Error contacting seller:", error)
-      setContactError(
-        error.message || "Failed to contact seller. Please try again."
-      )
+    } catch (error) {
+      console.error('Error starting conversation:', error)
+      alert('Failed to start conversation')
     } finally {
-      setIsContacting(false)
+      setIsStartingChat(false)
     }
   }
 
@@ -263,70 +246,26 @@ export default function PropertyModal({
           </button>
           <button
             onClick={handleContactAgent}
-            disabled={isContacting || authLoading}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:from-indigo-500 hover:to-purple-500 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isStartingChat}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:from-indigo-500 hover:to-purple-500 transition-colors shadow-lg flex items-center gap-2 disabled:opacity-50"
           >
-            {isContacting ? "Contacting..." : "Contact Agent"}
+            {isStartingChat ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Starting Chat...
+              </>
+            ) : (
+              <>
+                <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                Contact Agent
+              </>
+            )}
           </button>
-          {contactError && (
-            <p className="w-full text-sm text-red-600 mt-2">{contactError}</p>
-          )}
         </div>
       </div>
-
-      {/* Auth Modal for Contact Agent (shown when not logged in) */}
-      {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
-            <button
-              aria-label="Close"
-              onClick={() => setShowAuthModal(false)}
-              className="absolute right-4 top-4 p-1.5 rounded-full hover:bg-slate-100 text-slate-500"
-            >
-              ✕
-            </button>
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold text-slate-900">
-                Sign in to contact the agent
-              </h2>
-              <p className="text-sm text-slate-600 mt-1">
-                Please log in or sign up to send a message about this property.
-              </p>
-            </div>
-            <div className="flex justify-center">
-              <SignIn
-                routing="hash"
-                appearance={{
-                  variables: {
-                    colorPrimary: "var(--color-accent-gold)",
-                    colorText: "#111827",
-                    colorBackground: "#ffffff",
-                    borderRadius: "12px",
-                    fontSize: "15px",
-                  },
-                  elements: {
-                    card: "shadow-none border-0 p-0",
-                    headerTitle: "text-slate-900 text-lg font-semibold",
-                    headerSubtitle: "text-slate-600 text-sm",
-                    formButtonPrimary:
-                      "text-white rounded-xl hover:ring-2 hover:ring-[color:var(--color-accent-gold)] active:scale-95 transition-all bg-[linear-gradient(to_right,var(--color-primary),var(--color-accent-gold))]",
-                    formFieldInput:
-                      "rounded-lg border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[color:var(--color-accent-gold)] focus:border-[color:var(--color-accent-gold)]",
-                    formFieldLabel: "text-slate-900",
-                    dividerLine: "bg-slate-200",
-                    dividerText: "text-slate-600",
-                    footerActionText: "text-slate-700",
-                    footerActionLink:
-                      "text-[color:var(--color-accent-gold)] hover:text-amber-600",
-                    socialButtonsBlockButton:
-                      "rounded-lg border-slate-300 hover:bg-slate-50 text-slate-900",
-                  },
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

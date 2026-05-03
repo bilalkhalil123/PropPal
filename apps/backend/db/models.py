@@ -233,6 +233,97 @@ class BuilderBid(Base):
 
 
 # ---------------------------------------------------------------------------
+# Conversations (buyer <-> builder direct chat)
+# ---------------------------------------------------------------------------
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False), primary_key=True, default=uuid_default
+    )
+    conversation_type: Mapped[str] = mapped_column(String(50), default="direct", nullable=False)
+    user_one_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_two_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    project_id: Mapped[Optional[str]] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("user_projects.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    bid_id: Mapped[Optional[str]] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("builder_bids.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_conversations_user_pair", "user_one_id", "user_two_id"),
+    )
+
+
+class ConversationMessage(Base):
+    __tablename__ = "conversation_messages"
+
+    id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False), primary_key=True, default=uuid_default
+    )
+    conversation_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sender_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_conversation_messages_conversation_created", "conversation_id", "created_at"),
+    )
+
+
+class ConversationParticipant(Base):
+    __tablename__ = "conversation_participants"
+
+    conversation_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id: Mapped[str] = mapped_column(
+        PG_UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_conversation_participants_user_id", "user_id"),
+        Index("ix_conversation_participants_conversation_id", "conversation_id"),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Chat histories
 # ---------------------------------------------------------------------------
 

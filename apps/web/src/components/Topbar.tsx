@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useMemo } from 'react'
 import { HomeIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 const segments = [
   { href: '/', label: 'Home' },
   { href: '/chat', label: 'Chat' },
@@ -16,15 +17,34 @@ const segments = [
 
 export default function Topbar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const { userRole } = useCurrentUser()
 
   const activeIndex = useMemo(() => {
     // Special case: property detail pages should show "Buyer" as active
     if (pathname.startsWith('/properties/')) {
       return segments.findIndex(r => r.href === '/buyer')
     }
+    // Keep buyer/builder highlight for project & messaging routes
+    if (pathname.startsWith('/projects') || pathname.startsWith('/messages')) {
+      const roleOverride = searchParams.get('role')
+      const roleHref =
+        roleOverride === 'builder'
+          ? '/builder'
+          : roleOverride === 'buyer'
+            ? '/buyer'
+            : userRole === 'builder'
+              ? '/builder'
+              : userRole === 'buyer'
+                ? '/buyer'
+                : null
+      if (roleHref) {
+        return segments.findIndex(r => r.href === roleHref)
+      }
+    }
     const i = segments.findIndex(r => pathname === r.href || pathname.startsWith(r.href + '/'))
     return i >= 0 ? i : 0
-  }, [pathname])
+  }, [pathname, searchParams, userRole])
   const segWidth = 100 / segments.length
 
   return (
@@ -56,7 +76,7 @@ export default function Topbar() {
           {/* Segmented Control */}
           <div
             className="relative h-10 rounded-2xl border border-white/30 bg-white/30 backdrop-blur-lg overflow-hidden shadow-inner"
-            style={{ width: '440px' }}
+            style={{ width: '520px' }}
           >
             {/* Moving indicator */}
             <motion.div
@@ -84,6 +104,12 @@ export default function Topbar() {
             </div>
           </div>
 
+          <Link
+            href="/messages"
+            className="text-sm text-slate-700 hover:text-[color:var(--color-accent-gold)] transition-colors font-medium"
+          >
+            Messages
+          </Link>
           {/* Profile */}
           <Link
             href="/profile"
