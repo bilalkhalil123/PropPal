@@ -181,6 +181,8 @@ export const api = {
       apiClient.get('/api/builder/profile/me/', options),
     getServices: (clerkId: string, options?: RequestInit) => 
       apiClient.get(`/api/builder/services/${clerkId}`, options),
+    getServicesByBuilderId: (builderId: string, options?: RequestInit) =>
+      apiClient.get(`/api/builder/services/builder/${builderId}`, options),
     getMyServices: (options?: RequestInit) => 
       apiClient.get('/api/builder/services/me/', options),
     getById: (id: string, options?: RequestInit) => 

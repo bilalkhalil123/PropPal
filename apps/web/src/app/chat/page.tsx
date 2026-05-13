@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { api } from '@/lib/api-client'
+import { startAndNavigateToConversation } from '@/lib/conversation-utils'
 import { UserButton } from '@clerk/nextjs'
 import ChatSidebar from '@/components/ChatSidebar'
 import Link from 'next/link'
@@ -42,6 +43,8 @@ interface Property {
   images?: string[]
   property_type: string
   score?: number
+  user_id?: string
+  owner_id?: string
 }
 
 interface Builder {
@@ -56,6 +59,7 @@ interface Builder {
   about?: string
   score?: number
   portfolio_images?: string[]
+  user_id?: string
 }
 
 interface ServiceResult {
@@ -130,6 +134,95 @@ function ChatPageContent() {
   const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false)
   const [selectedService, setSelectedService] = useState<ServiceResult | null>(null)
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
+  const [isStartingChat, setIsStartingChat] = useState(false)
+
+  const handleContactProperty = async (property: Property) => {
+    if (!user) {
+      router.push('/sign-in')
+      return
+    }
+    
+    const participantId = property.owner_id || property.user_id
+    if (!participantId) {
+      alert('Unable to contact: Owner information is missing from this property.')
+      return
+    }
+
+    setIsStartingChat(true)
+    try {
+      await startAndNavigateToConversation({
+        clerkId: clerkId || '',
+        participantId,
+        conversationType: 'direct',
+        initialMessage: `Property Inquiry: ${property.title}`
+      })
+    } catch (error) {
+      console.error('Failed to start conversation:', error)
+      alert('Failed to start conversation. Please try again.')
+    } finally {
+      setIsStartingChat(false)
+    }
+  }
+
+  const handleContactBuilder = async (builder: Builder) => {
+    if (!user) {
+      router.push('/sign-in')
+      return
+    }
+    
+    if (!builder.user_id) {
+      alert('Unable to contact: User information is missing for this builder.')
+      return
+    }
+
+    setIsStartingChat(true)
+    try {
+      await startAndNavigateToConversation({
+        clerkId: clerkId || '',
+        participantId: builder.user_id,
+        conversationType: 'direct',
+        initialMessage: `Inquiry for ${builder.company_name}`
+      })
+    } catch (error) {
+      console.error('Failed to start conversation:', error)
+      alert('Failed to start conversation. Please try again.')
+    } finally {
+      setIsStartingChat(false)
+    }
+  }
+
+  const handleContactService = async (service: ServiceResult) => {
+    if (!user) {
+      router.push('/sign-in')
+      return
+    }
+    
+    if (!service.builder_id) {
+      alert('Unable to contact: Builder information is missing for this service.')
+      return
+    }
+
+    setIsStartingChat(true)
+    try {
+      const builderInfo = await api.builders.getById(service.builder_id) as Builder
+      if (!builderInfo || !builderInfo.user_id) {
+        alert('Unable to contact: Could not retrieve builder user information.')
+        return
+      }
+
+      await startAndNavigateToConversation({
+        clerkId: clerkId || '',
+        participantId: builderInfo.user_id,
+        conversationType: 'direct',
+        initialMessage: `Inquiry regarding service: ${service.service_name || service.title}`
+      })
+    } catch (error) {
+      console.error('Failed to start conversation:', error)
+      alert('Failed to start conversation. Please try again.')
+    } finally {
+      setIsStartingChat(false)
+    }
+  }
 
   const openPropertyModal = (property: Property) => {
     setSelectedProperty(property)
@@ -1034,7 +1127,14 @@ function ChatPageContent() {
                                         >
                                           View Details
                                         </button>
-                                        <button className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleContactProperty(property);
+                                          }}
+                                          disabled={isStartingChat}
+                                          className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
+                                        >
                                           Contact
                                         </button>
                                       </div>
@@ -1129,7 +1229,14 @@ function ChatPageContent() {
                                         >
                                           View Profile
                                         </button>
-                                        <button className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleContactBuilder(builder);
+                                          }}
+                                          disabled={isStartingChat}
+                                          className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
+                                        >
                                           Contact
                                         </button>
                                       </div>
@@ -1208,7 +1315,14 @@ function ChatPageContent() {
                                             View Builder
                                           </button>
                                         ) : null}
-                                        <button className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleContactService(svc);
+                                          }}
+                                          disabled={isStartingChat}
+                                          className="flex-1 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
+                                        >
                                           Contact
                                         </button>
                                       </div>

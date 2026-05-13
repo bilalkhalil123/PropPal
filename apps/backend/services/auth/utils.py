@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import time
 import httpx
 from typing import Optional
 
@@ -16,34 +18,64 @@ from common.config import get_settings
 from common.repositories.user_repository import UserRepository, get_user_repository
 from models.users import User
 
-# This scheme will look for a token in the 'Authorization: Bearer <token>' header
-bearer_scheme = HTTPBearer(auto_error=False) # Set auto_error to False
+bearer_scheme = HTTPBearer(auto_error=False)
 
-# Cache for Clerk's JWKS
-_jwks_cache = None
+# JWKS cache: populated once and refreshed after JWKS_TTL_SECONDS.
+# An asyncio.Lock prevents concurrent stampedes on cache miss.
+_jwks_cache: dict | None = None
+_jwks_fetched_at: float = 0.0
+_jwks_lock = asyncio.Lock()
 
-async def get_jwks():
+JWKS_TTL_SECONDS = 3600       # re-fetch public keys every hour
+JWKS_FETCH_TIMEOUT = 15.0     # seconds before giving up on Clerk
+JWKS_MAX_RETRIES = 3
+
+
+async def get_jwks() -> dict:
     """
-    Retrieves and caches the JSON Web Key Set (JWKS) from Clerk.
-    This is used to verify the signature of JWTs.
+    Return Clerk's JWKS, fetching it if the cache is empty or stale.
+
+    Uses an asyncio.Lock so only one coroutine fetches at a time; all
+    others wait and then reuse the result.
     """
-    global _jwks_cache
-    if _jwks_cache:
+    global _jwks_cache, _jwks_fetched_at
+
+    now = time.monotonic()
+    if _jwks_cache and (now - _jwks_fetched_at) < JWKS_TTL_SECONDS:
         return _jwks_cache
 
-    settings = get_settings()
-    jwks_url = settings.CLERK_JWKS_URL
-    if not jwks_url:
+    async with _jwks_lock:
+        # Re-check inside the lock: another coroutine may have just refreshed.
+        now = time.monotonic()
+        if _jwks_cache and (now - _jwks_fetched_at) < JWKS_TTL_SECONDS:
+            return _jwks_cache
+
+        settings = get_settings()
+        jwks_url = settings.CLERK_JWKS_URL
+        if not jwks_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="CLERK_JWKS_URL is not configured.",
+            )
+
+        last_exc: Exception | None = None
+        async with httpx.AsyncClient(timeout=JWKS_FETCH_TIMEOUT) as client:
+            for attempt in range(1, JWKS_MAX_RETRIES + 1):
+                try:
+                    response = await client.get(jwks_url)
+                    response.raise_for_status()
+                    _jwks_cache = response.json()
+                    _jwks_fetched_at = time.monotonic()
+                    return _jwks_cache
+                except (httpx.TimeoutException, httpx.ConnectError) as exc:
+                    last_exc = exc
+                    if attempt < JWKS_MAX_RETRIES:
+                        await asyncio.sleep(0.5 * attempt)
+
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Clerk JWKS URL is not configured in settings."
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Could not reach Clerk JWKS endpoint after {JWKS_MAX_RETRIES} attempts: {last_exc}",
         )
-        
-    async with httpx.AsyncClient() as client:
-        response = await client.get(jwks_url)
-        response.raise_for_status()
-        _jwks_cache = response.json()
-        return _jwks_cache
 
 async def get_current_user(
     request: Request,

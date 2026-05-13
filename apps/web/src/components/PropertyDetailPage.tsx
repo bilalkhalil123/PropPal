@@ -28,6 +28,7 @@ type Property = {
   nearby_amenities?: any
   lat?: number
   lng?: number
+  source_url?: string
 }
 
 export default function PropertyDetailPage({ property }: { property: Property }) {
@@ -420,6 +421,19 @@ export default function PropertyDetailPage({ property }: { property: Property })
                     <CheckCircleIcon className="h-5 w-5 text-green-600" /> AI-Matched Recommendations
                   </li>
                 </ul>
+
+                {property.source_url && (
+                  <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+                    <a 
+                      href={property.source_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-slate-400 hover:text-slate-600 underline font-medium transition-colors"
+                    >
+                      View Original Source
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           </div>

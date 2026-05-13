@@ -287,6 +287,32 @@ async def delete_builder_profile_by_clerk(
     }
 
 @router.get(
+    "/services/builder/{builder_id}",
+    response_model=List[BuilderServiceResponse],
+    summary="Get a builder's services by their Profile UUID",
+)
+async def get_builder_services_by_builder_id(
+    builder_id: str,
+    profile_repo: BuilderProfileRepository = Depends(get_builder_profile_repository),
+    service_repo: BuilderServiceRepository = Depends(get_builder_service_repository),
+):
+    """Retrieves all services for a specific builder profile by its UUID."""
+    bid = parse_uuid(builder_id, "builder_id")
+    profile = await profile_repo.get_by_id(bid)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Builder profile not found.",
+        )
+    services = await service_repo.list_by_builder_id(profile["id"])
+    for service in services:
+        if service.get("service_images") is None:
+            service["service_images"] = []
+        if service.get("service_features") is None:
+            service["service_features"] = []
+    return services
+
+@router.get(
     "/services/me/",
     response_model=List[BuilderServiceResponse],
     summary="Get the current builder's services",
